@@ -14,6 +14,27 @@
     <link rel="manifest" href="./manifest.json">
 </head>
 <body>
+    <div class="auth-page" id="auth-page">
+        <div class="auth-container">
+            <h1 class="auth-title">VEX-Timeline</h1>
+            <p class="auth-subtitle">记录备赛每一天</p>
+            <div class="auth-form">
+                <div class="form-group">
+                    <label class="form-label" for="auth-username">用户名</label>
+                    <input type="text" class="form-input" id="auth-username" placeholder="输入用户名" maxlength="20" autocomplete="off">
+                </div>
+                <div class="auth-error" id="auth-error"></div>
+                <div class="auth-buttons">
+                    <button class="auth-btn login-btn" id="auth-login-btn">登录</button>
+                    <button class="auth-btn register-btn" id="auth-register-btn">注册</button>
+                </div>
+            </div>
+            <div class="auth-divider">
+                <span>或</span>
+            </div>
+            <button class="auth-btn guest-btn" id="auth-guest-btn">离线使用</button>
+        </div>
+    </div>
     <div class="container">
         <header class="header">
             <h1 class="title">VEX-Timeline</h1>
@@ -21,6 +42,23 @@
             <div class="view-toggle">
                 <button class="view-toggle-btn active" data-view="timeline">时间轴</button>
                 <button class="view-toggle-btn" data-view="month">月历</button>
+            </div>
+            <div class="header-right">
+                <div class="timeline-selector" id="timeline-selector">
+                    <select class="timeline-select" id="timeline-select">
+                        <option value="local">本地时间轴</option>
+                    </select>
+                </div>
+                <div class="user-info" id="user-info" style="display: none;">
+                    <span class="user-name" id="user-name"></span>
+                    <button class="logout-btn" id="logout-btn" title="登出">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                            <polyline points="16 17 21 12 16 7"></polyline>
+                            <line x1="21" y1="12" x2="9" y2="12"></line>
+                        </svg>
+                    </button>
+                </div>
             </div>
         </header>
         
@@ -81,6 +119,32 @@
                     <line x1="5" y1="12" x2="19" y2="12"></line>
                 </svg>
             </button>
+            <div class="timeline-actions" id="timeline-actions" style="display: none;">
+                <button class="action-btn-lg" id="create-team-btn" title="创建赛队时间轴">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                    </svg>
+                    <span>创建赛队</span>
+                </button>
+                <button class="action-btn-lg" id="join-team-btn" title="加入赛队时间轴">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
+                        <polyline points="10 17 15 12 10 7"></polyline>
+                        <line x1="15" y1="12" x2="3" y2="12"></line>
+                    </svg>
+                    <span>加入赛队</span>
+                </button>
+                <button class="action-btn-lg" id="manage-team-btn" title="管理赛队" style="display: none;">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="3"></circle>
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                    </svg>
+                    <span>管理</span>
+                </button>
+            </div>
         </main>
     </div>
     
@@ -132,7 +196,82 @@
         </div>
     </div>
     
+    <div class="modal-overlay" id="create-team-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 class="modal-title">创建赛队时间轴</h2>
+            </div>
+            <div class="modal-body">
+                <form class="record-form" id="create-team-form">
+                    <div class="form-group">
+                        <label class="form-label" for="team-name">时间轴名称</label>
+                        <input type="text" class="form-input" id="team-name" placeholder="输入赛队时间轴名称">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="modal-btn cancel-btn" id="cancel-team-btn">取消</button>
+                <button class="modal-btn save-btn" id="save-team-btn">创建</button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="modal-overlay" id="invite-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 class="modal-title">邀请成员</h2>
+            </div>
+            <div class="modal-body">
+                <div class="invite-content">
+                    <div class="invite-code-section">
+                        <label class="form-label">邀请码</label>
+                        <div class="invite-code-display">
+                            <span class="invite-code" id="invite-code-display">---</span>
+                            <button class="copy-btn" id="copy-invite-btn" title="复制">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="members-section">
+                        <label class="form-label">成员列表</label>
+                        <div class="members-list" id="members-list"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="modal-btn cancel-btn" id="close-invite-btn">关闭</button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="modal-overlay" id="join-team-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 class="modal-title">加入赛队时间轴</h2>
+            </div>
+            <div class="modal-body">
+                <form class="record-form" id="join-team-form">
+                    <div class="form-group">
+                        <label class="form-label" for="invite-code-input">邀请码</label>
+                        <input type="text" class="form-input" id="invite-code-input" placeholder="输入6位邀请码" maxlength="6">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="modal-btn cancel-btn" id="cancel-join-btn">取消</button>
+                <button class="modal-btn save-btn" id="confirm-join-btn">加入</button>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="./src/js/db.js"></script>
+    <script src="./src/js/supabase.js"></script>
+    <script src="./src/js/auth.js"></script>
+    <script src="./src/js/cloud-db.js"></script>
     <script src="./src/js/app.js"></script>
     <script>
         if ('serviceWorker' in navigator) {
