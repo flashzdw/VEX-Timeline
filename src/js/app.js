@@ -4,6 +4,8 @@ class App {
     this.currentView = 'timeline';
     this.records = [];
     this.editingRecord = null;
+    this.currentFilter = 'all';
+    this.tempImageData = null;
     
     this.init();
   }
@@ -29,26 +31,36 @@ class App {
     const sampleRecords = [
       {
         date: this.formatDate(today),
+        time: '09:30',
+        importance: 'high',
         title: "调试机器人传感器",
         content: "调整了红外传感器的灵敏度，现在可以更准确地检测障碍物"
       },
       {
         date: this.formatDate(today),
+        time: '14:00',
+        importance: 'medium',
         title: "团队会议",
         content: "讨论了比赛策略，确定了主攻方向"
       },
       {
         date: this.formatDate(yesterday),
+        time: '10:00',
+        importance: 'high',
         title: "机械结构优化",
         content: "重新设计了机械臂的结构，重量减轻了15%"
       },
       {
         date: this.formatDate(yesterday),
+        time: '16:00',
+        importance: 'low',
         title: "编程练习",
         content: "完成了自动导航程序的编写"
       },
       {
         date: this.formatDate(twoDaysAgo),
+        time: '11:00',
+        importance: 'medium',
         title: "采购零件",
         content: "购买了新的电机和电池组件"
       }
@@ -104,45 +116,156 @@ class App {
         this.closeModal();
       }
     });
+
+    // 重要性选择器事件
+    document.querySelectorAll('.importance-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        document.querySelectorAll('.importance-btn').forEach(b => b.classList.remove('active'));
+        e.target.classList.add('active');
+      });
+    });
+
+    // 图片上传事件
+    document.getElementById('record-image').addEventListener('change', (e) => {
+      this.handleImageUpload(e);
+    });
+
+    // 移除图片事件
+    document.getElementById('remove-image-btn').addEventListener('click', () => {
+      this.removeImage();
+    });
+
+    // 筛选按钮事件
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        e.target.classList.add('active');
+        this.currentFilter = e.target.dataset.filter;
+        this.renderTimeline();
+      });
+    });
+
+    // 关闭日期记录模态框
+    document.getElementById('close-day-records').addEventListener('click', () => {
+      this.closeDayRecords();
+    });
+
+    document.getElementById('day-records-overlay').addEventListener('click', (e) => {
+      if (e.target.id === 'day-records-overlay') {
+        this.closeDayRecords();
+      }
+    });
+  }
+
+  handleImageUpload(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      this.tempImageData = event.target.result;
+      const preview = document.getElementById('image-preview');
+      const previewImg = document.getElementById('preview-img');
+      previewImg.src = this.tempImageData;
+      preview.style.display = 'block';
+    };
+    reader.readAsDataURL(file);
+  }
+
+  removeImage() {
+    this.tempImageData = null;
+    const preview = document.getElementById('image-preview');
+    const previewImg = document.getElementById('preview-img');
+    const imageInput = document.getElementById('record-image');
+    preview.style.display = 'none';
+    previewImg.src = '';
+    imageInput.value = '';
   }
 
   openModal(record = null) {
     this.editingRecord = record;
+    this.tempImageData = null;
     const modal = document.getElementById('record-modal');
     const modalTitle = document.getElementById('modal-title');
     const dateInput = document.getElementById('record-date');
+    const timeInput = document.getElementById('record-time');
     const titleInput = document.getElementById('record-title');
     const contentInput = document.getElementById('record-content');
+    const importanceBtns = document.querySelectorAll('.importance-btn');
+    const imagePreview = document.getElementById('image-preview');
+    const previewImg = document.getElementById('preview-img');
+    const imageInput = document.getElementById('record-image');
 
     if (record) {
       modalTitle.textContent = '编辑记录';
       dateInput.value = record.date;
+      timeInput.value = record.time || '';
       titleInput.value = record.title;
       contentInput.value = record.content || '';
+      
+      // 设置重要性
+      importanceBtns.forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.dataset.importance === record.importance) {
+          btn.classList.add('active');
+        }
+      });
+      
+      // 设置图片
+      if (record.image) {
+        this.tempImageData = record.image;
+        previewImg.src = record.image;
+        imagePreview.style.display = 'block';
+      } else {
+        imagePreview.style.display = 'none';
+        previewImg.src = '';
+      }
     } else {
       modalTitle.textContent = '添加记录';
       dateInput.value = this.formatDate(new Date());
+      timeInput.value = this.formatTime(new Date());
       titleInput.value = '';
       contentInput.value = '';
+      
+      // 重置重要性
+      importanceBtns.forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.dataset.importance === 'medium') {
+          btn.classList.add('active');
+        }
+      });
+      
+      // 重置图片
+      imagePreview.style.display = 'none';
+      previewImg.src = '';
+      this.tempImageData = null;
     }
-
+    
+    imageInput.value = '';
     modal.classList.add('active');
     titleInput.focus();
   }
 
   closeModal() {
     this.editingRecord = null;
+    this.tempImageData = null;
     const modal = document.getElementById('record-modal');
     modal.classList.remove('active');
   }
 
   async saveRecord() {
     const dateInput = document.getElementById('record-date');
+    const timeInput = document.getElementById('record-time');
     const titleInput = document.getElementById('record-title');
     const contentInput = document.getElementById('record-content');
+    const activeImportanceBtn = document.querySelector('.importance-btn.active');
+    
     const date = dateInput.value;
+    const time = timeInput.value;
     const title = titleInput.value.trim();
     const content = contentInput.value.trim();
+    const importance = activeImportanceBtn.dataset.importance;
+    const image = this.tempImageData;
 
     if (!title) {
       alert('请输入标题');
@@ -157,14 +280,20 @@ class App {
     if (this.editingRecord) {
       await dbManager.updateRecord(this.editingRecord.id, {
         date,
+        time,
         title,
-        content
+        content,
+        importance,
+        image
       });
     } else {
       await dbManager.addRecord({
         date,
+        time,
         title,
-        content
+        content,
+        importance,
+        image
       });
     }
 
@@ -300,15 +429,63 @@ class App {
     document.querySelectorAll('.calendar-cell:not(.other-month)').forEach(cell => {
       cell.addEventListener('click', (e) => {
         const dateStr = e.currentTarget.dataset.date;
-        const [y, m, d] = dateStr.split('-');
-        this.currentDate = new Date(parseInt(y), parseInt(m) - 1, parseInt(d));
-        this.currentView = 'timeline';
-        document.querySelectorAll('.view-toggle-btn').forEach(b => b.classList.remove('active'));
-        document.querySelector('[data-view="timeline"]').classList.add('active');
-        this.renderDate();
-        this.renderView();
+        this.showDayRecords(dateStr);
       });
     });
+  }
+
+  async showDayRecords(dateStr) {
+    const overlay = document.getElementById('day-records-overlay');
+    const title = document.getElementById('day-records-title');
+    const content = document.getElementById('day-records-content');
+    
+    title.textContent = this.formatDateDisplay(dateStr);
+    
+    const allRecords = await dbManager.getAllRecords();
+    const dayRecords = allRecords.filter(r => r.date === dateStr);
+    
+    if (dayRecords.length === 0) {
+      content.innerHTML = `
+        <div class="empty-state">
+          暂无记录
+        </div>
+      `;
+    } else {
+      let html = '';
+      dayRecords.sort((a, b) => {
+        const timeA = a.time || '00:00';
+        const timeB = b.time || '00:00';
+        return timeB.localeCompare(timeA);
+      });
+      
+      dayRecords.forEach(record => {
+        const time = record.time || '';
+        const importance = record.importance || 'medium';
+        
+        html += `
+          <div class="day-record-card">
+            <div class="day-record-importance" data-importance="${importance}"></div>
+            <div class="day-record-time">${time}</div>
+            <div class="day-record-title">${record.title}</div>
+            ${record.content ? `<div class="day-record-content">${record.content}</div>` : ''}
+            ${record.image ? `
+              <div class="day-record-image">
+                <img src="${record.image}" alt="记录图片">
+              </div>
+            ` : ''}
+          </div>
+        `;
+      });
+      
+      content.innerHTML = html;
+    }
+    
+    overlay.classList.add('active');
+  }
+
+  closeDayRecords() {
+    const overlay = document.getElementById('day-records-overlay');
+    overlay.classList.remove('active');
   }
 
   showLoadingState() {
@@ -328,8 +505,14 @@ class App {
     await new Promise(resolve => setTimeout(resolve, 150));
     
     this.records = await dbManager.getAllRecords();
+    
+    // 筛选记录
+    let filteredRecords = this.records;
+    if (this.currentFilter !== 'all') {
+      filteredRecords = this.records.filter(r => r.importance === this.currentFilter);
+    }
 
-    if (this.records.length === 0) {
+    if (filteredRecords.length === 0) {
       timeline.innerHTML = `
         <div class="empty-state">
           暂无记录
@@ -340,7 +523,7 @@ class App {
 
     // Group records by date
     const groupedRecords = {};
-    this.records.forEach(record => {
+    filteredRecords.forEach(record => {
       if (!groupedRecords[record.date]) {
         groupedRecords[record.date] = [];
       }
@@ -353,7 +536,11 @@ class App {
     let timelineHTML = '';
     sortedDates.forEach(dateStr => {
       const dateRecords = groupedRecords[dateStr];
-      dateRecords.sort((a, b) => b.createdAt - a.createdAt);
+      dateRecords.sort((a, b) => {
+        const timeA = a.time || '00:00';
+        const timeB = b.time || '00:00';
+        return timeB.localeCompare(timeA);
+      });
 
       timelineHTML += `
         <div class="date-group">
@@ -365,11 +552,11 @@ class App {
       `;
 
       dateRecords.forEach(record => {
-        const recordDate = new Date(record.createdAt);
-        const time = this.formatTime(recordDate);
+        const time = record.time || this.formatTime(new Date(record.createdAt));
+        const importance = record.importance || 'medium';
         
         timelineHTML += `
-          <div class="timeline-item">
+          <div class="timeline-item" data-importance="${importance}">
             <div class="timeline-card">
               <div class="timeline-card-actions">
                 <button class="action-btn edit-btn" data-id="${record.id}" title="编辑">
@@ -388,6 +575,11 @@ class App {
               <div class="timeline-time">${time}</div>
               <div class="timeline-title">${record.title}</div>
               ${record.content ? `<div class="timeline-content">${record.content}</div>` : ''}
+              ${record.image ? `
+                <div class="timeline-image">
+                  <img src="${record.image}" alt="记录图片">
+                </div>
+              ` : ''}
             </div>
           </div>
         `;

@@ -1,7 +1,7 @@
 class IndexedDBManager {
   constructor() {
     this.dbName = 'vex-timeline';
-    this.dbVersion = 1;
+    this.dbVersion = 2;
     this.db = null;
   }
 
@@ -24,6 +24,10 @@ class IndexedDBManager {
           const store = db.createObjectStore('records', { keyPath: 'id', autoIncrement: true });
           store.createIndex('date', 'date', { unique: false });
           store.createIndex('createdAt', 'createdAt', { unique: false });
+        } else {
+          // 升级现有数据库
+          const store = event.target.transaction.objectStore('records');
+          // 不需要显式创建新字段，IndexedDB 自动支持
         }
       };
     });

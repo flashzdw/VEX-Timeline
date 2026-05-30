@@ -25,30 +25,55 @@
         </header>
         
         <main class="main">
-            <div class="timeline-container" id="timeline-container">
-                <div class="timeline" id="timeline"></div>
-            </div>
-            
-            <div class="calendar-container" id="calendar-container" style="display: none;">
-                <div class="date-navigation">
-                    <button class="nav-btn" id="prev-month">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <polyline points="15 18 9 12 15 6"></polyline>
-                        </svg>
-                    </button>
-                    
-                    <div class="date-display">
-                        <span class="date-label" id="date-label"></span>
+        <div class="timeline-container" id="timeline-container">
+            <div class="filter-bar" id="filter-bar">
+                <div class="filter-group">
+                    <label class="filter-label">重要性</label>
+                    <div class="filter-options">
+                        <button class="filter-btn active" data-filter="all">全部</button>
+                        <button class="filter-btn" data-filter="high">高</button>
+                        <button class="filter-btn" data-filter="medium">中</button>
+                        <button class="filter-btn" data-filter="low">低</button>
                     </div>
-                    
-                    <button class="nav-btn" id="next-month">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <polyline points="9 18 15 12 9 6"></polyline>
-                        </svg>
-                    </button>
                 </div>
-                <div class="calendar" id="calendar"></div>
             </div>
+            <div class="timeline" id="timeline"></div>
+        </div>
+        
+        <div class="calendar-container" id="calendar-container" style="display: none;">
+            <div class="date-navigation">
+                <button class="nav-btn" id="prev-month">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="15 18 9 12 15 6"></polyline>
+                    </svg>
+                </button>
+                
+                <div class="date-display">
+                    <span class="date-label" id="date-label"></span>
+                </div>
+                
+                <button class="nav-btn" id="next-month">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="9 18 15 12 9 6"></polyline>
+                    </svg>
+                </button>
+            </div>
+            <div class="calendar" id="calendar"></div>
+            <div class="day-records-overlay" id="day-records-overlay" style="display: none;">
+                <div class="day-records-modal">
+                    <div class="day-records-header">
+                        <h3 class="day-records-title" id="day-records-title"></h3>
+                        <button class="close-day-records" id="close-day-records">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                <line x1="6" y1="6" x2="18" y2="18"></line>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="day-records-content" id="day-records-content"></div>
+                </div>
+            </div>
+        </div>
             
             <button class="add-btn" id="add-btn">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -71,12 +96,32 @@
                         <input type="date" class="form-input" id="record-date">
                     </div>
                     <div class="form-group">
+                        <label class="form-label" for="record-time">时间</label>
+                        <input type="time" class="form-input" id="record-time">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">重要性</label>
+                        <div class="importance-selector" id="importance-selector">
+                            <button type="button" class="importance-btn" data-importance="high">高</button>
+                            <button type="button" class="importance-btn active" data-importance="medium">中</button>
+                            <button type="button" class="importance-btn" data-importance="low">低</button>
+                        </div>
+                    </div>
+                    <div class="form-group">
                         <label class="form-label" for="record-title">标题</label>
                         <input type="text" class="form-input" id="record-title" placeholder="请输入标题">
                     </div>
                     <div class="form-group">
                         <label class="form-label" for="record-content">内容</label>
                         <textarea class="form-textarea" id="record-content" placeholder="请输入内容"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="record-image">图片</label>
+                        <input type="file" class="form-input" id="record-image" accept="image/*">
+                        <div class="image-preview" id="image-preview" style="display: none;">
+                            <img id="preview-img" src="" alt="预览">
+                            <button type="button" class="remove-image-btn" id="remove-image-btn">移除</button>
+                        </div>
                     </div>
                 </form>
             </div>
