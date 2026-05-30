@@ -10,9 +10,53 @@ class App {
 
   async init() {
     await dbManager.initDB();
+    await this.addSampleData();
     this.bindEvents();
     this.renderDate();
     await this.renderView();
+  }
+
+  async addSampleData() {
+    const existingRecords = await dbManager.getAllRecords();
+    if (existingRecords.length > 0) return;
+
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const twoDaysAgo = new Date(today);
+    twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+
+    const sampleRecords = [
+      {
+        date: this.formatDate(today),
+        title: "调试机器人传感器",
+        content: "调整了红外传感器的灵敏度，现在可以更准确地检测障碍物"
+      },
+      {
+        date: this.formatDate(today),
+        title: "团队会议",
+        content: "讨论了比赛策略，确定了主攻方向"
+      },
+      {
+        date: this.formatDate(yesterday),
+        title: "机械结构优化",
+        content: "重新设计了机械臂的结构，重量减轻了15%"
+      },
+      {
+        date: this.formatDate(yesterday),
+        title: "编程练习",
+        content: "完成了自动导航程序的编写"
+      },
+      {
+        date: this.formatDate(twoDaysAgo),
+        title: "采购零件",
+        content: "购买了新的电机和电池组件"
+      }
+    ];
+
+    for (const record of sampleRecords) {
+      await dbManager.addRecord(record);
+    }
   }
 
   bindEvents() {
