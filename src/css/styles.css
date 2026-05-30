@@ -150,10 +150,60 @@ body {
     background-color: var(--color-border);
 }
 
+.date-group {
+    margin-bottom: var(--spacing-xl);
+}
+
+.date-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-md);
+    padding: var(--spacing-sm) 0;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.date-title {
+    font-family: var(--font-mono);
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--color-text);
+}
+
+.date-count {
+    font-family: var(--font-mono);
+    font-size: 0.875rem;
+    color: var(--color-text-secondary);
+}
+
+.date-records {
+    position: relative;
+}
+
 .timeline-item {
     position: relative;
     margin-bottom: var(--spacing-lg);
     padding-left: var(--spacing-lg);
+    opacity: 0;
+    animation: slideIn 0.3s ease-out forwards;
+}
+
+.timeline-item:nth-child(1) { animation-delay: 0.05s; }
+.timeline-item:nth-child(2) { animation-delay: 0.1s; }
+.timeline-item:nth-child(3) { animation-delay: 0.15s; }
+.timeline-item:nth-child(4) { animation-delay: 0.2s; }
+.timeline-item:nth-child(5) { animation-delay: 0.25s; }
+.timeline-item:nth-child(n+6) { animation-delay: 0.3s; }
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
 }
 
 .timeline-item::before {
@@ -168,9 +218,30 @@ body {
 }
 
 .timeline-card {
+    position: relative;
     background-color: var(--color-surface);
     border: 2px solid var(--color-border);
     padding: var(--spacing-md);
+    opacity: 0;
+    animation: fadeIn 0.3s ease-out forwards;
+}
+
+.timeline-item:nth-child(1) .timeline-card { animation-delay: 0.05s; }
+.timeline-item:nth-child(2) .timeline-card { animation-delay: 0.1s; }
+.timeline-item:nth-child(3) .timeline-card { animation-delay: 0.15s; }
+.timeline-item:nth-child(4) .timeline-card { animation-delay: 0.2s; }
+.timeline-item:nth-child(5) .timeline-card { animation-delay: 0.25s; }
+.timeline-item:nth-child(n+6) .timeline-card { animation-delay: 0.3s; }
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .timeline-time {
@@ -215,56 +286,6 @@ body {
     text-transform: uppercase;
 }
 
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(10px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-.timeline-item {
-    position: relative;
-    margin-bottom: var(--spacing-lg);
-    padding-left: var(--spacing-lg);
-    opacity: 0;
-    animation: slideIn 0.3s ease-out forwards;
-}
-
-.timeline-item:nth-child(1) { animation-delay: 0.05s; }
-.timeline-item:nth-child(2) { animation-delay: 0.1s; }
-.timeline-item:nth-child(3) { animation-delay: 0.15s; }
-.timeline-item:nth-child(4) { animation-delay: 0.2s; }
-.timeline-item:nth-child(5) { animation-delay: 0.25s; }
-.timeline-item:nth-child(n+6) { animation-delay: 0.3s; }
-
-@keyframes slideIn {
-    from {
-        opacity: 0;
-        transform: translateX(-20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateX(0);
-    }
-}
-
-.timeline-card {
-    position: relative;
-    opacity: 0;
-    animation: fadeIn 0.3s ease-out forwards;
-}
-
-.timeline-item:nth-child(1) .timeline-card { animation-delay: 0.05s; }
-.timeline-item:nth-child(2) .timeline-card { animation-delay: 0.1s; }
-.timeline-item:nth-child(3) .timeline-card { animation-delay: 0.15s; }
-.timeline-item:nth-child(4) .timeline-card { animation-delay: 0.2s; }
-.timeline-item:nth-child(5) .timeline-card { animation-delay: 0.25s; }
-.timeline-item:nth-child(n+6) .timeline-card { animation-delay: 0.3s; }
-
 .add-btn {
     position: fixed;
     bottom: var(--spacing-xl);
@@ -279,6 +300,7 @@ body {
     align-items: center;
     justify-content: center;
     transition: all 0.2s;
+    z-index: 100;
 }
 
 .add-btn:hover {
@@ -378,6 +400,7 @@ body {
     z-index: 1000;
     opacity: 0;
     transition: opacity 0.2s ease-out;
+    padding: var(--spacing-md);
 }
 
 .modal-overlay.active {
@@ -388,8 +411,10 @@ body {
 .modal {
     background-color: var(--color-surface);
     border: 2px solid var(--color-border);
-    width: 90%;
+    width: 100%;
     max-width: 500px;
+    max-height: 90vh;
+    overflow-y: auto;
     transform: scale(0.95);
     transition: transform 0.2s ease-out;
 }
@@ -401,6 +426,9 @@ body {
 .modal-header {
     padding: var(--spacing-md);
     border-bottom: 2px solid var(--color-border);
+    position: sticky;
+    top: 0;
+    background-color: var(--color-surface);
 }
 
 .modal-title {
@@ -444,6 +472,7 @@ body {
     color: var(--color-text);
     outline: none;
     transition: border-color 0.2s;
+    width: 100%;
 }
 
 .form-input:focus {
@@ -474,6 +503,9 @@ body {
     padding: var(--spacing-md);
     border-top: 2px solid var(--color-border);
     justify-content: flex-end;
+    position: sticky;
+    bottom: 0;
+    background-color: var(--color-surface);
 }
 
 .modal-btn {
@@ -548,7 +580,15 @@ body {
     }
     
     .title {
-        font-size: 2rem;
+        font-size: 1.75rem;
+    }
+    
+    .view-toggle {
+        width: 100%;
+    }
+    
+    .view-toggle-btn {
+        flex: 1;
     }
     
     .timeline {
@@ -567,10 +607,63 @@ body {
         left: 8px;
     }
     
+    .date-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--spacing-xs);
+    }
+    
     .add-btn {
         bottom: var(--spacing-lg);
         right: var(--spacing-lg);
         width: 56px;
         height: 56px;
+    }
+    
+    .modal-overlay {
+        padding: 0;
+        align-items: flex-end;
+    }
+    
+    .modal {
+        max-width: 100%;
+        max-height: 90vh;
+        border-radius: 16px 16px 0 0;
+        border-bottom: none;
+        border-left: none;
+        border-right: none;
+    }
+    
+    .modal-header,
+    .modal-footer {
+        padding: var(--spacing-md);
+    }
+    
+    .modal-body {
+        padding: var(--spacing-md);
+    }
+}
+
+@media (max-width: 480px) {
+    .title {
+        font-size: 1.5rem;
+    }
+    
+    .timeline-card-actions {
+        position: static;
+        margin-top: var(--spacing-sm);
+        justify-content: flex-end;
+    }
+    
+    .timeline-card {
+        padding-bottom: var(--spacing-xs);
+    }
+    
+    .calendar-cell {
+        padding: var(--spacing-xs) 0;
+    }
+    
+    .calendar-day-number {
+        font-size: 0.75rem;
     }
 }
