@@ -1,0 +1,348 @@
+class App {
+  constructor() {
+    this.currentDate = new Date();
+    this.currentView = 'day';
+    this.records = [];
+    this.editingRecord = null;
+    
+    this.init();
+  }
+
+  async init() {
+    await dbManager.initDB();
+    this.bindEvents();
+    this.renderDate();
+    await this.renderView();
+  }
+
+  bindEvents() {
+    document.getElementById('prev-day').addEventListener('click', () => {
+      if (this.currentView === 'day') {
+        this.currentDate.setDate(this.currentDate.getDate() - 1);
+      } else {
+        this.currentDate.setMonth(this.currentDate.getMonth() - 1);
+      }
+      this.renderDate();
+      this.renderView();
+    });
+
+    document.getElementById('next-day').addEventListener('click', () => {
+      if (this.currentView === 'day') {
+        this.currentDate.setDate(this.currentDate.getDate() + 1);
+      } else {
+        this.currentDate.setMonth(this.currentDate.getMonth() + 1);
+      }
+      this.renderDate();
+      this.renderView();
+    });
+
+    document.querySelectorAll('.view-toggle-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        document.querySelectorAll('.view-toggle-btn').forEach(b => b.classList.remove('active'));
+        e.target.classList.add('active');
+        this.currentView = e.target.dataset.view;
+        this.renderDate();
+        this.renderView();
+      });
+    });
+
+    document.getElementById('add-btn').addEventListener('click', () => {
+      this.openModal();
+    });
+
+    document.getElementById('cancel-btn').addEventListener('click', () => {
+      this.closeModal();
+    });
+
+    document.getElementById('save-btn').addEventListener('click', () => {
+      this.saveRecord();
+    });
+
+    document.getElementById('record-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      this.saveRecord();
+    });
+
+    document.getElementById('record-modal').addEventListener('click', (e) => {
+      if (e.target.id === 'record-modal') {
+        this.closeModal();
+      }
+    });
+  }
+
+  openModal(record = null) {
+    this.editingRecord = record;
+    const modal = document.getElementById('record-modal');
+    const modalTitle = document.getElementById('modal-title');
+    const titleInput = document.getElementById('record-title');
+    const contentInput = document.getElementById('record-content');
+
+    if (record) {
+      modalTitle.textContent = 'EDIT RECORD';
+      titleInput.value = record.title;
+      contentInput.value = record.content || '';
+    } else {
+      modalTitle.textContent = 'ADD RECORD';
+      titleInput.value = '';
+      contentInput.value = '';
+    }
+
+    modal.classList.add('active');
+    titleInput.focus();
+  }
+
+  closeModal() {
+    this.editingRecord = null;
+    const modal = document.getElementById('record-modal');
+    modal.classList.remove('active');
+  }
+
+  async saveRecord() {
+    const titleInput = document.getElementById('record-title');
+    const contentInput = document.getElementById('record-content');
+    const title = titleInput.value.trim();
+    const content = contentInput.value.trim();
+
+    if (!title) {
+      alert('Please enter a title');
+      return;
+    }
+
+    const dateStr = this.formatDate(this.currentDate);
+
+    if (this.editingRecord) {
+      await dbManager.updateRecord(this.editingRecord.id, {
+        title,
+        content
+      });
+    } else {
+      await dbManager.addRecord({
+        date: dateStr,
+        title,
+        content
+      });
+    }
+
+    this.closeModal();
+    await this.renderView();
+  }
+
+  async deleteRecord(id) {
+    if (!confirm('Are you sure you want to delete this record?')) {
+      return;
+    }
+
+    await dbManager.deleteRecord(id);
+    await this.renderView();
+  }
+
+  formatDate(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  formatDateLabel(date) {
+    const days = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+    const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+    
+    if (this.currentView === 'month') {
+      const monthName = months[date.getMonth()];
+      const year = date.getFullYear();
+      return `${monthName} ${year}`;
+    } else {
+      const dayName = days[date.getDay()];
+      const monthName = months[date.getMonth()];
+      const day = date.getDate();
+      const year = date.getFullYear();
+      
+      return `${dayName} ${monthName} ${day} ${year}`;
+    }
+  }
+
+  formatTime(date) {
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${hours}:${minutes}`;
+  }
+
+  renderDate() {
+    const dateLabel = document.getElementById('date-label');
+    dateLabel.textContent = this.formatDateLabel(this.currentDate);
+  }
+
+  async renderView() {
+    const timelineContainer = document.getElementById('timeline-container');
+    const calendarContainer = document.getElementById('calendar-container');
+    const addBtn = document.getElementById('add-btn');
+
+    if (this.currentView === 'month') {
+      timelineContainer.style.display = 'none';
+      calendarContainer.style.display = 'block';
+      addBtn.style.display = 'none';
+      await this.renderCalendar();
+    } else {
+      timelineContainer.style.display = 'block';
+      calendarContainer.style.display = 'none';
+      addBtn.style.display = 'flex';
+      await this.renderTimeline();
+    }
+  }
+
+  async renderCalendar() {
+    const calendar = document.getElementById('calendar');
+    const year = this.currentDate.getFullYear();
+    const month = this.currentDate.getMonth();
+    
+    const datesWithRecords = await dbManager.getDatesWithRecords(year, month + 1);
+    const datesSet = new Set(datesWithRecords);
+    
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const prevLastDay = new Date(year, month, 0);
+    
+    const firstDayOfWeek = firstDay.getDay();
+    const lastDateOfMonth = lastDay.getDate();
+    const lastDateOfPrevMonth = prevLastDay.getDate();
+    
+    const days = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+    
+    let calendarHTML = `
+      <div class="calendar-header">
+        ${days.map(day => `<div class="calendar-header-cell">${day}</div>`).join('')}
+      </div>
+      <div class="calendar-grid">
+    `;
+    
+    // Previous month days
+    for (let i = firstDayOfWeek - 1; i >= 0; i--) {
+      const day = lastDateOfPrevMonth - i;
+      calendarHTML += `
+        <div class="calendar-cell other-month">
+          <span class="calendar-day-number">${day}</span>
+        </div>
+      `;
+    }
+    
+    // Current month days
+    for (let day = 1; day <= lastDateOfMonth; day++) {
+      const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      const hasRecords = datesSet.has(dateStr);
+      const cellClass = hasRecords ? 'calendar-cell has-records' : 'calendar-cell';
+      
+      calendarHTML += `
+        <div class="${cellClass}" data-date="${dateStr}">
+          <span class="calendar-day-number">${day}</span>
+        </div>
+      `;
+    }
+    
+    // Next month days
+    const totalCells = firstDayOfWeek + lastDateOfMonth;
+    const remainingCells = (7 - (totalCells % 7)) % 7;
+    for (let day = 1; day <= remainingCells; day++) {
+      calendarHTML += `
+        <div class="calendar-cell other-month">
+          <span class="calendar-day-number">${day}</span>
+        </div>
+      `;
+    }
+    
+    calendarHTML += `</div>`;
+    calendar.innerHTML = calendarHTML;
+    
+    // Add click event to date cells
+    document.querySelectorAll('.calendar-cell:not(.other-month)').forEach(cell => {
+      cell.addEventListener('click', (e) => {
+        const dateStr = e.currentTarget.dataset.date;
+        const [y, m, d] = dateStr.split('-');
+        this.currentDate = new Date(parseInt(y), parseInt(m) - 1, parseInt(d));
+        this.currentView = 'day';
+        document.querySelectorAll('.view-toggle-btn').forEach(b => b.classList.remove('active'));
+        document.querySelector('[data-view="day"]').classList.add('active');
+        this.renderDate();
+        this.renderView();
+      });
+    });
+  }
+
+  showLoadingState() {
+    const timeline = document.getElementById('timeline');
+    timeline.innerHTML = `
+      <div class="loading-state">
+        LOADING...
+      </div>
+    `;
+  }
+
+  async renderTimeline() {
+    const timeline = document.getElementById('timeline');
+    const dateStr = this.formatDate(this.currentDate);
+    
+    this.showLoadingState();
+    
+    await new Promise(resolve => setTimeout(resolve, 150));
+    
+    this.records = await dbManager.getRecordsByDate(dateStr);
+
+    if (this.records.length === 0) {
+      timeline.innerHTML = `
+        <div class="empty-state">
+          NO RECORDS FOR THIS DAY
+        </div>
+      `;
+      return;
+    }
+
+    this.records.sort((a, b) => a.createdAt - b.createdAt);
+
+    timeline.innerHTML = this.records.map(record => {
+      const recordDate = new Date(record.createdAt);
+      const time = this.formatTime(recordDate);
+      
+      return `
+        <div class="timeline-item">
+          <div class="timeline-card">
+            <div class="timeline-card-actions">
+              <button class="action-btn edit-btn" data-id="${record.id}" title="Edit">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                </svg>
+              </button>
+              <button class="action-btn delete delete-btn" data-id="${record.id}" title="Delete">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="3 6 5 6 21 6"></polyline>
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                </svg>
+              </button>
+            </div>
+            <div class="timeline-time">${time}</div>
+            <div class="timeline-title">${record.title}</div>
+            ${record.content ? `<div class="timeline-content">${record.content}</div>` : ''}
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    document.querySelectorAll('.edit-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const id = parseInt(e.currentTarget.dataset.id);
+        const record = this.records.find(r => r.id === id);
+        if (record) {
+          this.openModal(record);
+        }
+      });
+    });
+
+    document.querySelectorAll('.delete-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const id = parseInt(e.currentTarget.dataset.id);
+        this.deleteRecord(id);
+      });
+    });
+  }
+}
+
+const app = new App();

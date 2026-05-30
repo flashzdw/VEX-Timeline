@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VEX-Timeline</title>
+    <meta name="theme-color" content="#5B9BF6">
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Doto:wght@400;700&family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="./src/css/styles.css">
+    <link rel="manifest" href="./manifest.json">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1 class="title">VEX-Timeline</h1>
+            
+            <div class="view-toggle">
+                <button class="view-toggle-btn active" data-view="day">DAY</button>
+                <button class="view-toggle-btn" data-view="month">MONTH</button>
+            </div>
+        </header>
+        
+        <main class="main">
+            <div class="date-navigation">
+                <button class="nav-btn" id="prev-day">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="15 18 9 12 15 6"></polyline>
+                    </svg>
+                </button>
+                
+                <div class="date-display">
+                    <span class="date-label" id="date-label"></span>
+                </div>
+                
+                <button class="nav-btn" id="next-day">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="9 18 15 12 9 6"></polyline>
+                    </svg>
+                </button>
+            </div>
+            
+            <div class="timeline-container" id="timeline-container">
+                <div class="timeline" id="timeline"></div>
+            </div>
+            
+            <div class="calendar-container" id="calendar-container" style="display: none;">
+                <div class="calendar" id="calendar"></div>
+            </div>
+            
+            <button class="add-btn" id="add-btn">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+            </button>
+        </main>
+    </div>
+    
+    <div class="modal-overlay" id="record-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 class="modal-title" id="modal-title">ADD RECORD</h2>
+            </div>
+            <div class="modal-body">
+                <form class="record-form" id="record-form">
+                    <div class="form-group">
+                        <label class="form-label" for="record-title">TITLE</label>
+                        <input type="text" class="form-input" id="record-title" placeholder="Enter title">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="record-content">CONTENT</label>
+                        <textarea class="form-textarea" id="record-content" placeholder="Enter content"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="modal-btn cancel-btn" id="cancel-btn">CANCEL</button>
+                <button class="modal-btn save-btn" id="save-btn">SAVE</button>
+            </div>
+        </div>
+    </div>
+    
+    <script src="./src/js/db.js"></script>
+    <script src="./src/js/app.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(registration => {
+                        console.log('ServiceWorker registration successful');
+                    })
+                    .catch(err => {
+                        console.log('ServiceWorker registration failed: ', err);
+                    });
+            });
+        }
+    </script>
+</body>
+</html>
