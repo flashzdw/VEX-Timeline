@@ -1,0 +1,12 @@
+# Local environment variables (contains secrets)
+.env.local
+
+# Generated configuration
+src/js/config.js
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Node modules (if used)
+node_modules/

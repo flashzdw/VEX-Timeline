@@ -3,6 +3,14 @@ class SupabaseManager {
     this.SUPABASE_URL = 'YOUR_SUPABASE_URL';
     this.SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
     this.client = null;
+    this.loadConfig();
+  }
+
+  loadConfig() {
+    if (typeof window !== 'undefined' && window.VEX_CONFIG) {
+      this.SUPABASE_URL = window.VEX_CONFIG.SUPABASE_URL || this.SUPABASE_URL;
+      this.SUPABASE_ANON_KEY = window.VEX_CONFIG.SUPABASE_ANON_KEY || this.SUPABASE_ANON_KEY;
+    }
   }
 
   init() {
