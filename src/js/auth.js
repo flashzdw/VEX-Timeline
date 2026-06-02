@@ -10,6 +10,8 @@ class AuthManager {
     }
     try {
       const supabase = supabaseManager.getClient();
+      if (!supabase) return;
+      
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
 
@@ -17,16 +19,17 @@ class AuthManager {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data: profile } = await supabase
+      const { data: profile, error: profileError } = await supabase
         .from('users')
         .select('*')
         .eq('id', user.id)
         .single();
 
-      if (profile) {
+      if (!profileError && profile) {
         this.currentUser = profile;
       }
     } catch (e) {
+      console.error('Auth 初始化失败:', e);
       this.currentUser = null;
       this.session = null;
     }

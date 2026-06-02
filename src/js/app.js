@@ -70,6 +70,7 @@ class App {
     try {
       this.timelines = await cloudDBManager.getTimelinesForUser();
     } catch (e) {
+      console.error('加载时间轴失败:', e);
       this.timelines = [];
     }
 
@@ -79,6 +80,7 @@ class App {
     }
 
     this.updateTimelineSelector();
+    this.updateManageButton();
   }
 
   updateTimelineSelector() {

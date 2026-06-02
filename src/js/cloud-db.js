@@ -116,12 +116,39 @@ class CloudDBManager {
   async getTimelinesForUser() {
     const client = this._getClient();
     const userId = authManager.getCurrentUser().id;
-    const { data, error } = await client
+    
+    // 分开查询避免复杂的子查询导致的 URL 路径问题
+    // 先查自己创建的时间轴
+    const { data: ownedTimelines, error: ownedError } = await client
       .from('timelines')
       .select('*')
-      .or(`owner_id.eq.${userId},id.in.(select timeline_id from timeline_members where user_id = ${userId})`);
-    if (error) throw error;
-    return data;
+      .eq('owner_id', userId);
+    if (ownedError) throw ownedError;
+    
+    // 再查自己加入的时间轴
+    const { data: memberTimelines, error: memberError } = await client
+      .from('timeline_members')
+      .select('timeline_id, role')
+      .eq('user_id', userId);
+    if (memberError) throw memberError;
+    
+    const memberTimelineIds = memberTimelines.map(m => m.timeline_id);
+    let joinedTimelines = [];
+    if (memberTimelineIds.length > 0) {
+      const { data: joinedData, error: joinedError } = await client
+        .from('timelines')
+        .select('*')
+        .in('id', memberTimelineIds);
+      if (joinedError) throw joinedError;
+      joinedTimelines = joinedData || [];
+    }
+    
+    // 合并并去重
+    const allTimelineMap = new Map();
+    (ownedTimelines || []).forEach(t => allTimelineMap.set(t.id, t));
+    joinedTimelines.forEach(t => allTimelineMap.set(t.id, t));
+    
+    return Array.from(allTimelineMap.values());
   }
 
   async getTimelineById(timelineId) {
@@ -157,13 +184,16 @@ class CloudDBManager {
     if (timelineError || !timeline) {
       throw new Error('邀请码无效');
     }
-    const { data: existingMember } = await client
+    // 先检查是否已加入
+    const { data: existingMembers, error: checkError } = await client
       .from('timeline_members')
       .select('id')
       .eq('timeline_id', timeline.id)
-      .eq('user_id', userId)
-      .single();
-    if (existingMember) {
+      .eq('user_id', userId);
+    if (checkError) {
+      throw checkError;
+    }
+    if (existingMembers && existingMembers.length > 0) {
       throw new Error('已经是该时间轴的成员');
     }
     const { error: memberError } = await client
