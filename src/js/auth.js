@@ -9,34 +9,30 @@ class AuthManager {
       return;
     }
     try {
-      const stored = localStorage.getItem('vex_timeline_session');
-      if (stored) {
-        const storedSession = JSON.parse(stored);
-        const supabase = supabaseManager.getClient();
-        await supabase.auth.setSession(storedSession);
-        const { data: { user }, error: userError } = await supabase.auth.getUser();
-        if (userError || !user) {
-          throw new Error('Invalid session');
-        }
-        const { data: profile, error: profileError } = await supabase
-          .from('users')
-          .select('*')
-          .eq('id', user.id)
-          .single();
-        if (profileError || !profile) {
-          throw new Error('Profile not found');
-        }
+      const supabase = supabaseManager.getClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      this.session = session;
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: profile } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+      if (profile) {
         this.currentUser = profile;
-        this.session = storedSession;
       }
     } catch (e) {
-      localStorage.removeItem('vex_timeline_session');
       this.currentUser = null;
       this.session = null;
     }
   }
 
-  async register(username) {
+  async register(username, password) {
     if (!supabaseManager.isConfigured()) {
       throw 'Supabase not configured';
     }
@@ -47,36 +43,48 @@ class AuthManager {
     if (!/^[a-zA-Z0-9_]+$/.test(username)) {
       throw '用户名只能包含字母、数字和下划线';
     }
+    if (!password || password.length < 6) {
+      throw '密码长度至少6位';
+    }
+
     const supabase = supabaseManager.getClient();
-    const { data, error } = await supabase.rpc('register', { p_username: username });
+    const email = username + '@vex-timeline.local';
+
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { username }
+      }
+    });
+
     if (error) {
-      if (error.code === '23505' || (error.message && (error.message.includes('duplicate') || error.message.includes('already exists')))) {
+      if (error.message?.includes('already') || error.message?.includes('registered')) {
         throw '用户名已被占用';
       }
       throw error.message;
     }
-    const { access_token, refresh_token } = data;
-    if (!access_token) {
-      this.currentUser = data.user;
-      return this.currentUser;
+
+    if (!data.session) {
+      throw '注册成功，请等待邮箱确认后再登录。你可在 Supabase 设置中关闭邮箱验证。';
     }
-    const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
-      access_token,
-      refresh_token
-    });
-    this.session = sessionData.session;
-    localStorage.setItem('vex_timeline_session', JSON.stringify(this.session));
-    const { data: { user } } = await supabase.auth.getUser();
+
+    this.session = data.session;
+
     const { data: profile } = await supabase
       .from('users')
       .select('*')
-      .eq('id', user.id)
+      .eq('id', data.user.id)
       .single();
-    this.currentUser = profile;
+
+    if (profile) {
+      this.currentUser = profile;
+    }
+
     return this.currentUser;
   }
 
-  async login(username) {
+  async login(username, password) {
     if (!supabaseManager.isConfigured()) {
       throw 'Supabase not configured';
     }
@@ -84,32 +92,43 @@ class AuthManager {
     if (!username) {
       throw '请输入用户名';
     }
-    const supabase = supabaseManager.getClient();
-    const { data, error } = await supabase.rpc('login', { p_username: username });
-    if (error || !data) {
-      throw '用户名不存在';
+    if (!password) {
+      throw '请输入密码';
     }
-    const { access_token, refresh_token } = data;
-    const { data: sessionData } = await supabase.auth.setSession({
-      access_token,
-      refresh_token
+
+    const supabase = supabaseManager.getClient();
+    const email = username + '@vex-timeline.local';
+
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password
     });
-    this.session = sessionData.session;
-    localStorage.setItem('vex_timeline_session', JSON.stringify(this.session));
-    const { data: { user } } = await supabase.auth.getUser();
+
+    if (error) {
+      if (error.message?.includes('Invalid login')) {
+        throw '用户名或密码错误';
+      }
+      throw error.message;
+    }
+
+    this.session = data.session;
+
     const { data: profile } = await supabase
       .from('users')
       .select('*')
-      .eq('id', user.id)
+      .eq('id', data.user.id)
       .single();
-    this.currentUser = profile;
+
+    if (profile) {
+      this.currentUser = profile;
+    }
+
     return this.currentUser;
   }
 
   async logout() {
     const supabase = supabaseManager.getClient();
     await supabase.auth.signOut();
-    localStorage.removeItem('vex_timeline_session');
     this.currentUser = null;
     this.session = null;
   }

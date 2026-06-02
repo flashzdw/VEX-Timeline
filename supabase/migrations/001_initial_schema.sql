@@ -61,6 +61,10 @@ ALTER TABLE public.records ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "users_select_own" ON public.users
   FOR SELECT USING (auth.uid() = id);
 
+-- users: INSERT new user row only for themselves
+CREATE POLICY "users_insert_own" ON public.users
+  FOR INSERT WITH CHECK (auth.uid() = id);
+
 -- timelines: SELECT for owner or member, or if invite_code matches (for joining)
 CREATE POLICY "timelines_select" ON public.timelines
   FOR SELECT USING (
@@ -163,23 +167,35 @@ CREATE POLICY "records_delete" ON public.records
 -- 4. Triggers
 -- ------------------------------------------
 
--- Auto-create personal timeline when a new user is inserted
-CREATE OR REPLACE FUNCTION public.handle_new_user()
+-- Auto-create public.users row + personal timeline when auth.users is created
+CREATE OR REPLACE FUNCTION public.handle_new_auth_user()
 RETURNS trigger
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
+DECLARE
+  v_username text;
 BEGIN
+  v_username := NEW.raw_user_meta_data->>'username';
+
+  IF v_username IS NOT NULL THEN
+    INSERT INTO public.users (id, username)
+    VALUES (NEW.id, v_username)
+    ON CONFLICT (id) DO NOTHING;
+  END IF;
+
   INSERT INTO public.timelines (name, type, owner_id)
   VALUES ('个人时间轴', 'personal', NEW.id);
+
   RETURN NEW;
 END;
 $$;
 
-CREATE TRIGGER on_user_created
-  AFTER INSERT ON public.users
-  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_auth_user();
 
 -- Auto-add owner as member when a new timeline is inserted
 CREATE OR REPLACE FUNCTION public.handle_new_timeline()
@@ -195,6 +211,7 @@ BEGIN
 END;
 $$;
 
+DROP TRIGGER IF EXISTS on_timeline_created ON public.timelines;
 CREATE TRIGGER on_timeline_created
   AFTER INSERT ON public.timelines
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_timeline();
@@ -210,6 +227,7 @@ BEGIN
 END;
 $$;
 
+DROP TRIGGER IF EXISTS on_record_update ON public.records;
 CREATE TRIGGER on_record_update
   BEFORE UPDATE ON public.records
   FOR EACH ROW EXECUTE FUNCTION public.handle_record_update();
@@ -221,133 +239,3 @@ CREATE TRIGGER on_record_update
 INSERT INTO storage.buckets (id, name, public)
 VALUES ('record-images', 'record-images', true)
 ON CONFLICT (id) DO NOTHING;
-
--- ------------------------------------------
--- 6. Extensions
--- ------------------------------------------
-
-CREATE EXTENSION IF NOT EXISTS pgjwt SCHEMA extensions;
-
--- ------------------------------------------
--- 7. RPC: register(p_username text)
--- ------------------------------------------
-
-CREATE OR REPLACE FUNCTION public.register(p_username text)
-RETURNS json
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public, extensions
-AS $func$
-DECLARE
-  v_user_id uuid;
-  v_user record;
-  v_token text;
-  v_refresh_token text;
-  v_jwt_secret text;
-BEGIN
-  IF EXISTS (SELECT 1 FROM public.users WHERE username = p_username) THEN
-    RAISE EXCEPTION 'Username already exists' USING ERRCODE = '23505';
-  END IF;
-
-  v_user_id := gen_random_uuid();
-
-  INSERT INTO auth.users (
-    id, instance_id, aud, role, email,
-    encrypted_password, email_confirmed_at,
-    raw_app_meta_data, raw_user_meta_data,
-    created_at, updated_at,
-    confirmation_token, email_change,
-    email_change_token_new, recovery_token
-  ) VALUES (
-    v_user_id,
-    '00000000-0000-0000-0000-000000000000',
-    'authenticated',
-    'authenticated',
-    p_username || '@vex-timeline.local',
-    extensions.crypt(gen_random_uuid()::text, extensions.gen_salt('bf')),
-    now(),
-    '{"provider":"username","providers":["username"]}',
-    json_build_object('username', p_username),
-    now(), now(),
-    '', '', '', ''
-  );
-
-  INSERT INTO public.users (id, username)
-  VALUES (v_user_id, p_username)
-  RETURNING * INTO v_user;
-
-  v_jwt_secret := current_setting('app.jwt_secret', true);
-
-  IF v_jwt_secret IS NOT NULL AND v_jwt_secret != '' THEN
-    v_token := sign(
-      json_build_object(
-        'sub', v_user_id::text,
-        'role', 'authenticated',
-        'aud', 'authenticated',
-        'iat', extract(epoch from now())::integer,
-        'exp', extract(epoch from now() + interval '1 hour')::integer
-      )::jsonb,
-      v_jwt_secret
-    );
-    v_refresh_token := encode(extensions.gen_random_bytes(32), 'hex');
-  ELSE
-    v_token := '';
-    v_refresh_token := '';
-  END IF;
-
-  RETURN json_build_object(
-    'user', row_to_json(v_user),
-    'access_token', v_token,
-    'refresh_token', v_refresh_token
-  );
-END;
-$func$;
-
--- ------------------------------------------
--- 8. RPC: login(p_username text)
--- ------------------------------------------
-
-CREATE OR REPLACE FUNCTION public.login(p_username text)
-RETURNS json
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public, extensions
-AS $func$
-DECLARE
-  v_user record;
-  v_token text;
-  v_refresh_token text;
-  v_jwt_secret text;
-BEGIN
-  SELECT * INTO v_user FROM public.users WHERE username = p_username;
-
-  IF v_user IS NULL THEN
-    RAISE EXCEPTION 'User not found';
-  END IF;
-
-  v_jwt_secret := current_setting('app.jwt_secret', true);
-
-  IF v_jwt_secret IS NULL OR v_jwt_secret = '' THEN
-    RAISE EXCEPTION 'JWT secret not configured. Run: ALTER DATABASE postgres SET app.jwt_secret TO ''your-jwt-secret''';
-  END IF;
-
-  v_token := sign(
-    json_build_object(
-      'sub', v_user.id::text,
-      'role', 'authenticated',
-      'aud', 'authenticated',
-      'iat', extract(epoch from now())::integer,
-      'exp', extract(epoch from now() + interval '1 hour')::integer
-    )::jsonb,
-    v_jwt_secret
-  );
-
-  v_refresh_token := encode(extensions.gen_random_bytes(32), 'hex');
-
-  RETURN json_build_object(
-    'user', row_to_json(v_user),
-    'access_token', v_token,
-    'refresh_token', v_refresh_token
-  );
-END;
-$func$;

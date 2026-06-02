@@ -279,6 +279,12 @@ class App {
       }
     });
 
+    document.getElementById('auth-password').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        this.handleLogin();
+      }
+    });
+
     document.getElementById('logout-btn').addEventListener('click', () => {
       this.handleLogout();
     });
@@ -350,18 +356,24 @@ class App {
   }
 
   async handleLogin() {
-    const input = document.getElementById('auth-username');
+    const usernameInput = document.getElementById('auth-username');
+    const passwordInput = document.getElementById('auth-password');
     const errorEl = document.getElementById('auth-error');
-    const username = input.value.trim();
+    const username = usernameInput.value.trim();
+    const password = passwordInput.value;
     errorEl.textContent = '';
 
     if (!username) {
       errorEl.textContent = '请输入用户名';
       return;
     }
+    if (!password) {
+      errorEl.textContent = '请输入密码';
+      return;
+    }
 
     try {
-      await authManager.login(username);
+      await authManager.login(username, password);
       await this.onLoginSuccess();
     } catch (e) {
       errorEl.textContent = e.message || e;
@@ -369,18 +381,24 @@ class App {
   }
 
   async handleRegister() {
-    const input = document.getElementById('auth-username');
+    const usernameInput = document.getElementById('auth-username');
+    const passwordInput = document.getElementById('auth-password');
     const errorEl = document.getElementById('auth-error');
-    const username = input.value.trim();
+    const username = usernameInput.value.trim();
+    const password = passwordInput.value;
     errorEl.textContent = '';
 
     if (!username) {
       errorEl.textContent = '请输入用户名';
       return;
     }
+    if (!password || password.length < 6) {
+      errorEl.textContent = '密码长度至少6位';
+      return;
+    }
 
     try {
-      await authManager.register(username);
+      await authManager.register(username, password);
       await this.onLoginSuccess();
     } catch (e) {
       errorEl.textContent = e.message || e;
@@ -393,6 +411,7 @@ class App {
     this.timelines = [];
     this.showAuthPage();
     document.getElementById('auth-username').value = '';
+    document.getElementById('auth-password').value = '';
     document.getElementById('auth-error').textContent = '';
   }
 
