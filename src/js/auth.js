@@ -2,39 +2,119 @@ class AuthManager {
   constructor() {
     this.currentUser = null;
     this.session = null;
+    this._authSubscription = null;
   }
 
   async init() {
     if (!supabaseManager.isConfigured()) {
       return;
     }
+    const supabase = supabaseManager.getClient();
+    if (!supabase) return;
+
+    // Try to restore session from Supabase client (reads from localStorage)
     try {
-      const supabase = supabaseManager.getClient();
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
+      if (session) {
+        this.session = session;
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          await this._loadUserProfile(user.id);
+        }
+      } else {
+        // Fallback: manually read from localStorage
+        const cached = this._readSessionFromStorage();
+        if (cached && cached.access_token) {
+          this.session = cached;
+          try {
+            const { data: { user } } = await supabase.auth.getUser(cached.access_token);
+            if (user) {
+              await this._loadUserProfile(user.id);
+            }
+          } catch (e) {
+            // Token invalid, clear it
+            this._clearSessionFromStorage();
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('[VEX-Timeline] Session restore failed:', e);
+      this.currentUser = null;
+      this.session = null;
+    }
 
-      this.session = session;
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+    // Subscribe to auth state changes (token refresh, sign out from other tab, etc.)
+    this._subscribeAuthState(supabase);
+  }
 
-      const { data: profile } = await supabase
+  _subscribeAuthState(supabase) {
+    if (this._authSubscription) return;
+    try {
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+        console.log('[VEX-Timeline] Auth state changed:', event);
+        if (event === 'SIGNED_OUT' || !session) {
+          this.currentUser = null;
+          this.session = null;
+          this._clearSessionFromStorage();
+        } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+          this.session = session;
+          if (session.user) {
+            await this._loadUserProfile(session.user.id);
+          }
+        }
+      });
+      this._authSubscription = subscription;
+    } catch (e) {
+      console.warn('[VEX-Timeline] Failed to subscribe to auth state changes:', e);
+    }
+  }
+
+  async _loadUserProfile(userId) {
+    const supabase = supabaseManager.getClient();
+    if (!supabase) return;
+    try {
+      const { data: profile, error } = await supabase
         .from('users')
         .select('*')
-        .eq('id', user.id)
+        .eq('id', userId)
         .single();
-
-      if (profile) {
+      if (!error && profile) {
         this.currentUser = profile;
       }
     } catch (e) {
-      this.currentUser = null;
-      this.session = null;
+      console.warn('[VEX-Timeline] Failed to load user profile:', e);
+    }
+  }
+
+  _readSessionFromStorage() {
+    try {
+      const ref = supabaseManager.getProjectRef();
+      if (!ref) return null;
+      const key = 'sb-' + ref + '-auth-token';
+      const raw = localStorage.getItem(key);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      // Supabase stores either a Session object or { currentSession, expiresAt }
+      return parsed.currentSession || parsed;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  _clearSessionFromStorage() {
+    try {
+      const ref = supabaseManager.getProjectRef();
+      if (!ref) return;
+      const key = 'sb-' + ref + '-auth-token';
+      localStorage.removeItem(key);
+    } catch (e) {
+      // ignore
     }
   }
 
   async register(username, password) {
     if (!supabaseManager.isConfigured()) {
-      throw 'Supabase not configured';
+      throw 'Supabase 未配置。请检查 Vercel 环境变量并重新部署。';
     }
     username = username.trim();
     if (username.length < 2 || username.length > 20) {
@@ -70,23 +150,13 @@ class AuthManager {
     }
 
     this.session = data.session;
-
-    const { data: profile } = await supabase
-      .from('users')
-      .select('*')
-      .eq('id', data.user.id)
-      .single();
-
-    if (profile) {
-      this.currentUser = profile;
-    }
-
+    await this._loadUserProfile(data.user.id);
     return this.currentUser;
   }
 
   async login(username, password) {
     if (!supabaseManager.isConfigured()) {
-      throw 'Supabase not configured';
+      throw 'Supabase 未配置。请检查 Vercel 环境变量并重新部署。';
     }
     username = username.trim();
     if (!username) {
@@ -108,33 +178,33 @@ class AuthManager {
       if (error.message?.includes('Invalid login')) {
         throw '用户名或密码错误';
       }
+      if (error.status === 400 || error.message?.includes('Email not confirmed')) {
+        throw '请先在 Supabase 控制台确认邮箱（Settings → Auth → 关闭 Enable email confirmations）';
+      }
       throw error.message;
     }
 
     this.session = data.session;
-
-    const { data: profile } = await supabase
-      .from('users')
-      .select('*')
-      .eq('id', data.user.id)
-      .single();
-
-    if (profile) {
-      this.currentUser = profile;
-    }
-
+    await this._loadUserProfile(data.user.id);
     return this.currentUser;
   }
 
   async logout() {
     const supabase = supabaseManager.getClient();
-    await supabase.auth.signOut();
+    if (supabase) {
+      try {
+        await supabase.auth.signOut();
+      } catch (e) {
+        // ignore
+      }
+    }
     this.currentUser = null;
     this.session = null;
+    this._clearSessionFromStorage();
   }
 
   isLoggedIn() {
-    return !!this.currentUser;
+    return !!(this.currentUser || this.session);
   }
 
   getCurrentUser() {
@@ -147,6 +217,7 @@ class AuthManager {
 
   onAuthStateChange(callback) {
     const supabase = supabaseManager.getClient();
+    if (!supabase) return null;
     const { data: { subscription } } = supabase.auth.onAuthStateChange(callback);
     return subscription;
   }
