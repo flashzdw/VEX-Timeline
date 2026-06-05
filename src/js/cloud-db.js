@@ -26,8 +26,9 @@ class CloudDBManager {
         image_url: record.image_url
       })
       .select()
-      .single();
+      .maybeSingle();
     if (error) throw error;
+    if (!data) throw new Error('插入记录失败: 未返回数据');
     return data;
   }
 
@@ -61,8 +62,9 @@ class CloudDBManager {
       .update(updates)
       .eq('id', recordId)
       .select()
-      .single();
+      .maybeSingle();
     if (error) throw error;
+    if (!data) throw new Error('更新记录失败: 未返回数据或无权限');
     return data;
   }
 
@@ -108,8 +110,9 @@ class CloudDBManager {
       .from('timelines')
       .insert(insertData)
       .select()
-      .single();
+      .maybeSingle();
     if (error) throw error;
+    if (!data) throw new Error('创建时间轴失败: 未返回数据');
 
     try {
       const { data: existingMember } = await client
@@ -173,7 +176,7 @@ class CloudDBManager {
       .from('timelines')
       .select('*')
       .eq('id', timelineId)
-      .single();
+      .maybeSingle();
     if (error) throw error;
     return data;
   }
@@ -196,8 +199,11 @@ class CloudDBManager {
       .select('*')
       .eq('invite_code', inviteCode)
       .eq('type', 'team')
-      .single();
-    if (timelineError || !timeline) {
+      .maybeSingle();
+    if (timelineError) {
+      throw new Error('邀请码无效');
+    }
+    if (!timeline) {
       throw new Error('邀请码无效');
     }
     // 先检查是否已加入

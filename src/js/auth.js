@@ -149,27 +149,62 @@ class AuthManager {
 
   async _loadUserFromSession(session) {
     if (!session) return;
-    try {
-      const supabase = supabaseManager.getClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+    const supabase = supabaseManager.getClient();
+    if (!supabase) return;
 
+    try {
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        console.warn('[Auth] getUser 失败:', userError?.message);
+        return;
+      }
+
+      console.log('[Auth] 已登录用户 ID:', user.id);
+
+      // 关键修复: 使用 maybeSingle() 而不是 .single()
+      // .single() 在 0 行时会返回 406, 触发 PostgREST 错误
+      // maybeSingle() 在 0 行时返回 null, 不会报错
       const { data: profile, error: profileError } = await supabase
         .from('users')
         .select('*')
         .eq('id', user.id)
-        .single();
+        .maybeSingle();
 
-      if (!profileError && profile) {
-        this.currentUser = profile;
-      } else {
+      if (profileError) {
+        console.warn('[Auth] 查询 users 表出错:', profileError.message);
+        // 不要因为查询失败就放弃 currentUser
         this.currentUser = {
           id: user.id,
           username: user.user_metadata?.username || user.email?.split('@')[0] || ''
         };
+        return;
+      }
+
+      if (profile) {
+        this.currentUser = profile;
+        console.log('[Auth] Profile 加载成功:', profile.username);
+        return;
+      }
+
+      // Profile 不存在, 说明触发器可能没生效
+      // (例如: 在修复 schema 之前注册的老用户)
+      console.warn('[Auth] users 表中未找到 profile, 尝试自动创建...');
+      const username = user.user_metadata?.username || user.email?.split('@')[0] || 'user';
+      const { error: insertError } = await supabase
+        .from('users')
+        .insert({ id: user.id, username });
+
+      if (insertError) {
+        console.warn('[Auth] 自动创建 profile 失败:', insertError.message);
+        // 即便创建失败, 也用 user 信息构造 currentUser
+        this.currentUser = { id: user.id, username };
+      } else {
+        // 创建成功
+        this.currentUser = { id: user.id, username };
+        console.log('[Auth] Profile 自动创建成功');
       }
     } catch (e) {
-      console.error('[Auth] 加载用户信息失败:', e);
+      console.error('[Auth] 加载用户信息异常:', e);
     }
   }
 
@@ -217,7 +252,7 @@ class AuthManager {
       .from('users')
       .select('*')
       .eq('id', data.user.id)
-      .single();
+      .maybeSingle();
 
     if (!profileError && profile) {
       this.currentUser = profile;
@@ -262,7 +297,7 @@ class AuthManager {
       .from('users')
       .select('*')
       .eq('id', data.user.id)
-      .single();
+      .maybeSingle();
 
     if (!profileError && profile) {
       this.currentUser = profile;
