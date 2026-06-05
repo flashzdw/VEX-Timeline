@@ -6,10 +6,9 @@ class App {
     this.editingRecord = null;
     this.currentFilter = 'all';
     this.tempImageData = null;
-    this.currentTimelineId = this._loadStoredTimelineId() || 'local';
+    this.currentTimelineId = this._loadStoredTimelineId() || null;
     this.timelines = [];
     this.isOnline = navigator.onLine;
-    this.syncInProgress = false;
     this.cloudSyncStatus = 'unknown'; // 'ok' | 'error' | 'offline' | 'unknown'
     this.cloudErrorMessage = '';
 
@@ -26,7 +25,7 @@ class App {
 
   _saveStoredTimelineId(id) {
     try {
-      if (id && id !== 'local') {
+      if (id) {
         localStorage.setItem('vex_current_timeline_id', id);
       } else {
         localStorage.removeItem('vex_current_timeline_id');
@@ -36,8 +35,29 @@ class App {
     }
   }
 
+  // Drop the legacy IndexedDB created by older builds so that any
+  // leftover local records (which can no longer be displayed or
+  // deleted) don't sit in the browser forever.
+  _cleanupLegacyStorage() {
+    try {
+      if (typeof indexedDB === 'undefined') return;
+      const dbs = ['vex-timeline'];
+      dbs.forEach(name => {
+        try {
+          indexedDB.deleteDatabase(name);
+        } catch (e) {
+          // ignore — best effort
+        }
+      });
+    } catch (e) {
+      // ignore
+    }
+  }
+
   async init() {
-    await dbManager.initDB();
+    // One-time cleanup of legacy IndexedDB from previous versions
+    this._cleanupLegacyStorage();
+
     supabaseManager.init();
     await authManager.init();
 
@@ -103,9 +123,6 @@ class App {
 
     this.renderDate();
     await this.renderView();
-    if (loadResult.success) {
-      await this.syncFromCloud();
-    }
     this.renderDiagnosticBar();
   }
 
@@ -124,13 +141,9 @@ class App {
   }
 
   onGuestMode() {
-    this.hideAuthPage();
-    this.currentTimelineId = 'local';
-    document.getElementById('user-info').style.display = 'none';
-    document.getElementById('timeline-actions').style.display = 'none';
-    document.getElementById('timeline-selector').style.display = 'none';
-    this.renderDate();
-    this.renderView();
+    // Guest / offline mode is no longer supported. All data lives in
+    // the cloud; the auth page is the only entry point.
+    this.showAuthPage();
   }
 
   async loadTimelines() {
@@ -161,7 +174,7 @@ class App {
       return { success: false, error: lastErr.message || String(lastErr) };
     }
 
-    if (this.timelines.length > 0 && (this.currentTimelineId === 'local' || !this.timelines.find(t => t.id === this.currentTimelineId))) {
+    if (this.timelines.length > 0 && !this.timelines.find(t => t.id === this.currentTimelineId)) {
       const personal = this.timelines.find(t => t.type === 'personal');
       this.currentTimelineId = personal ? personal.id : this.timelines[0].id;
       this._saveStoredTimelineId(this.currentTimelineId);
@@ -173,7 +186,7 @@ class App {
 
   updateTimelineSelector() {
     const select = document.getElementById('timeline-select');
-    select.innerHTML = '<option value="local">本地时间轴</option>';
+    select.innerHTML = '';
 
     this.timelines.forEach(timeline => {
       const option = document.createElement('option');
@@ -218,10 +231,6 @@ class App {
       icon = '⊘';
       label = '离线';
       el.className = 'cloud-status cloud-status-offline';
-    } else if (this.syncInProgress) {
-      icon = '↻';
-      label = '同步中';
-      el.className = 'cloud-status cloud-status-syncing';
     } else {
       icon = '☁';
       label = '云端已连接';
@@ -266,7 +275,8 @@ class App {
     }
     if (tlEl) {
       const tlName = this.timelines.find(t => t.id === this.currentTimelineId)?.name
-        || (this.currentTimelineId === 'local' ? '本地' : this.currentTimelineId);
+        || this.currentTimelineId
+        || '未选择';
       tlEl.innerHTML = `时间轴: <code>${tlName}</code>`;
     }
 
@@ -287,75 +297,11 @@ class App {
     }
   }
 
-  async syncFromCloud() {
-    if (!authManager.isLoggedIn() || !supabaseManager.isConfigured() || this.currentTimelineId === 'local') {
-      return;
-    }
-    if (this.syncInProgress) return;
-    this.syncInProgress = true;
-    this.updateCloudStatusIcon();
-
-    try {
-      const cloudRecords = await cloudDBManager.pullAllData(this.currentTimelineId);
-      await dbManager.replaceRecordsForTimeline(this.currentTimelineId, cloudRecords.map(r => ({
-        ...r,
-        timeline_id: r.timeline_id,
-        cloud_id: r.id
-      })));
-      await this.processSyncQueue();
-      await this.renderView();
-      this.cloudSyncStatus = 'ok';
-    } catch (e) {
-      this.cloudSyncStatus = 'error';
-      this.cloudErrorMessage = e.message || String(e);
-      console.warn('[VEX-Timeline] syncFromCloud failed:', e);
-    }
-
-    this.syncInProgress = false;
-    this.updateCloudStatusIcon();
-  }
-
-  async processSyncQueue() {
-    if (!this.isOnline || !authManager.isLoggedIn()) return;
-
-    const queue = await dbManager.getSyncQueue();
-    for (const item of queue) {
-      try {
-        await this.executeSyncOperation(item);
-        await dbManager.removeFromSyncQueue(item.id);
-      } catch (e) {
-        break;
-      }
-    }
-  }
-
-  async executeSyncOperation(item) {
-    if (!supabaseManager.isConfigured()) return;
-
-    switch (item.operation) {
-      case 'add':
-        await cloudDBManager.addRecord(item.data.timeline_id, item.data);
-        break;
-      case 'update':
-        if (item.data.cloud_id) {
-          await cloudDBManager.updateRecord(item.data.cloud_id, item.data);
-        }
-        break;
-      case 'delete':
-        if (item.data.cloud_id) {
-          await cloudDBManager.deleteRecord(item.data.cloud_id);
-        }
-        break;
-    }
-  }
-
   setupNetworkListener() {
     window.addEventListener('online', () => {
       this.isOnline = true;
       this.updateCloudStatusIcon();
-      if (authManager.isLoggedIn()) {
-        this.processSyncQueue();
-      }
+      // Cloud is the source of truth; nothing to queue.
     });
     window.addEventListener('offline', () => {
       this.isOnline = false;
@@ -449,10 +395,6 @@ class App {
 
     document.getElementById('auth-register-btn').addEventListener('click', () => {
       this.handleRegister();
-    });
-
-    document.getElementById('auth-guest-btn').addEventListener('click', () => {
-      this.onGuestMode();
     });
 
     document.getElementById('auth-username').addEventListener('keydown', (e) => {
@@ -604,7 +546,7 @@ class App {
 
   async handleLogout() {
     await authManager.logout();
-    this.currentTimelineId = 'local';
+    this.currentTimelineId = null;
     this._saveStoredTimelineId(null);
     this.timelines = [];
     this.showAuthPage();
@@ -804,95 +746,71 @@ class App {
     const time = timeInput.value;
     const title = titleInput.value.trim();
     const content = contentInput.value.trim();
-    const importance = activeImportanceBtn.dataset.importance;
+    const importance = (activeImportanceBtn && activeImportanceBtn.dataset.importance) || 'medium';
     const image = this.tempImageData;
 
     if (!title) {
       alert('请输入标题');
       return;
     }
-
     if (!date) {
       alert('请选择日期');
       return;
     }
+    if (!authManager.isLoggedIn() || !supabaseManager.isConfigured()) {
+      alert('请先登录');
+      return;
+    }
+    if (!this.currentTimelineId) {
+      alert('请先选择时间轴');
+      return;
+    }
 
-    const recordData = {
+    const cloudPayload = {
       date,
       time,
       title,
       content,
       importance,
-      image,
-      timeline_id: this.currentTimelineId
+      image_url: image,
     };
 
-    if (this.editingRecord) {
-      await dbManager.updateRecord(this.editingRecord.id, recordData);
-
-      if (authManager.isLoggedIn() && supabaseManager.isConfigured() && this.currentTimelineId !== 'local') {
-        if (this.isOnline) {
-          try {
-            const cloudId = this.editingRecord.cloud_id;
-            if (cloudId) {
-              await cloudDBManager.updateRecord(cloudId, {
-                date, time, title, content, importance, image_url: image
-              });
-            }
-          } catch (e) {
-            await dbManager.addToSyncQueue('update', { ...recordData, cloud_id: this.editingRecord.cloud_id });
-          }
-        } else {
-          await dbManager.addToSyncQueue('update', { ...recordData, cloud_id: this.editingRecord.cloud_id });
-        }
+    try {
+      if (this.editingRecord) {
+        await cloudDBManager.updateRecord(this.editingRecord.id, cloudPayload);
+      } else {
+        await cloudDBManager.addRecord(this.currentTimelineId, cloudPayload);
       }
-    } else {
-      const localId = await dbManager.addRecord(recordData);
-
-      if (authManager.isLoggedIn() && supabaseManager.isConfigured() && this.currentTimelineId !== 'local') {
-        if (this.isOnline) {
-          try {
-            const cloudRecord = await cloudDBManager.addRecord(this.currentTimelineId, {
-              date, time, title, content, importance, image_url: image
-            });
-            await dbManager.updateRecord(localId, { cloud_id: cloudRecord.id });
-          } catch (e) {
-            await dbManager.addToSyncQueue('add', recordData);
-          }
-        } else {
-          await dbManager.addToSyncQueue('add', recordData);
-        }
-      }
+      this.closeModal();
+      await this.renderView();
+    } catch (e) {
+      console.error('[VEX-Timeline] saveRecord failed:', e);
+      alert('保存失败：' + (e.message || e));
     }
-
-    this.closeModal();
-    await this.renderView();
   }
 
   async deleteRecord(id) {
+    if (!id) {
+      console.warn('[VEX-Timeline] deleteRecord called without an id');
+      return;
+    }
     if (!confirm('确定要删除这条记录吗？')) {
       return;
     }
-
-    const record = this.records.find(r => r.id === id);
-
-    await dbManager.deleteRecord(id);
-
-    if (authManager.isLoggedIn() && supabaseManager.isConfigured() && this.currentTimelineId !== 'local' && record) {
-      if (this.isOnline) {
-        try {
-          if (record.cloud_id) {
-            await cloudDBManager.deleteRecord(record.cloud_id);
-          }
-        } catch (e) {
-          await dbManager.addToSyncQueue('delete', { cloud_id: record.cloud_id, timeline_id: record.timeline_id });
-        }
-      } else {
-        await dbManager.addToSyncQueue('delete', { cloud_id: record.cloud_id, timeline_id: record.timeline_id });
-      }
+    if (!authManager.isLoggedIn() || !supabaseManager.isConfigured()) {
+      alert('请先登录');
+      return;
     }
-
-    await this.renderView();
+    try {
+      await cloudDBManager.deleteRecord(id);
+      // Drop the record from the in-memory list immediately so the
+      // user sees it disappear before we re-fetch.
+      this.records = this.records.filter(r => r.id !== id);
+      await this.renderView();
+    } catch (e) {
+      console.error('[VEX-Timeline] deleteRecord failed:', e);
+      alert('删除失败：' + (e.message || e));
+    }
   }
 
   formatDate(date) {
@@ -951,22 +869,14 @@ class App {
     const year = this.currentDate.getFullYear();
     const month = this.currentDate.getMonth();
 
-    let datesWithRecords;
-    if (this.currentTimelineId === 'local') {
-      datesWithRecords = await dbManager.getDatesWithRecords(year, month + 1);
-    } else {
-      const allRecords = await this.getRecordsForCurrentTimeline();
-      const dates = new Set();
-      allRecords.forEach(r => {
-        const [rYear, rMonth] = r.date.split('-');
-        if (parseInt(rYear) === year && parseInt(rMonth) === month + 1) {
-          dates.add(r.date);
-        }
-      });
-      datesWithRecords = Array.from(dates).sort();
-    }
-
-    const datesSet = new Set(datesWithRecords);
+    const allRecords = await this.getRecordsForCurrentTimeline();
+    const datesSet = new Set();
+    allRecords.forEach(r => {
+      const [rYear, rMonth] = r.date.split('-');
+      if (parseInt(rYear) === year && parseInt(rMonth) === month + 1) {
+        datesSet.add(r.date);
+      }
+    });
 
     const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
@@ -1028,10 +938,17 @@ class App {
   }
 
   async getRecordsForCurrentTimeline() {
-    if (this.currentTimelineId === 'local') {
-      return await dbManager.getAllRecords();
+    if (!this.currentTimelineId) return [];
+    if (!supabaseManager.isConfigured()) return [];
+    try {
+      return await cloudDBManager.getRecordsByTimeline(this.currentTimelineId) || [];
+    } catch (e) {
+      console.error('[VEX-Timeline] getRecordsForCurrentTimeline failed:', e);
+      this.cloudSyncStatus = 'error';
+      this.cloudErrorMessage = e.message || String(e);
+      this.updateCloudStatusIcon();
+      return [];
     }
-    return await dbManager.getRecordsByTimeline(this.currentTimelineId);
   }
 
   async showDayRecords(dateStr) {
@@ -1197,8 +1114,8 @@ class App {
 
     document.querySelectorAll('.edit-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
-        const id = parseInt(e.currentTarget.dataset.id);
-        const record = this.records.find(r => r.id === id);
+        const id = e.currentTarget.dataset.id;
+        const record = this.records.find(r => String(r.id) === String(id));
         if (record) {
           this.openModal(record);
         }
@@ -1207,24 +1124,27 @@ class App {
 
     document.querySelectorAll('.delete-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
-        const id = parseInt(e.currentTarget.dataset.id);
+        const id = e.currentTarget.dataset.id;
         this.deleteRecord(id);
       });
     });
   }
 
   canEditRecord(record) {
-    if (this.currentTimelineId === 'local') return true;
     if (!authManager.isLoggedIn()) return true;
+    if (!record) return true;
 
     const current = this.timelines.find(t => t.id === this.currentTimelineId);
     if (!current) return true;
 
-    if (current.owner_id === authManager.getCurrentUser()?.id) return true;
-
-    if (record.user_id === authManager.getCurrentUser()?.id) return true;
+    if (current.owner_id === authManager.getCurrentUserId()) return true;
+    if (record.user_id === authManager.getCurrentUserId()) return true;
 
     return false;
+  }
+
+  _getImportanceClass(importance) {
+    return `importance-${importance || 'medium'}`;
   }
 }
 
