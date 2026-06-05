@@ -2,6 +2,38 @@ class AuthManager {
   constructor() {
     this.currentUser = null;
     this.session = null;
+    this.STORAGE_KEY = 'vex_session';
+  }
+
+  _saveSession(session) {
+    if (!session) return;
+    try {
+      localStorage.setItem(this.STORAGE_KEY, JSON.stringify({
+        access_token: session.access_token,
+        refresh_token: session.refresh_token,
+        expires_at: session.expires_at,
+        expires_in: session.expires_in,
+        token_type: session.token_type
+      }));
+    } catch (e) {
+      console.error('保存 session 失败:', e);
+    }
+  }
+
+  _loadSession() {
+    try {
+      const raw = localStorage.getItem(this.STORAGE_KEY);
+      if (!raw) return null;
+      return JSON.parse(raw);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  _clearSession() {
+    try {
+      localStorage.removeItem(this.STORAGE_KEY);
+    } catch (e) {}
   }
 
   async init() {
@@ -11,8 +43,23 @@ class AuthManager {
     try {
       const supabase = supabaseManager.getClient();
       if (!supabase) return;
-      
-      const { data: { session } } = await supabase.auth.getSession();
+
+      let { data: { session } } = await supabase.auth.getSession();
+
+      if (!session) {
+        const saved = this._loadSession();
+        if (saved?.refresh_token) {
+          const { data: restored, error: setError } = await supabase.auth.setSession({
+            access_token: saved.access_token,
+            refresh_token: saved.refresh_token
+          });
+          if (!setError && restored.session) {
+            session = restored.session;
+            this._saveSession(session);
+          }
+        }
+      }
+
       if (!session) return;
 
       this.session = session;
@@ -78,6 +125,7 @@ class AuthManager {
     }
 
     this.session = data.session;
+    this._saveSession(data.session);
 
     const { data: profile, error: profileError } = await supabase
       .from('users')
@@ -122,6 +170,7 @@ class AuthManager {
     }
 
     this.session = data.session;
+    this._saveSession(data.session);
 
     const { data: profile, error: profileError } = await supabase
       .from('users')
@@ -141,6 +190,7 @@ class AuthManager {
   async logout() {
     const supabase = supabaseManager.getClient();
     await supabase.auth.signOut();
+    this._clearSession();
     this.currentUser = null;
     this.session = null;
   }
