@@ -12,7 +12,8 @@ class CloudDBManager {
 
   async addRecord(timelineId, record) {
     const client = this._getClient();
-    const userId = authManager.getCurrentUser().id;
+    const userId = authManager.getCurrentUserId();
+    if (!userId) throw new Error('未登录');
     const { data, error } = await client
       .from('records')
       .insert({
@@ -95,7 +96,8 @@ class CloudDBManager {
 
   async createTimeline(name, type) {
     const client = this._getClient();
-    const userId = authManager.getCurrentUser().id;
+    const userId = authManager.getCurrentUserId();
+    if (!userId) throw new Error('未登录');
     const insertData = {
       name: name,
       type: type,
@@ -115,13 +117,41 @@ class CloudDBManager {
 
   async getTimelinesForUser() {
     const client = this._getClient();
-    const userId = authManager.getCurrentUser().id;
-    const { data, error } = await client
-      .from('timelines')
-      .select('*')
-      .or(`owner_id.eq.${userId},id.in.(select timeline_id from timeline_members where user_id = ${userId})`);
-    if (error) throw error;
-    return data;
+    const userId = authManager.getCurrentUserId();
+    if (!userId) return [];
+    // Split into two queries (owned + joined) to avoid the PostgREST
+    // limitation where embedded SELECT inside `.or(...)` is parsed as
+    // a literal string rather than a subquery, producing a 400 with
+    // "invalid input syntax for type uuid" and the entire select text
+    // as the offending value.
+    const [{ data: owned, error: ownedErr }, { data: memberships, error: memberErr }] = await Promise.all([
+      client
+        .from('timelines')
+        .select('*')
+        .eq('owner_id', userId),
+      client
+        .from('timeline_members')
+        .select('timeline_id')
+        .eq('user_id', userId),
+    ]);
+    if (ownedErr) throw ownedErr;
+    if (memberErr) throw memberErr;
+
+    let joined = [];
+    const memberIds = [...new Set((memberships || []).map(m => m.timeline_id))];
+    // Exclude ids already covered by the owned query
+    const ownedIds = new Set((owned || []).map(t => t.id));
+    const remainingIds = memberIds.filter(id => !ownedIds.has(id));
+    if (remainingIds.length > 0) {
+      const { data: rows, error: tlErr } = await client
+        .from('timelines')
+        .select('*')
+        .in('id', remainingIds);
+      if (tlErr) throw tlErr;
+      joined = rows || [];
+    }
+
+    return [...(owned || []), ...joined];
   }
 
   async getTimelineById(timelineId) {
@@ -147,7 +177,8 @@ class CloudDBManager {
 
   async joinTimelineByInviteCode(inviteCode) {
     const client = this._getClient();
-    const userId = authManager.getCurrentUser().id;
+    const userId = authManager.getCurrentUserId();
+    if (!userId) throw new Error('未登录');
     const { data: timeline, error: timelineError } = await client
       .from('timelines')
       .select('*')
@@ -239,7 +270,8 @@ class CloudDBManager {
 
   async pushLocalRecords(timelineId, records) {
     const client = this._getClient();
-    const userId = authManager.getCurrentUser().id;
+    const userId = authManager.getCurrentUserId();
+    if (!userId) throw new Error('未登录');
     const rows = records.map(record => ({
       timeline_id: timelineId,
       user_id: userId,

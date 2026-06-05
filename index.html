@@ -14,7 +14,11 @@
     <link rel="manifest" href="./manifest.json">
 </head>
 <body>
-    <div class="auth-page" id="auth-page">
+    <div id="app-loading" class="app-loading">
+        <div class="app-loading-spinner"></div>
+        <div class="app-loading-text">正在加载...</div>
+    </div>
+    <div class="auth-page hidden" id="auth-page">
         <div class="auth-container">
             <h1 class="auth-title">VEX-Timeline</h1>
             <p class="auth-subtitle">记录备赛每一天</p>
@@ -41,10 +45,6 @@
                 <button class="auth-btn register-btn" id="auth-register-btn">注册</button>
             </div>
         </div>
-            <div class="auth-divider">
-                <span>或</span>
-            </div>
-            <button class="auth-btn guest-btn" id="auth-guest-btn">离线使用</button>
         </div>
     </div>
     <div class="container">
@@ -58,7 +58,6 @@
             <div class="header-right">
                 <div class="timeline-selector" id="timeline-selector">
                     <select class="timeline-select" id="timeline-select">
-                        <option value="local">本地时间轴</option>
                     </select>
                 </div>
                 <div class="user-info" id="user-info" style="display: none;">
@@ -282,7 +281,6 @@
     
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="./src/js/config.js"></script>
-    <script src="./src/js/db.js"></script>
     <script src="./src/js/supabase.js"></script>
     <script src="./src/js/auth.js"></script>
     <script src="./src/js/cloud-db.js"></script>

@@ -73,16 +73,64 @@ class AuthManager {
     const supabase = supabaseManager.getClient();
     if (!supabase) return;
     try {
+      // Use maybeSingle() to avoid 406 when no row exists
       const { data: profile, error } = await supabase
         .from('users')
         .select('*')
         .eq('id', userId)
-        .single();
-      if (!error && profile) {
+        .maybeSingle();
+      if (profile) {
         this.currentUser = profile;
+        return;
       }
+      // Self-heal: public.users row is missing. This can happen when a user
+      // was created via Supabase Dashboard, or signed up with old code that
+      // didn't pass `data: { username }` in metadata. The DB trigger should
+      // normally create the row, but be defensive on the client.
+      if (error) {
+        console.warn('[VEX-Timeline] Failed to load user profile:', error);
+        return;
+      }
+      await this._ensureUserProfile(userId);
     } catch (e) {
       console.warn('[VEX-Timeline] Failed to load user profile:', e);
+    }
+  }
+
+  async _ensureUserProfile(userId) {
+    const supabase = supabaseManager.getClient();
+    if (!supabase || !this.session) return;
+    const meta = this.session.user?.user_metadata || {};
+    const email = this.session.user?.email || '';
+    const baseUsername =
+      meta.username ||
+      (email ? email.split('@')[0] : null) ||
+      ('user_' + userId.slice(0, 8));
+    try {
+      // Try a few variants in case of unique-username conflict
+      let inserted = null;
+      for (let attempt = 0; attempt < 10; attempt++) {
+        const candidate = attempt === 0 ? baseUsername : `${baseUsername}_${attempt}`;
+        const { data, error } = await supabase
+          .from('users')
+          .insert({ id: userId, username: candidate })
+          .select()
+          .maybeSingle();
+        if (!error && data) {
+          inserted = data;
+          break;
+        }
+        if (error && error.code !== '23505') {
+          // Not a unique conflict — abort
+          console.warn('[VEX-Timeline] Could not create user profile:', error);
+          break;
+        }
+      }
+      if (inserted) {
+        this.currentUser = inserted;
+      }
+    } catch (e) {
+      console.warn('[VEX-Timeline] _ensureUserProfile failed:', e);
     }
   }
 
@@ -209,6 +257,12 @@ class AuthManager {
 
   getCurrentUser() {
     return this.currentUser;
+  }
+
+  // Always-available userId accessor. Falls back to the auth session's
+  // user id even when public.users profile hasn't been loaded yet.
+  getCurrentUserId() {
+    return this.currentUser?.id || this.session?.user?.id || null;
   }
 
   getUsername() {
