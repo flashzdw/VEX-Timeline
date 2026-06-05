@@ -1039,6 +1039,18 @@ class App {
 
     return false;
   }
+
+  handleSignedOut() {
+    this.currentTimelineId = 'local';
+    this.timelines = [];
+    this.showAuthPage();
+    const usernameInput = document.getElementById('auth-username');
+    const passwordInput = document.getElementById('auth-password');
+    if (usernameInput) usernameInput.value = '';
+    if (passwordInput) passwordInput.value = '';
+    const errorEl = document.getElementById('auth-error');
+    if (errorEl) errorEl.textContent = '';
+  }
 }
 
 const app = new App();

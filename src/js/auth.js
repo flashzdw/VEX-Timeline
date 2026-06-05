@@ -3,8 +3,10 @@ class AuthManager {
     this.currentUser = null;
     this.session = null;
     this.STORAGE_KEY = 'vex_session';
+    this._initialized = false;
   }
 
+  // 备份用: 手动保存 session 到我们自己的 localStorage key
   _saveSession(session) {
     if (!session) return;
     try {
@@ -16,7 +18,7 @@ class AuthManager {
         token_type: session.token_type
       }));
     } catch (e) {
-      console.error('保存 session 失败:', e);
+      console.error('[Auth] 保存 session 失败:', e);
     }
   }
 
@@ -36,47 +38,121 @@ class AuthManager {
     } catch (e) {}
   }
 
+  // 检查 localStorage 中是否有 Supabase SDK 自己存的 token
+  _hasSupabaseStorage() {
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('sb-') && key.endsWith('-auth-token')) {
+          const value = localStorage.getItem(key);
+          if (value) return { key, value };
+        }
+        if (key === 'vex_supabase_auth') {
+          const value = localStorage.getItem(key);
+          if (value) return { key, value };
+        }
+      }
+    } catch (e) {}
+    return null;
+  }
+
   async init() {
+    if (this._initialized) return;
+    this._initialized = true;
+
     if (!supabaseManager.isConfigured()) {
+      console.warn('[Auth] Supabase 未配置, 跳过 session 恢复');
       return;
     }
+
+    const supabase = supabaseManager.getClient();
+    if (!supabase) {
+      console.error('[Auth] 无法获取 Supabase 客户端');
+      return;
+    }
+
+    // 关键: 注册 auth state change 监听器, 这是 Supabase 官方推荐的 session 恢复方式
+    // 它会在 SDK 从 localStorage 恢复 session 时触发 INITIAL_SESSION 事件
+    supabase.auth.onAuthStateChange((event, session) => {
+      console.log('[Auth] State change:', event, session ? '(有 session)' : '(无 session)');
+      if (event === 'SIGNED_OUT') {
+        this._clearSession();
+        this.currentUser = null;
+        this.session = null;
+        if (typeof app !== 'undefined' && app && app.handleSignedOut) {
+          app.handleSignedOut();
+        }
+        return;
+      }
+      if (session) {
+        this.session = session;
+        this._saveSession(session);
+        this._loadUserFromSession(session);
+      }
+    });
+
+    // 主动恢复 session
     try {
-      const supabase = supabaseManager.getClient();
-      if (!supabase) return;
-
-      // SDK 已配置 localStorage, getSession() 会自动从 localStorage 恢复 session
       let { data: { session } } = await supabase.auth.getSession();
+      console.log('[Auth] getSession() 返回:', session ? '有 session' : '无 session');
 
-      // 如果 SDK 没有恢复 session, 尝试手动恢复
+      // 如果 SDK 没有恢复, 尝试用我们自己的备份
       if (!session) {
         const saved = this._loadSession();
         if (saved?.refresh_token) {
-          const { data: restored, error: setError } = await supabase.auth.setSession({
-            access_token: saved.access_token,
-            refresh_token: saved.refresh_token
-          });
-          if (!setError && restored.session) {
-            session = restored.session;
+          console.log('[Auth] 尝试用备份的 refresh_token 恢复 session...');
+          try {
+            const { data: restored, error: setError } = await supabase.auth.setSession({
+              access_token: saved.access_token,
+              refresh_token: saved.refresh_token
+            });
+            if (!setError && restored?.session) {
+              session = restored.session;
+              console.log('[Auth] 备份 session 恢复成功');
+            } else {
+              console.warn('[Auth] 备份 session 恢复失败:', setError?.message);
+            }
+          } catch (e) {
+            console.error('[Auth] setSession 异常:', e);
           }
         }
       }
 
+      // 最后一层保险: 直接检查 localStorage 中是否有 supabase 存的 token
       if (!session) {
-        console.log('Auth: 未找到已保存的 session');
+        const stored = this._hasSupabaseStorage();
+        if (stored) {
+          console.log('[Auth] 发现 localStorage 中有 supabase token, 尝试用 SDK 读取...');
+          try {
+            // 触发 SDK 重新加载
+            const result = await supabase.auth.getSession();
+            if (result?.data?.session) {
+              session = result.data.session;
+            }
+          } catch (e) {}
+        }
+      }
+
+      if (!session) {
+        console.log('[Auth] 未找到可恢复的 session, 需要重新登录');
         return;
       }
 
       this.session = session;
-      // 确保 session 已保存到 localStorage (SDK 会自动做, 这里做双重保险)
       this._saveSession(session);
+      await this._loadUserFromSession(session);
+      console.log('[Auth] Session 恢复完成, 用户:', this.currentUser?.username);
+    } catch (e) {
+      console.error('[Auth] 初始化异常:', e);
+    }
+  }
 
+  async _loadUserFromSession(session) {
+    if (!session) return;
+    try {
+      const supabase = supabaseManager.getClient();
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        console.log('Auth: session 无效, 无法获取用户');
-        this._clearSession();
-        this.session = null;
-        return;
-      }
+      if (!user) return;
 
       const { data: profile, error: profileError } = await supabase
         .from('users')
@@ -86,18 +162,14 @@ class AuthManager {
 
       if (!profileError && profile) {
         this.currentUser = profile;
-      } else if (user) {
+      } else {
         this.currentUser = {
           id: user.id,
           username: user.user_metadata?.username || user.email?.split('@')[0] || ''
         };
       }
-
-      console.log('Auth: 已恢复登录状态, 用户:', this.currentUser?.username);
     } catch (e) {
-      console.error('Auth 初始化失败:', e);
-      this.currentUser = null;
-      this.session = null;
+      console.error('[Auth] 加载用户信息失败:', e);
     }
   }
 
@@ -203,7 +275,11 @@ class AuthManager {
 
   async logout() {
     const supabase = supabaseManager.getClient();
-    await supabase.auth.signOut();
+    if (supabase) {
+      try {
+        await supabase.auth.signOut();
+      } catch (e) {}
+    }
     this._clearSession();
     this.currentUser = null;
     this.session = null;
@@ -223,6 +299,7 @@ class AuthManager {
 
   onAuthStateChange(callback) {
     const supabase = supabaseManager.getClient();
+    if (!supabase) return null;
     const { data: { subscription } } = supabase.auth.onAuthStateChange(callback);
     return subscription;
   }
