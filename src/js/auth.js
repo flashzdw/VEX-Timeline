@@ -74,14 +74,16 @@ class AuthManager {
 
     this.session = data.session;
 
-    const { data: profile } = await supabase
+    const { data: profile, error: profileError } = await supabase
       .from('users')
       .select('*')
       .eq('id', data.user.id)
       .single();
 
-    if (profile) {
+    if (!profileError && profile) {
       this.currentUser = profile;
+    } else {
+      this.currentUser = { id: data.user.id, username: username };
     }
 
     return this.currentUser;
@@ -116,14 +118,16 @@ class AuthManager {
 
     this.session = data.session;
 
-    const { data: profile } = await supabase
+    const { data: profile, error: profileError } = await supabase
       .from('users')
       .select('*')
       .eq('id', data.user.id)
       .single();
 
-    if (profile) {
+    if (!profileError && profile) {
       this.currentUser = profile;
+    } else {
+      this.currentUser = { id: data.user.id, username: username };
     }
 
     return this.currentUser;

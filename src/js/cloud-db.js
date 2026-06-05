@@ -110,6 +110,22 @@ class CloudDBManager {
       .select()
       .single();
     if (error) throw error;
+
+    try {
+      const { data: existingMember } = await client
+        .from('timeline_members')
+        .select('id')
+        .eq('timeline_id', data.id)
+        .eq('user_id', userId);
+      if (!existingMember || existingMember.length === 0) {
+        await client
+          .from('timeline_members')
+          .insert({ timeline_id: data.id, user_id: userId, role: 'owner' });
+      }
+    } catch (memberError) {
+      console.error('添加时间轴成员失败:', memberError);
+    }
+
     return data;
   }
 

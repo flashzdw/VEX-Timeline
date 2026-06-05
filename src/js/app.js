@@ -74,9 +74,20 @@ class App {
       this.timelines = [];
     }
 
+    if (this.timelines.length === 0) {
+      try {
+        const personalTimeline = await cloudDBManager.createTimeline('个人时间轴', 'personal');
+        this.timelines = [personalTimeline];
+        console.log('已创建个人时间轴:', personalTimeline.id);
+      } catch (e) {
+        console.error('创建个人时间轴失败:', e);
+      }
+    }
+
     if (this.timelines.length > 0 && this.currentTimelineId === 'local') {
       const personal = this.timelines.find(t => t.type === 'personal');
       this.currentTimelineId = personal ? personal.id : this.timelines[0].id;
+      console.log('当前时间轴:', this.currentTimelineId);
     }
 
     this.updateTimelineSelector();
@@ -131,7 +142,7 @@ class App {
       await this.processSyncQueue();
       await this.renderView();
     } catch (e) {
-      // sync failed, continue with local data
+      console.error('云端同步失败:', e);
     }
 
     this.syncInProgress = false;
@@ -639,6 +650,7 @@ class App {
               });
             }
           } catch (e) {
+            console.error('云端更新记录失败:', e);
             await dbManager.addToSyncQueue('update', { ...recordData, cloud_id: this.editingRecord.cloud_id });
           }
         } else {
@@ -656,6 +668,7 @@ class App {
             });
             await dbManager.updateRecord(localId, { cloud_id: cloudRecord.id });
           } catch (e) {
+            console.error('云端添加记录失败:', e, 'timelineId:', this.currentTimelineId);
             await dbManager.addToSyncQueue('add', recordData);
           }
         } else {
@@ -684,6 +697,7 @@ class App {
             await cloudDBManager.deleteRecord(record.cloud_id);
           }
         } catch (e) {
+          console.error('云端删除记录失败:', e);
           await dbManager.addToSyncQueue('delete', { cloud_id: record.cloud_id, timeline_id: record.timeline_id });
         }
       } else {
