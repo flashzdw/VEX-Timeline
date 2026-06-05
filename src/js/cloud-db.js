@@ -12,7 +12,8 @@ class CloudDBManager {
 
   async addRecord(timelineId, record) {
     const client = this._getClient();
-    const userId = authManager.getCurrentUser().id;
+    const userId = authManager.getCurrentUserId();
+    if (!userId) throw new Error('未登录');
     const { data, error } = await client
       .from('records')
       .insert({
@@ -95,7 +96,8 @@ class CloudDBManager {
 
   async createTimeline(name, type) {
     const client = this._getClient();
-    const userId = authManager.getCurrentUser().id;
+    const userId = authManager.getCurrentUserId();
+    if (!userId) throw new Error('未登录');
     const insertData = {
       name: name,
       type: type,
@@ -115,7 +117,8 @@ class CloudDBManager {
 
   async getTimelinesForUser() {
     const client = this._getClient();
-    const userId = authManager.getCurrentUser().id;
+    const userId = authManager.getCurrentUserId();
+    if (!userId) return [];
     const { data, error } = await client
       .from('timelines')
       .select('*')
@@ -147,7 +150,8 @@ class CloudDBManager {
 
   async joinTimelineByInviteCode(inviteCode) {
     const client = this._getClient();
-    const userId = authManager.getCurrentUser().id;
+    const userId = authManager.getCurrentUserId();
+    if (!userId) throw new Error('未登录');
     const { data: timeline, error: timelineError } = await client
       .from('timelines')
       .select('*')
@@ -239,7 +243,8 @@ class CloudDBManager {
 
   async pushLocalRecords(timelineId, records) {
     const client = this._getClient();
-    const userId = authManager.getCurrentUser().id;
+    const userId = authManager.getCurrentUserId();
+    if (!userId) throw new Error('未登录');
     const rows = records.map(record => ({
       timeline_id: timelineId,
       user_id: userId,
