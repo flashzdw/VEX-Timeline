@@ -57,6 +57,14 @@ class App {
     } else {
       this.showAuthPage();
     }
+
+    // Hide the initial loading overlay once we've decided what to render
+    const loadingEl = document.getElementById('app-loading');
+    if (loadingEl) {
+      loadingEl.classList.add('is-hidden');
+      // Remove from DOM after the transition so it doesn't intercept clicks
+      setTimeout(() => loadingEl.remove(), 250);
+    }
   }
 
   showAuthPage() {

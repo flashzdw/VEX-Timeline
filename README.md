@@ -25,7 +25,7 @@ npm run dev
 
 ### 1. 准备 Supabase 项目
 - 在 [supabase.com](https://supabase.com) 创建项目
-- 在 SQL Editor 中依次执行 `supabase/migrations/001_initial_schema.sql`、`002_storage_and_functions.sql` 和 `003_fix_user_profile_creation.sql`
+- 在 SQL Editor 中依次执行 `supabase/migrations/001_initial_schema.sql`、`002_storage_and_functions.sql`、`003_fix_user_profile_creation.sql` 和 `004_fix_rls_recursion.sql`
 - 在 Supabase Dashboard → **Settings → API** 复制：
   - **Project URL** → 用于 `SUPABASE_URL`
   - **anon public key** → 用于 `SUPABASE_ANON_KEY`
