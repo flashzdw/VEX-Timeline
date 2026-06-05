@@ -27,6 +27,11 @@ class AuthManager {
 
       if (!profileError && profile) {
         this.currentUser = profile;
+      } else if (user) {
+        this.currentUser = {
+          id: user.id,
+          username: user.user_metadata?.username || user.email?.split('@')[0] || ''
+        };
       }
     } catch (e) {
       console.error('Auth 初始化失败:', e);
