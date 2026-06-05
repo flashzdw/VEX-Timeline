@@ -17,7 +17,14 @@ class SupabaseManager {
     if (!this.isConfigured()) {
       return null;
     }
-    this.client = supabase.createClient(this.SUPABASE_URL, this.SUPABASE_ANON_KEY);
+    this.client = supabase.createClient(this.SUPABASE_URL, this.SUPABASE_ANON_KEY, {
+      auth: {
+        storage: localStorage,
+        autoRefreshToken: true,
+        persistSession: true,
+        detectSessionInUrl: false
+      }
+    });
     return this.client;
   }
 

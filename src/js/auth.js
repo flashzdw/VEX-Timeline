@@ -44,8 +44,10 @@ class AuthManager {
       const supabase = supabaseManager.getClient();
       if (!supabase) return;
 
+      // SDK 已配置 localStorage, getSession() 会自动从 localStorage 恢复 session
       let { data: { session } } = await supabase.auth.getSession();
 
+      // 如果 SDK 没有恢复 session, 尝试手动恢复
       if (!session) {
         const saved = this._loadSession();
         if (saved?.refresh_token) {
@@ -55,16 +57,26 @@ class AuthManager {
           });
           if (!setError && restored.session) {
             session = restored.session;
-            this._saveSession(session);
           }
         }
       }
 
-      if (!session) return;
+      if (!session) {
+        console.log('Auth: 未找到已保存的 session');
+        return;
+      }
 
       this.session = session;
+      // 确保 session 已保存到 localStorage (SDK 会自动做, 这里做双重保险)
+      this._saveSession(session);
+
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        console.log('Auth: session 无效, 无法获取用户');
+        this._clearSession();
+        this.session = null;
+        return;
+      }
 
       const { data: profile, error: profileError } = await supabase
         .from('users')
@@ -80,6 +92,8 @@ class AuthManager {
           username: user.user_metadata?.username || user.email?.split('@')[0] || ''
         };
       }
+
+      console.log('Auth: 已恢复登录状态, 用户:', this.currentUser?.username);
     } catch (e) {
       console.error('Auth 初始化失败:', e);
       this.currentUser = null;
