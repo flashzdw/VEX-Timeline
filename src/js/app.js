@@ -6,12 +6,34 @@ class App {
     this.editingRecord = null;
     this.currentFilter = 'all';
     this.tempImageData = null;
-    this.currentTimelineId = 'local';
+    this.currentTimelineId = this._loadStoredTimelineId() || 'local';
     this.timelines = [];
     this.isOnline = navigator.onLine;
     this.syncInProgress = false;
+    this.cloudSyncStatus = 'unknown'; // 'ok' | 'error' | 'offline' | 'unknown'
+    this.cloudErrorMessage = '';
 
     this.init();
+  }
+
+  _loadStoredTimelineId() {
+    try {
+      return localStorage.getItem('vex_current_timeline_id');
+    } catch (e) {
+      return null;
+    }
+  }
+
+  _saveStoredTimelineId(id) {
+    try {
+      if (id && id !== 'local') {
+        localStorage.setItem('vex_current_timeline_id', id);
+      } else {
+        localStorage.removeItem('vex_current_timeline_id');
+      }
+    } catch (e) {
+      // ignore
+    }
   }
 
   async init() {
@@ -21,9 +43,17 @@ class App {
 
     this.bindEvents();
     this.setupNetworkListener();
+    this.renderDiagnosticBar();
 
     if (authManager.isLoggedIn()) {
-      await this.onLoginSuccess();
+      if (supabaseManager.isConfigured()) {
+        await this.onLoginSuccess();
+      } else {
+        // Logged in (have session) but Supabase not configured - weird state, force re-login
+        console.warn('[VEX-Timeline] Session exists but Supabase not configured. Clearing session.');
+        await authManager.logout();
+        this.showAuthPage();
+      }
     } else {
       this.showAuthPage();
     }
@@ -45,10 +75,44 @@ class App {
     document.getElementById('user-name').textContent = authManager.getUsername();
     document.getElementById('timeline-actions').style.display = 'flex';
 
-    await this.loadTimelines();
+    const loadResult = await this.loadTimelines();
+
+    if (!loadResult.success) {
+      // Cloud unreachable - show clear error and disable add
+      this.cloudSyncStatus = 'error';
+      this.cloudErrorMessage = loadResult.error || '无法连接到云端';
+      this.updateCloudStatusIcon();
+      const errorEl = document.getElementById('auth-error');
+      if (errorEl) errorEl.textContent = '';
+      this._showCloudError(this.cloudErrorMessage);
+      this._setAddEnabled(false);
+    } else {
+      this.cloudSyncStatus = 'ok';
+      this.cloudErrorMessage = '';
+      this.updateCloudStatusIcon();
+      this._setAddEnabled(true);
+    }
+
     this.renderDate();
     await this.renderView();
-    await this.syncFromCloud();
+    if (loadResult.success) {
+      await this.syncFromCloud();
+    }
+    this.renderDiagnosticBar();
+  }
+
+  _showCloudError(msg) {
+    // Surface error to user in a non-intrusive way
+    console.error('[VEX-Timeline] Cloud error:', msg);
+  }
+
+  _setAddEnabled(enabled) {
+    const addBtn = document.getElementById('add-btn');
+    if (addBtn) {
+      addBtn.style.display = enabled ? 'flex' : 'none';
+      addBtn.disabled = !enabled;
+      addBtn.title = enabled ? '' : '云端连接失败，无法添加记录';
+    }
   }
 
   onGuestMode() {
@@ -64,21 +128,39 @@ class App {
   async loadTimelines() {
     if (!authManager.isLoggedIn() || !supabaseManager.isConfigured()) {
       this.updateTimelineSelector();
-      return;
+      return { success: false, error: 'Supabase 未配置' };
     }
 
-    try {
-      this.timelines = await cloudDBManager.getTimelinesForUser();
-    } catch (e) {
+    let lastErr = null;
+    const maxAttempts = 2;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        this.timelines = await cloudDBManager.getTimelinesForUser();
+        lastErr = null;
+        break;
+      } catch (e) {
+        console.warn(`[VEX-Timeline] loadTimelines attempt ${attempt} failed:`, e);
+        lastErr = e;
+        if (attempt < maxAttempts) {
+          await new Promise(r => setTimeout(r, 1000));
+        }
+      }
+    }
+
+    if (lastErr) {
       this.timelines = [];
+      this.updateTimelineSelector();
+      return { success: false, error: lastErr.message || String(lastErr) };
     }
 
-    if (this.timelines.length > 0 && this.currentTimelineId === 'local') {
+    if (this.timelines.length > 0 && (this.currentTimelineId === 'local' || !this.timelines.find(t => t.id === this.currentTimelineId))) {
       const personal = this.timelines.find(t => t.type === 'personal');
       this.currentTimelineId = personal ? personal.id : this.timelines[0].id;
+      this._saveStoredTimelineId(this.currentTimelineId);
     }
 
     this.updateTimelineSelector();
+    return { success: true };
   }
 
   updateTimelineSelector() {
@@ -112,12 +194,98 @@ class App {
     }
   }
 
+  updateCloudStatusIcon() {
+    const el = document.getElementById('cloud-status');
+    if (!el) return;
+    let icon = '?', label = '未知';
+    if (!supabaseManager.isConfigured()) {
+      icon = '⚠';
+      label = 'Supabase 未配置';
+      el.className = 'cloud-status cloud-status-error';
+    } else if (this.cloudSyncStatus === 'error') {
+      icon = '⚠';
+      label = '云端错误: ' + (this.cloudErrorMessage || '未知');
+      el.className = 'cloud-status cloud-status-error';
+    } else if (!this.isOnline) {
+      icon = '⊘';
+      label = '离线';
+      el.className = 'cloud-status cloud-status-offline';
+    } else if (this.syncInProgress) {
+      icon = '↻';
+      label = '同步中';
+      el.className = 'cloud-status cloud-status-syncing';
+    } else {
+      icon = '☁';
+      label = '云端已连接';
+      el.className = 'cloud-status cloud-status-ok';
+    }
+    el.textContent = icon;
+    el.title = label;
+  }
+
+  renderDiagnosticBar() {
+    const el = document.getElementById('diagnostic-bar');
+    if (!el) return;
+    const status = supabaseManager.getConfigStatus();
+    const isLoggedIn = authManager.isLoggedIn();
+    const username = authManager.getUsername() || '未登录';
+    const sessionOk = !!authManager.session;
+    const cloudOk = status.isValid;
+
+    const urlEl = document.getElementById('diag-url');
+    const keyEl = document.getElementById('diag-key');
+    const sessEl = document.getElementById('diag-session');
+    const userEl = document.getElementById('diag-user');
+    const tlEl = document.getElementById('diag-timeline');
+
+    if (urlEl) {
+      urlEl.innerHTML = status.hasUrl
+        ? `URL: <span class="diag-ok">✓</span> <code>${status.urlPrefix || '已设置'}</code>`
+        : `URL: <span class="diag-bad">✗ 未配置</span>`;
+    }
+    if (keyEl) {
+      keyEl.innerHTML = status.hasKey
+        ? `Key: <span class="diag-ok">✓</span> 已设置`
+        : `Key: <span class="diag-bad">✗ 未配置</span>`;
+    }
+    if (sessEl) {
+      sessEl.innerHTML = isLoggedIn
+        ? `Session: <span class="diag-ok">✓ 已登录</span> (${username})`
+        : `Session: <span class="diag-warn">⊘ 未登录</span>`;
+    }
+    if (userEl) {
+      userEl.innerHTML = sessionOk ? `Token: <span class="diag-ok">✓</span>` : `Token: <span class="diag-bad">✗</span>`;
+    }
+    if (tlEl) {
+      const tlName = this.timelines.find(t => t.id === this.currentTimelineId)?.name
+        || (this.currentTimelineId === 'local' ? '本地' : this.currentTimelineId);
+      tlEl.innerHTML = `时间轴: <code>${tlName}</code>`;
+    }
+
+    // Show banner if cloud is misconfigured
+    const banner = document.getElementById('diag-banner');
+    if (banner) {
+      if (!cloudOk) {
+        banner.style.display = 'block';
+        banner.innerHTML = `
+          <strong>⚠️ 云端未配置</strong><br>
+          登录后数据无法上云，刷新后会丢失登录状态。<br>
+          <small>请在 Vercel Dashboard 设置 <code>SUPABASE_URL</code> 和 <code>SUPABASE_ANON_KEY</code>，然后 Redeploy。</small>
+        `;
+        banner.className = 'diag-banner diag-banner-error';
+      } else {
+        banner.style.display = 'none';
+      }
+    }
+  }
+
   async syncFromCloud() {
     if (!authManager.isLoggedIn() || !supabaseManager.isConfigured() || this.currentTimelineId === 'local') {
       return;
     }
     if (this.syncInProgress) return;
     this.syncInProgress = true;
+    this.updateCloudStatusIcon();
 
     try {
       const cloudRecords = await cloudDBManager.pullAllData(this.currentTimelineId);
@@ -128,11 +296,15 @@ class App {
       })));
       await this.processSyncQueue();
       await this.renderView();
+      this.cloudSyncStatus = 'ok';
     } catch (e) {
-      // sync failed, continue with local data
+      this.cloudSyncStatus = 'error';
+      this.cloudErrorMessage = e.message || String(e);
+      console.warn('[VEX-Timeline] syncFromCloud failed:', e);
     }
 
     this.syncInProgress = false;
+    this.updateCloudStatusIcon();
   }
 
   async processSyncQueue() {
@@ -172,12 +344,14 @@ class App {
   setupNetworkListener() {
     window.addEventListener('online', () => {
       this.isOnline = true;
+      this.updateCloudStatusIcon();
       if (authManager.isLoggedIn()) {
         this.processSyncQueue();
       }
     });
     window.addEventListener('offline', () => {
       this.isOnline = false;
+      this.updateCloudStatusIcon();
     });
   }
 
@@ -291,6 +465,7 @@ class App {
 
     document.getElementById('timeline-select').addEventListener('change', (e) => {
       this.currentTimelineId = e.target.value;
+      this._saveStoredTimelineId(this.currentTimelineId);
       this.updateManageButton();
       this.renderView();
     });
@@ -363,6 +538,12 @@ class App {
     const password = passwordInput.value;
     errorEl.textContent = '';
 
+    if (!supabaseManager.isConfigured()) {
+      errorEl.textContent = 'Supabase 未配置。请检查 Vercel 环境变量并重新部署。';
+      this.renderDiagnosticBar();
+      return;
+    }
+
     if (!username) {
       errorEl.textContent = '请输入用户名';
       return;
@@ -375,6 +556,7 @@ class App {
     try {
       await authManager.login(username, password);
       await this.onLoginSuccess();
+      this.renderDiagnosticBar();
     } catch (e) {
       errorEl.textContent = e.message || e;
     }
@@ -388,6 +570,12 @@ class App {
     const password = passwordInput.value;
     errorEl.textContent = '';
 
+    if (!supabaseManager.isConfigured()) {
+      errorEl.textContent = 'Supabase 未配置。请检查 Vercel 环境变量并重新部署。';
+      this.renderDiagnosticBar();
+      return;
+    }
+
     if (!username) {
       errorEl.textContent = '请输入用户名';
       return;
@@ -400,6 +588,7 @@ class App {
     try {
       await authManager.register(username, password);
       await this.onLoginSuccess();
+      this.renderDiagnosticBar();
     } catch (e) {
       errorEl.textContent = e.message || e;
     }
@@ -408,11 +597,17 @@ class App {
   async handleLogout() {
     await authManager.logout();
     this.currentTimelineId = 'local';
+    this._saveStoredTimelineId(null);
     this.timelines = [];
     this.showAuthPage();
     document.getElementById('auth-username').value = '';
     document.getElementById('auth-password').value = '';
     document.getElementById('auth-error').textContent = '';
+    this._setAddEnabled(true);
+    this.cloudSyncStatus = 'unknown';
+    this.cloudErrorMessage = '';
+    this.updateCloudStatusIcon();
+    this.renderDiagnosticBar();
   }
 
   async handleCreateTeam() {
