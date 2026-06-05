@@ -1,29 +1,24 @@
-const CACHE_NAME = 'vex-timeline-cache-v1';
+// Bump CACHE_NAME version whenever JS/CSS changes are deployed.
+// This forces the new service worker to skip the old cache and refetch everything.
+const CACHE_NAME = 'vex-timeline-cache-v2';
+
+// Only cache the static shell — NEVER cache JS files (auth.js, app.js, config.js, etc.)
+// because they change with each deploy and JS bugs in cached files can break the app.
 const urlsToCache = [
   '/',
   '/index.html',
   '/src/css/styles.css',
-  '/src/js/db.js',
-  '/src/js/app.js',
-  '/public/icons/icon.svg'
+  '/public/icons/icon.svg',
+  '/manifest.json'
 ];
 
 self.addEventListener('install', event => {
+  // Take over immediately so users get the new SW on next page load
+  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => cache.addAll(urlsToCache))
-  );
-});
-
-self.addEventListener('fetch', event => {
-  event.respondWith(
-    caches.match(event.request)
-      .then(response => {
-        if (response) {
-          return response;
-        }
-        return fetch(event.request);
-      })
+      .catch(err => console.warn('[SW] Pre-cache failed (non-fatal):', err))
   );
 });
 
@@ -38,6 +33,45 @@ self.addEventListener('activate', event => {
           }
         })
       );
-    })
+    }).then(() => self.clients.claim())
+  );
+});
+
+self.addEventListener('fetch', event => {
+  const url = new URL(event.request.url);
+
+  // CRITICAL: For JS files (and config.js, supabase.js, etc.) and HTML files,
+  // ALWAYS go to network first, fall back to cache. This ensures users get
+  // the latest code after each deploy. Old code with bugs can otherwise
+  // persist indefinitely in the SW cache.
+  const isJsOrHtml = /\.(js|html)(\?|$)/.test(url.pathname) || url.pathname === '/' || url.pathname === '/index.html';
+
+  if (isJsOrHtml) {
+    event.respondWith(
+      fetch(event.request)
+        .then(response => {
+          // Update the cache with the fresh response
+          if (response && response.status === 200) {
+            const responseClone = response.clone();
+            caches.open(CACHE_NAME).then(cache => {
+              cache.put(event.request, responseClone);
+            });
+          }
+          return response;
+        })
+        .catch(() => {
+          // Network failed, fall back to cache (offline support)
+          return caches.match(event.request);
+        })
+    );
+    return;
+  }
+
+  // For other static assets (CSS, icons, images): cache-first
+  event.respondWith(
+    caches.match(event.request)
+      .then(response => {
+        return response || fetch(event.request);
+      })
   );
 });
