@@ -423,34 +423,89 @@ body {
    - ::before 画 2px 竖线（贯穿首末圆形之间）
    - 每个 item 的 vx-rail-dot 骑在竖线上
    ============================================================ */
+/* Round 6：日期分组 + 跨天连贯（折中方案：每 day 一个 section，rail 容器统一） */
 .vx-timeline-rail {
   position: relative;
   padding-left: 32px;
+  /* 不再用 flex gap-6（改用 .vx-day-section + .vx-day-section + 控制间距） */
 }
 .vx-timeline-rail::before {
   content: '';
   position: absolute;
   left: 14px;
-  top: 28px;
-  bottom: 28px;
+  top: 8px;          /* Round 6：缩小顶部留白（从 28px → 8px） */
+  bottom: 8px;       /* 缩小底部留白（从 28px → 8px） */
   width: 2px;
   background-color: var(--color-border);
 }
+
+/* 每天一个 section，包含一个大日期 header + 该日所有 items */
+.vx-day-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;          /* 同一天内 item 之间紧凑 */
+}
+.vx-day-section + .vx-day-section {
+  margin-top: 24px;  /* 每天之间留 24px */
+}
+
+/* 大日期 header（外部、上方；不加黑色横条避免视觉负担） */
+.vx-day-header {
+  font-size: 1.125rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--color-fg);
+  margin-bottom: 4px;
+  /* 不加 border-b-2 border-border（避免 Round 4 旧版黑色块） */
+}
+
+/* 卡片样式（紧凑） */
 .vx-timeline-item {
   position: relative;
   background-color: var(--color-bg);
   border: 2px solid var(--color-border);
   border-radius: var(--radius-md);
-  padding: 1rem;
+  padding: 0.625rem 0.875rem;   /* Round 6：缩小到 10px/14px（原 1rem=16px） */
   transition: border-color 0.2s, transform 0.2s;
 }
 .vx-timeline-item:hover {
   border-color: var(--color-fg);
 }
+
+/* 卡片内部各元素 */
+.vx-item-time {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: rgba(17, 24, 39, 0.6);
+  margin-bottom: 4px;
+}
+.vx-item-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.vx-item-title {
+  font-size: 1.0625rem;
+  font-weight: 600;
+  color: var(--color-fg);
+  flex: 1;
+  min-width: 0;
+}
+.vx-item-content {
+  font-size: 0.875rem;
+  color: rgba(17, 24, 39, 0.6);
+  margin-top: 4px;
+  margin-bottom: 8px;
+}
+
+/* Round 6：圆点上移（配合更小的 item padding） */
 .vx-timeline-item .vx-rail-dot {
   position: absolute;
   left: -32px;
-  top: 8px;
+  top: 6px;          /* 原 top: 8px → 6px */
   width: 28px;
   height: 28px;
   border-radius: 999px;
@@ -461,11 +516,7 @@ body {
   justify-content: center;
   z-index: 1;
 }
-.vx-timeline-item .vx-rail-dot i {
-  width: 14px;
-  height: 14px;
-  stroke-width: 2.5;
-}
+
 /* 不同 importance 的圆点颜色 */
 .vx-timeline-item[data-importance="high"]   .vx-rail-dot { border-color: var(--color-danger); }
 .vx-timeline-item[data-importance="medium"] .vx-rail-dot { border-color: var(--color-accent); }
@@ -474,8 +525,11 @@ body {
 .vx-timeline-item[data-importance="medium"] .vx-rail-dot i { color: var(--color-accent); }
 .vx-timeline-item[data-importance="low"]    .vx-rail-dot i { color: var(--color-secondary); }
 
-/* Round 4：移除 4px 语义色 border-left（避免 3 重色彩过载）
-   item 边框统一用 var(--color-border)，语义信息由 rail 圆点 + 标签承担 */
+/* 响应式：移动端日期 header / 标题 字号缩小 */
+@media (max-width: 640px) {
+  .vx-day-header { font-size: 1rem; }
+  .vx-item-title { font-size: 1rem; }
+}
 
 /* ============================================================
    工具：空状态/加载占位

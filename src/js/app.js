@@ -1437,51 +1437,69 @@ class App {
     };
     const importanceLabel = { high: '高', medium: '中', low: '低' };
 
-    // Round 5：按 date desc, time desc 排序（不再按日期分块）
+    // Round 5：按 date desc, time desc 排序
     const sortedRecords = [...filteredRecords].sort((a, b) => {
       const dateCmp = b.date.localeCompare(a.date);
       if (dateCmp !== 0) return dateCmp;
       return (b.time || '00:00').localeCompare(a.time || '00:00');
     });
 
-    // Round 5：单一 .vx-timeline-rail 容器包裹所有记录（跨天连贯、竖线不中断）
-    let html = `<div class="vx-timeline-rail flex flex-col gap-6">`;
+    // Round 6：按日期分组（每个 day 一个 .vx-day-section，含大日期 header）
+    // 但仍用单一 .vx-timeline-rail 容器包裹（保留跨天连贯竖线）
+    const groups = {};
+    sortedRecords.forEach(r => {
+      (groups[r.date] = groups[r.date] || []).push(r);
+    });
+    const sortedDates = Object.keys(groups).sort((a, b) => b.localeCompare(a));
 
-    sortedRecords.forEach(record => {
-      const time = record.time || '';
-      const importance = record.importance || 'medium';
-      const imgSrc = record.image || record.image_url || '';
-      const canEdit = this.canEditRecord(record);
-      // 用 String() 强制转换为字符串以兼容 UUID 和数字 id
-      const recordIdStr = String(record.id);
-      const dateLabel = this.formatDateDisplay(record.date);
-      // 小标题：日期 + 时间（如 "2026年06月06日 周六 · 14:30"）
-      const metaLine = `${this._escapeHtml(dateLabel)} · ${this._escapeHtml(time) || '—'}`;
+    let html = `<div class="vx-timeline-rail">`;
 
-      html += `
-        <div class="vx-timeline-item" data-importance="${importance}">
-          <div class="vx-rail-dot">
-            <i data-lucide="${importanceIcons[importance]}"></i>
-          </div>
-          ${canEdit ? `
-            <div class="flex gap-2 justify-end mb-3">
-              <button class="vx-action-btn h-8 w-8 bg-muted text-fg rounded-md flex items-center justify-center hover:bg-primary hover:text-white transition-all duration-200 vx-edit-btn" data-id="${recordIdStr}" title="编辑">
-                <i data-lucide="pencil" class="w-4 h-4"></i>
-              </button>
-              <button class="vx-action-btn h-8 w-8 bg-muted text-fg rounded-md flex items-center justify-center hover:bg-danger hover:text-white transition-all duration-200 vx-delete-btn" data-id="${recordIdStr}" title="删除">
-                <i data-lucide="trash-2" class="w-4 h-4"></i>
-              </button>
+    sortedDates.forEach(dateStr => {
+      const dayRecords = groups[dateStr].sort((a, b) =>
+        (b.time || '00:00').localeCompare(a.time || '00:00')
+      );
+      const dayLabel = this.formatDateDisplay(dateStr);
+
+      // Round 6：大日期 header（外部、上方，不加黑色横条）
+      html += `<section class="vx-day-section">`;
+      html += `<h3 class="vx-day-header">${this._escapeHtml(dayLabel)}</h3>`;
+
+      dayRecords.forEach(record => {
+        const time = record.time || '—';
+        const importance = record.importance || 'medium';
+        const imgSrc = record.image || record.image_url || '';
+        const canEdit = this.canEditRecord(record);
+        // 用 String() 强制转换为字符串以兼容 UUID 和数字 id
+        const recordIdStr = String(record.id);
+
+        // Round 6：卡片内部只显示时间；重要性 inline 在标题前
+        html += `
+          <div class="vx-timeline-item" data-importance="${importance}">
+            <div class="vx-rail-dot">
+              <i data-lucide="${importanceIcons[importance]}"></i>
             </div>
-          ` : ''}
-          <div class="text-[10px] font-semibold uppercase tracking-wider text-fg/60 mb-1.5">${metaLine}</div>
-          <div class="flex items-center gap-2 mb-1.5">
-            <span class="inline-block text-[10px] font-semibold uppercase px-1.5 py-px rounded ${importanceBadgeColors[importance]}">${importanceLabel[importance]}</span>
+            ${canEdit ? `
+              <div class="flex gap-2 justify-end mb-2">
+                <button class="vx-action-btn h-7 w-7 bg-muted text-fg rounded-md flex items-center justify-center hover:bg-primary hover:text-white transition-all duration-200 vx-edit-btn" data-id="${recordIdStr}" title="编辑">
+                  <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
+                </button>
+                <button class="vx-action-btn h-7 w-7 bg-muted text-fg rounded-md flex items-center justify-center hover:bg-danger hover:text-white transition-all duration-200 vx-delete-btn" data-id="${recordIdStr}" title="删除">
+                  <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                </button>
+              </div>
+            ` : ''}
+            <div class="vx-item-time">${this._escapeHtml(time)}</div>
+            <div class="vx-item-title-row">
+              <span class="inline-flex items-center justify-center text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded ${importanceBadgeColors[importance]}">${importanceLabel[importance]}</span>
+              <h4 class="vx-item-title">${this._escapeHtml(record.title)}</h4>
+            </div>
+            ${record.content ? `<div class="vx-item-content">${this._escapeHtml(record.content)}</div>` : ''}
+            ${imgSrc ? `<img src="${this._escapeHtml(imgSrc)}" class="max-w-full max-h-72 object-cover rounded-md border-2 border-border" alt="记录图片">` : ''}
           </div>
-          <div class="font-semibold text-lg mb-1 text-fg">${this._escapeHtml(record.title)}</div>
-          ${record.content ? `<div class="text-fg/60 text-sm mb-3">${this._escapeHtml(record.content)}</div>` : ''}
-          ${imgSrc ? `<img src="${this._escapeHtml(imgSrc)}" class="max-w-full max-h-72 object-cover rounded-md border-2 border-border" alt="记录图片">` : ''}
-        </div>
-      `;
+        `;
+      });
+
+      html += `</section>`;
     });
 
     html += `</div>`;
