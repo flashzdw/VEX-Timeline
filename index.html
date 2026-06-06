@@ -146,8 +146,8 @@
         <!-- ============================================================
              顶部菜单（单行高级感）  Logo | View | Timeline | Cloud | User | +
              ============================================================ -->
-        <header class="sticky top-0 z-40 bg-white border-b-4 border-border">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 md:h-20 flex items-center justify-between gap-4">
+        <header class="sticky top-0 z-40 bg-white border-b-2 md:border-b-4 border-border">
+            <div class="max-w-7xl mx-auto px-3 sm:px-6 h-14 md:h-20 flex items-center justify-between gap-2 sm:gap-4">
 
                 <!-- Logo -->
                 <a href="#" class="flex items-center gap-2 shrink-0">
@@ -168,7 +168,7 @@
                 </div>
 
                 <!-- 时间轴选择器（自定义下拉） -->
-                <div id="timeline-selector" class="hidden md:block relative shrink-0">
+                <div id="timeline-selector" class="hidden lg:block relative shrink-0">
                     <button id="timeline-select-btn" type="button"
                             class="h-10 px-4 bg-white border-2 border-border rounded-md font-semibold text-sm flex items-center gap-2 hover:border-primary transition-all duration-200">
                         <i data-lucide="layers" class="w-4 h-4 text-primary"></i>
@@ -189,7 +189,7 @@
                         <span class="vx-cloud-icon"><i data-lucide="cloud" class="w-4 h-4"></i></span>
                     </button>
 
-                    <div id="user-info" class="hidden relative">
+                    <div id="user-info" class="hidden lg:flex relative items-center">
                         <button id="user-menu-btn" type="button"
                                 class="flex items-center gap-2 pl-1 pr-3 bg-muted rounded-full hover:bg-gray-200 transition-all duration-200"
                                 style="height:40px !important;min-height:40px !important;max-height:40px !important;box-sizing:border-box !important;overflow:hidden !important;flex-shrink:0 !important;">
@@ -217,7 +217,7 @@
                     </div>
 
                     <button id="add-btn" type="button"
-                            class="h-12 sm:h-14 px-4 sm:px-5 bg-primary text-white rounded-md font-semibold tracking-wider uppercase text-sm flex items-center gap-2 hover:bg-primary-hover hover:scale-105 transition-all duration-200">
+                            class="h-10 sm:h-14 px-3 sm:px-5 bg-primary text-white rounded-md font-semibold tracking-wider uppercase text-sm flex items-center gap-2 hover:bg-primary-hover hover:scale-105 transition-all duration-200">
                         <i data-lucide="plus" class="w-5 h-5"></i>
                         <span class="hidden sm:inline">添加记录</span>
                     </button>
@@ -242,14 +242,14 @@
 
             <!-- ============= TIMELINE VIEW ============= -->
             <section id="timeline-container" class="relative z-10">
-                <div id="filter-bar" class="mb-8 p-6 bg-muted rounded-lg">
+                <div id="filter-bar" class="mb-6 sm:mb-8 p-4 sm:p-6 bg-muted rounded-lg">
                     <div class="flex items-center gap-4 flex-wrap">
-                        <span class="text-xs font-semibold uppercase tracking-wider text-fg/60">重要性</span>
+                        <span class="text-sm sm:text-xs font-semibold uppercase tracking-wider text-fg/60">重要性</span>
                         <div class="flex gap-2 flex-wrap">
-                            <button data-filter="all"    class="h-10 px-4 rounded-md text-sm font-semibold tracking-wider uppercase bg-fg text-white transition-all duration-200">全部</button>
-                            <button data-filter="high"   class="h-10 px-4 rounded-md text-sm font-semibold tracking-wider uppercase bg-white text-fg transition-all duration-200">高</button>
-                            <button data-filter="medium" class="h-10 px-4 rounded-md text-sm font-semibold tracking-wider uppercase bg-white text-fg transition-all duration-200">中</button>
-                            <button data-filter="low"    class="h-10 px-4 rounded-md text-sm font-semibold tracking-wider uppercase bg-white text-fg transition-all duration-200">低</button>
+                            <button data-filter="all"    class="h-11 sm:h-10 px-4 rounded-md text-base sm:text-sm font-semibold tracking-wider uppercase bg-fg text-white transition-all duration-200">全部</button>
+                            <button data-filter="high"   class="h-11 sm:h-10 px-4 rounded-md text-base sm:text-sm font-semibold tracking-wider uppercase bg-white text-fg transition-all duration-200">高</button>
+                            <button data-filter="medium" class="h-11 sm:h-10 px-4 rounded-md text-base sm:text-sm font-semibold tracking-wider uppercase bg-white text-fg transition-all duration-200">中</button>
+                            <button data-filter="low"    class="h-11 sm:h-10 px-4 rounded-md text-base sm:text-sm font-semibold tracking-wider uppercase bg-white text-fg transition-all duration-200">低</button>
                         </div>
                     </div>
                 </div>

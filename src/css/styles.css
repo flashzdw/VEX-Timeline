@@ -206,13 +206,14 @@ body {
 /* 响应式：移动端紧凑、桌面更大 */
 @media (max-width: 640px) {
   .vx-calendar-cell { min-height: 72px; }    /* 移动端 UI 适配：80px → 72px（保持 6 周首屏可见） */
-  /* 时间轴卡片在窄屏下内边距压缩 */
-  .vx-timeline-item {
-    padding: 0.375rem 0.5rem !important;     /* 6px 8px */
-  }
-  .vx-item-content { font-size: 0.8125rem; }
-  .vx-timeline-actions { top: 2px; right: 2px; }
-  .vx-timeline-actions .vx-action-btn { min-width: 32px; min-height: 32px; }
+  /* 时间轴卡片：适度增大字号与呼吸感 */
+  .vx-timeline-item { padding: 0.75rem !important; }   /* 12px（原 6px） */
+  .vx-day-header    { font-size: 1.125rem; }            /* 18px（原 16px） */
+  .vx-item-time     { font-size: 0.75rem; }             /* 12px（原 10px） */
+  .vx-item-title    { font-size: 1.0625rem; }           /* 17px */
+  .vx-item-content  { font-size: 0.9375rem; }           /* 15px（原 13px） */
+  .vx-timeline-actions { top: 6px; right: 6px; }
+  .vx-timeline-actions .vx-action-btn { min-width: 36px; min-height: 36px; }
 }
 @media (min-width: 1024px) {
   .vx-calendar-cell { min-height: 130px; }   /* Round 7：100px → 130px */
@@ -593,11 +594,7 @@ body {
 .vx-timeline-item[data-importance="medium"] .vx-rail-dot i { color: var(--color-accent); }
 .vx-timeline-item[data-importance="low"]    .vx-rail-dot i { color: var(--color-secondary); }
 
-/* 响应式：移动端日期 header / 标题 字号缩小 */
-@media (max-width: 640px) {
-  .vx-day-header { font-size: 1rem; }
-  .vx-item-title { font-size: 1rem; }
-}
+/* 响应式：移动端日期 header / 标题 字号缩小（已合并到 207-222 块统一处理） */
 
 /* ============================================================
    工具：空状态/加载占位
