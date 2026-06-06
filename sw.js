@@ -1,6 +1,7 @@
 // Bump CACHE_NAME version whenever JS/CSS changes are deployed.
 // This forces the new service worker to skip the old cache and refetch everything.
-const CACHE_NAME = 'vex-timeline-cache-v2';
+// v3 (Round 2 修复): .or() 替换 / 月历边框 / 同步队列 / profile 竞态 / 移动抽屉 / SW 升级
+const CACHE_NAME = 'vex-timeline-cache-v3';
 
 // Only cache the static shell — NEVER cache JS files (auth.js, app.js, config.js, etc.)
 // because they change with each deploy and JS bugs in cached files can break the app.

@@ -69,21 +69,30 @@ class AuthManager {
     }
   }
 
-  async _loadUserProfile(userId) {
+  async _loadUserProfile(userId, retries = 3) {
     const supabase = supabaseManager.getClient();
     if (!supabase) return;
-    try {
-      const { data: profile, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', userId)
-        .single();
-      if (!error && profile) {
-        this.currentUser = profile;
+    for (let i = 0; i < retries; i++) {
+      try {
+        const { data: profile, error } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', userId)
+          .single();
+        if (!error && profile) {
+          this.currentUser = profile;
+          return;
+        }
+        if (error) {
+          console.warn(`[VEX-Timeline] _loadUserProfile attempt ${i+1} error:`, error.message || error);
+        }
+      } catch (e) {
+        console.warn(`[VEX-Timeline] _loadUserProfile attempt ${i+1} threw:`, e.message || e);
       }
-    } catch (e) {
-      console.warn('[VEX-Timeline] Failed to load user profile:', e);
+      // 指数退避：500ms / 1000ms / 1500ms
+      await new Promise(r => setTimeout(r, 500 * (i + 1)));
     }
+    console.error('[VEX-Timeline] _loadUserProfile all retries failed');
   }
 
   _readSessionFromStorage() {

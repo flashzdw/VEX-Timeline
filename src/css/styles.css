@@ -149,11 +149,15 @@ body {
 
 /* ============================================================
    月历单元
+   使用单边边框（仅 right + bottom），避免相邻 cell 边框叠加为 4px。
+   最右一列与最后一行由 :nth-child / .vx-calendar-row-last 处理。
+   最外圈 2px 边框由父容器提供。
    ============================================================ */
 .vx-calendar-cell {
   aspect-ratio: 1;
   background-color: var(--color-bg);
-  border: 2px solid var(--color-border);
+  border-right: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
   padding: 0.5rem;
   display: flex;
   flex-direction: column;
@@ -164,6 +168,11 @@ body {
   position: relative;
   font-weight: 600;
 }
+
+/* 第 7 列移除右边框（最右一列由父容器右边框收口） */
+.vx-calendar-cell:nth-child(7n) { border-right: 0; }
+/* 最后一行移除底边框（由父容器底边框收口） */
+.vx-calendar-row-last .vx-calendar-cell { border-bottom: 0; }
 
 .vx-calendar-cell:hover {
   background-color: var(--color-muted);
@@ -322,7 +331,7 @@ body {
 
 .vx-cloud-status .vx-cloud-icon { display: inline-flex; }
 
-.vx-cloud-status.is-ok      { background-color: var(--color-secondary); color: var(--color-bg); border-color: var(--color-secondary); }
+.vx-cloud-status.is-ok      { background-color: #059669; color: var(--color-bg); border-color: #059669; }
 .vx-cloud-status.is-error   { background-color: var(--color-primary);   color: var(--color-bg); border-color: var(--color-primary); }
 .vx-cloud-status.is-offline { background-color: var(--color-accent);    color: var(--color-bg); border-color: var(--color-accent); }
 .vx-cloud-status.is-syncing .vx-cloud-icon { animation: vx-spin 1.2s linear infinite; }
@@ -339,6 +348,8 @@ body {
   display: none;
   flex-direction: column;
   padding: 1.5rem;
+  overflow-y: auto;             /* 长内容可滚动（多赛队 + 4 按钮） */
+  -webkit-overflow-scrolling: touch;  /* iOS 顺滑滚动 */
   animation: vx-fade-in 0.2s ease-out forwards;
 }
 

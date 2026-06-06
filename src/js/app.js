@@ -46,6 +46,10 @@ class App {
     supabaseManager.init();
     await authManager.init();
 
+    // 关键：等 user profile 就绪（session 可能先就绪，profile 还在加载中），
+    // 否则后续 onLoginSuccess 中访问 authManager.getCurrentUser().id 会 throw
+    await this._waitForUserProfile(3000);
+
     this.bindEvents();
     this.setupNetworkListener();
     this.renderDiagnosticBar();
@@ -61,6 +65,23 @@ class App {
     } else {
       this.showAuthPage();
     }
+  }
+
+  /**
+   * 等待 user profile 就绪（最多 maxMs 毫秒）
+   * - 已就绪 → 立即返回 true
+   * - 未登录（无 session）→ 立即返回 false
+   * - 已登录但 profile 还在加载中 → 轮询等待
+   * - 超时 → 返回 false（外层会显示错误条）
+   */
+  async _waitForUserProfile(maxMs = 3000) {
+    const start = Date.now();
+    while (Date.now() - start < maxMs) {
+      if (authManager.getCurrentUser()) return true;
+      if (!authManager.session) return false;  // 未登录直接退出
+      await new Promise(r => setTimeout(r, 100));
+    }
+    return false;
   }
 
   showAuthPage() {
@@ -87,24 +108,54 @@ class App {
     const avatar = document.getElementById('user-avatar');
     if (avatar) avatar.textContent = username.charAt(0).toUpperCase();
 
+    // 重置状态
+    this._clearCloudError();
+
+    // 第一步：拉取所有 timeline 列表
     const loadResult = await this.loadTimelines();
 
     if (!loadResult.success) {
+      // 拉取失败 → 显示错误条 + 隐藏 add 按钮
       this.cloudSyncStatus = 'error';
       this.cloudErrorMessage = loadResult.error || '无法连接到云端';
       this.updateCloudStatusIcon();
-      this._showCloudError(this.cloudErrorMessage);
+      this._setCloudError(this.cloudErrorMessage);
       this._setAddEnabled(false);
     } else {
       this.cloudSyncStatus = 'ok';
       this.cloudErrorMessage = '';
       this.updateCloudStatusIcon();
       this._setAddEnabled(true);
+
+      // 第二步：等云同步完成后才渲染（避免首次空数据闪烁）
+      try {
+        await this.syncFromCloud();
+      } catch (e) {
+        this._setCloudError('同步云端记录失败: ' + (e.message || e));
+        // sync 失败不影响渲染本地已有数据
+      }
     }
 
     this.renderDate();
     await this.renderView();
-    if (loadResult.success) await this.syncFromCloud();
+  }
+
+  // ============================================================
+  // 云端错误条（顶部红条 + 重试按钮）
+  // ============================================================
+  _setCloudError(msg) {
+    const bar = document.getElementById('cloud-error-bar');
+    const msgEl = document.getElementById('cloud-error-message');
+    if (!bar) return;
+    if (msgEl) msgEl.textContent = msg || '未知错误';
+    bar.classList.remove('hidden');
+    // lucide 图标在 bar 内，确保渲染
+    if (window.lucide && lucide.createIcons) lucide.createIcons();
+  }
+
+  _clearCloudError() {
+    const bar = document.getElementById('cloud-error-bar');
+    if (bar) bar.classList.add('hidden');
   }
 
   _showCloudError(msg) {
@@ -368,11 +419,20 @@ class App {
   async processSyncQueue() {
     if (!this.isOnline || !authManager.isLoggedIn()) return;
     const queue = await dbManager.getSyncQueue();
+    let succeeded = 0, failed = 0;
     for (const item of queue) {
       try {
         await this.executeSyncOperation(item);
         await dbManager.removeFromSyncQueue(item.id);
-      } catch (e) { break; }
+        succeeded++;
+      } catch (e) {
+        // 失败项不删除、也不 break；保留在队列等待下次重试（自愈）
+        failed++;
+        console.warn(`[VEX-Timeline] Sync queue item ${item.id} (${item.operation}) failed, will retry:`, e.message || e);
+      }
+    }
+    if (succeeded > 0 || failed > 0) {
+      console.log(`[VEX-Timeline] Sync queue: ${succeeded} succeeded, ${failed} failed (kept in queue)`);
     }
   }
 
@@ -544,6 +604,20 @@ class App {
     });
 
     document.getElementById('copy-invite-btn').addEventListener('click', () => this.copyInviteCode());
+
+    // 云端重试按钮
+    const retryBtn = document.getElementById('cloud-retry-btn');
+    if (retryBtn) {
+      retryBtn.addEventListener('click', async () => {
+        this._clearCloudError();
+        this._setCloudError('正在重试…');
+        try {
+          await this.onLoginSuccess();
+        } catch (e) {
+          this._setCloudError('重试失败: ' + (e.message || e));
+        }
+      });
+    }
   }
 
   // ============================================================
@@ -1044,13 +1118,23 @@ class App {
 
     const days = ['日', '一', '二', '三', '四', '五', '六'];
     let headerHTML = days.map(d =>
-      `<div class="px-2 py-3 text-center text-xs font-semibold uppercase tracking-wider text-fg/60 bg-muted border-r-2 border-border last:border-r-0">${d}</div>`
+      `<div class="px-2 py-3 text-center text-xs font-semibold uppercase tracking-wider text-fg/60 bg-muted border-b-2 border-border">${d}</div>`
     ).join('');
 
     let cellsHTML = '';
+    // 先计算 remainingCells（需在循环前确定），再据此算出最后一行起始索引
+    const firstRowTotal = firstDayOfWeek + lastDateOfMonth;
+    const remainingCells = (7 - (firstRowTotal % 7)) % 7;
+    const totalCells = firstDayOfWeek + lastDateOfMonth + remainingCells;
+    // 最后一行起始索引 = 总数 - 7（最后 7 个 cell 永远是最后一行）
+    const lastRowStart = totalCells - 7;
+    let cellIdx = 0;
+    const rowClass = () => (cellIdx >= lastRowStart ? ' vx-calendar-row-last' : '');
+
     for (let i = firstDayOfWeek - 1; i >= 0; i--) {
       const day = lastDateOfPrevMonth - i;
-      cellsHTML += `<div class="vx-calendar-cell other-month"><span class="vx-calendar-day-number">${day}</span></div>`;
+      cellsHTML += `<div class="vx-calendar-cell other-month${rowClass()}"><span class="vx-calendar-day-number">${day}</span></div>`;
+      cellIdx++;
     }
     for (let day = 1; day <= lastDateOfMonth; day++) {
       const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
@@ -1065,20 +1149,22 @@ class App {
       if (hasHigh) classes.push('has-high');
       if (isToday) classes.push('today');
       if (isWeekend) classes.push('weekend');
+      // 最后一行追加 vx-calendar-row-last（用于 CSS 移除 border-bottom）
+      if (cellIdx >= lastRowStart) classes.push('vx-calendar-row-last');
 
       cellsHTML += `
         <div class="${classes.join(' ')}" data-date="${dateStr}">
           <span class="vx-calendar-day-number">${day}</span>
         </div>
       `;
+      cellIdx++;
     }
-    const totalCells = firstDayOfWeek + lastDateOfMonth;
-    const remainingCells = (7 - (totalCells % 7)) % 7;
     for (let day = 1; day <= remainingCells; day++) {
-      cellsHTML += `<div class="vx-calendar-cell other-month"><span class="vx-calendar-day-number">${day}</span></div>`;
+      cellsHTML += `<div class="vx-calendar-cell other-month${rowClass()}"><span class="vx-calendar-day-number">${day}</span></div>`;
+      cellIdx++;
     }
 
-    calendar.innerHTML = `<div class="grid grid-cols-7">${headerHTML}</div><div class="grid grid-cols-7">${cellsHTML}</div>`;
+    calendar.innerHTML = headerHTML + cellsHTML;
 
     document.querySelectorAll('.vx-calendar-cell:not(.other-month)').forEach(cell => {
       cell.addEventListener('click', (e) => {

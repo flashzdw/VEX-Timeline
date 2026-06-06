@@ -264,6 +264,21 @@
                 <div id="timeline" class="flex flex-col gap-8"></div>
             </section>
 
+            <!-- ============= CLOUD ERROR BAR (retry) ============= -->
+            <div id="cloud-error-bar" class="hidden mb-6 p-4 bg-red-50 border-2 border-primary rounded-md flex items-center justify-between gap-4">
+                <div class="flex items-center gap-3 min-w-0">
+                    <i data-lucide="alert-triangle" class="w-5 h-5 text-primary shrink-0"></i>
+                    <div class="flex flex-col min-w-0">
+                        <span class="font-semibold text-sm text-red-700">云端连接失败</span>
+                        <span id="cloud-error-message" class="text-xs font-medium text-red-600/80 truncate"></span>
+                    </div>
+                </div>
+                <button id="cloud-retry-btn" type="button"
+                        class="h-10 px-4 bg-primary text-white rounded-md font-semibold tracking-wider uppercase text-xs flex items-center gap-2 hover:bg-primary-hover hover:scale-105 transition-all duration-200 shrink-0">
+                    <i data-lucide="refresh-cw" class="w-4 h-4"></i>重试
+                </button>
+            </div>
+
             <!-- ============= CALENDAR VIEW ============= -->
             <section id="calendar-container" class="relative z-10 hidden">
                 <div class="flex items-center justify-between mb-8 gap-4">
@@ -515,6 +530,7 @@
         <button id="join-team-btn" type="button" class="hidden"></button>
     </div>
 
+    <script src="https://unpkg.com/lucide@0.378.0"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="./src/js/config.js"></script>
     <script src="./src/js/db.js"></script>
@@ -523,8 +539,25 @@
     <script src="./src/js/cloud-db.js"></script>
     <script src="./src/js/app.js"></script>
     <script>
-      // lucide 图标全局渲染
-      if (window.lucide && lucide.createIcons) lucide.createIcons();
+      // lucide 图标全局渲染（双保险：轮询 + DOMContentLoaded）
+      (function bootLucide() {
+        const tryIcons = () => {
+          if (window.lucide && lucide.createIcons) {
+            lucide.createIcons();
+            return true;
+          }
+          return false;
+        };
+        if (!tryIcons()) {
+          let attempts = 0;
+          const timer = setInterval(() => {
+            if (tryIcons() || ++attempts > 40) clearInterval(timer);
+          }, 50);
+        }
+      })();
+      window.addEventListener('DOMContentLoaded', () => {
+        if (window.lucide && lucide.createIcons) lucide.createIcons();
+      });
 
       // Service Worker
       if ('serviceWorker' in navigator) {
