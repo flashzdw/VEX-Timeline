@@ -149,8 +149,8 @@
         <header class="sticky top-0 z-40 bg-white border-b-2 md:border-b-4 border-border">
             <div class="max-w-7xl mx-auto px-3 sm:px-6 h-14 md:h-20 flex items-center justify-between gap-2 sm:gap-4">
 
-                <!-- Logo -->
-                <a href="#" class="flex items-center gap-2 shrink-0">
+                <!-- Logo（仅桌面端显示，手机端通过 FAB 节省空间） -->
+                <a href="#" class="hidden lg:flex items-center gap-2 shrink-0">
                     <div class="h-10 w-10 bg-primary text-white rounded-md flex items-center justify-center font-extrabold text-lg">V</div>
                     <span class="hidden sm:inline font-extrabold text-xl tracking-[-0.02em] text-fg">VEX-Timeline</span>
                 </a>
@@ -217,7 +217,7 @@
                     </div>
 
                     <button id="add-btn" type="button"
-                            class="h-10 sm:h-14 px-3 sm:px-5 bg-primary text-white rounded-md font-semibold tracking-wider uppercase text-sm flex items-center gap-2 hover:bg-primary-hover hover:scale-105 transition-all duration-200">
+                            class="hidden lg:flex h-10 sm:h-14 px-3 sm:px-5 bg-primary text-white rounded-md font-semibold tracking-wider uppercase text-sm items-center gap-2 hover:bg-primary-hover hover:scale-105 transition-all duration-200">
                         <i data-lucide="plus" class="w-5 h-5"></i>
                         <span class="hidden sm:inline">添加记录</span>
                     </button>
@@ -230,6 +230,14 @@
                 </div>
             </div>
         </header>
+
+        <!-- 移动端浮动添加按钮（FAB）：右下角 56px 圆形大按钮 -->
+        <button id="mobile-fab" type="button"
+                class="lg:hidden fixed bottom-6 right-6 z-30 h-14 w-14 rounded-full bg-primary text-white shadow-[0_8px_24px_rgba(0,0,0,0.18)] flex items-center justify-center hover:bg-primary-hover hover:scale-105 active:scale-95 transition-all duration-200"
+                style="box-sizing:border-box;flex-shrink:0;"
+                aria-label="添加记录">
+            <i data-lucide="plus" class="w-7 h-7"></i>
+        </button>
 
         <!-- ============================================================
              MAIN AREA

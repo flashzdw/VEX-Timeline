@@ -477,6 +477,10 @@ class App {
     // 顶部添加按钮
     document.getElementById('add-btn').addEventListener('click', () => this.openModal());
 
+    // 移动端 FAB（右下角浮动添加按钮）
+    const mobileFab = document.getElementById('mobile-fab');
+    if (mobileFab) mobileFab.addEventListener('click', () => this.openModal());
+
     // 记录模态框
     document.getElementById('cancel-btn').addEventListener('click', () => this.closeModal());
     document.getElementById('save-btn').addEventListener('click', () => this.saveRecord());
