@@ -1,7 +1,7 @@
 // Bump CACHE_NAME version whenever JS/CSS changes are deployed.
 // This forces the new service worker to skip the old cache and refetch everything.
-// v9: 用户菜单按钮高度锁定为 40px（与云朵按钮统一）+ 卡片 padding 6/12px + 时间 line-height 1
-const CACHE_NAME = 'vex-timeline-cache-v9';
+// v11: 顶部按钮内联 !important + 卡片 padding/border !important 覆盖旧版 .vx-timeline-item
+const CACHE_NAME = 'vex-timeline-cache-v11';
 
 // Only cache the static shell — NEVER cache JS files (auth.js, app.js, config.js, etc.)
 // because they change with each deploy and JS bugs in cached files can break the app.

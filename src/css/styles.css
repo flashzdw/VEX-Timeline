@@ -480,9 +480,9 @@ body {
 .vx-timeline-item {
   position: relative;
   background-color: var(--color-bg);
-  border: 2px solid var(--color-border);
+  border: 2px solid var(--color-border) !important;       /* Round 9：!important 覆盖 line 127 旧版 border-left */
   border-radius: var(--radius-md);
-  padding: 0.375rem 0.75rem;   /* Round 8：8/12px → 6/12px（再缩上方留白，让 14:30 紧贴顶部边框） */
+  padding: 0.25rem 0.75rem 0.5rem 0.75rem !important;    /* Round 9：!important 覆盖 line 127 旧版 padding: 1.5rem */
   transition: border-color 0.2s, transform 0.2s;
 }
 .vx-timeline-item:hover {
@@ -498,6 +498,7 @@ body {
   color: rgba(17, 24, 39, 0.6);
   line-height: 1;             /* Round 8：压缩行高（默认 1.5=15px → 10px）让 14:30 紧贴边框 */
   margin: 0 0 4px 0;          /* Round 8：显式 margin: 0 去掉浏览器默认 margin */
+  display: block;             /* Round 9：显式 block 确保 margin 生效 */
 }
 .vx-item-title-row {
   display: flex;
