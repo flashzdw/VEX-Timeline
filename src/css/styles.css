@@ -482,11 +482,21 @@ body {
   background-color: var(--color-bg);
   border: 2px solid var(--color-border) !important;       /* Round 9：!important 覆盖 line 127 旧版 border-left */
   border-radius: var(--radius-md);
-  padding: 0.25rem 0.75rem 0.5rem 0.75rem !important;    /* Round 9：!important 覆盖 line 127 旧版 padding: 1.5rem */
+  padding: 0.5rem 0.75rem 0.5rem 0.75rem !important;    /* Round 11：top 0.25rem→0.5rem（时间离顶端 4px→8px，与底部间距协调） */
   transition: border-color 0.2s, transform 0.2s;
 }
 .vx-timeline-item:hover {
   border-color: var(--color-fg);
+}
+
+/* 编辑/删除按钮行：绝对定位到右上角，脱离文档流，让时间贴顶 */
+.vx-timeline-actions {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: flex;
+  gap: 4px;
+  z-index: 2;   /* 高于 rail-dot 的 z-index: 1，避免被圆形覆盖 */
 }
 
 /* 卡片内部各元素 */

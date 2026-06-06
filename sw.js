@@ -1,7 +1,7 @@
 // Bump CACHE_NAME version whenever JS/CSS changes are deployed.
 // This forces the new service worker to skip the old cache and refetch everything.
-// v11: 顶部按钮内联 !important + 卡片 padding/border !important 覆盖旧版 .vx-timeline-item
-const CACHE_NAME = 'vex-timeline-cache-v11';
+// v14: 卡片 padding-top 0.25rem→0.5rem（时间离顶端 4px→8px，与底部协调）
+const CACHE_NAME = 'vex-timeline-cache-v14';
 
 // Only cache the static shell — NEVER cache JS files (auth.js, app.js, config.js, etc.)
 // because they change with each deploy and JS bugs in cached files can break the app.
