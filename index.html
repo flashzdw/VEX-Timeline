@@ -6,6 +6,10 @@
     <title>VEX-Timeline</title>
     <meta name="theme-color" content="#3B82F6">
 
+    <!-- Favicon & PWA 图标 -->
+    <link rel="icon" type="image/png" sizes="32x32" href="./public/icons/favicon-32.png">
+    <link rel="apple-touch-icon" sizes="192x192" href="./public/icons/icon-192.png">
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -93,38 +97,31 @@
         </div>
 
         <!-- 右侧登录表单 -->
-        <div class="flex-1 flex items-center justify-center p-8 lg:p-12 bg-bg relative overflow-hidden">
+        <div class="flex-1 flex items-center justify-center p-6 sm:p-8 lg:p-12 bg-bg relative overflow-y-auto">
             <div class="absolute -bottom-24 -right-24 h-64 w-64 rounded-full bg-primary/5 pointer-events-none"></div>
 
-            <div class="relative z-10 w-full max-w-md">
-                <div class="lg:hidden flex items-center gap-3 mb-8">
+            <div class="relative z-10 w-full max-w-md py-6 sm:py-0">
+                <div class="lg:hidden flex items-center gap-3 mb-6 sm:mb-8">
                     <div class="h-10 w-10 bg-primary text-white rounded-md flex items-center justify-center font-extrabold">V</div>
                     <span class="text-xl font-extrabold tracking-[-0.02em]">VEX-Timeline</span>
                 </div>
 
-                <h2 class="font-extrabold text-4xl tracking-[-0.02em] text-fg mb-2">欢迎回来</h2>
-                <p class="text-sm font-semibold uppercase tracking-wider text-fg/60 mb-8">登录 · 注册</p>
+                <h2 class="font-extrabold text-3xl sm:text-4xl tracking-[-0.02em] text-fg mb-2">欢迎回来</h2>
+                <p class="text-xs sm:text-sm font-semibold uppercase tracking-wider text-fg/60 mb-6 sm:mb-8">登录 · 注册</p>
 
-                <div id="diag-banner" class="hidden mb-6 p-4 bg-red-50 border-2 border-primary rounded-md text-sm font-medium text-red-700"></div>
-
-                <div id="diagnostic-bar" class="mb-6 p-4 bg-muted border-2 border-border rounded-md text-xs font-medium leading-relaxed">
-                    <div class="flex justify-between" id="diag-url">URL: 检测中…</div>
-                    <div class="flex justify-between" id="diag-key">Key: 检测中…</div>
-                    <div class="flex justify-between" id="diag-session">Session: 检测中…</div>
-                    <div class="flex justify-between" id="diag-user">Token: 检测中…</div>
-                    <div class="flex justify-between" id="diag-timeline">时间轴: 检测中…</div>
-                </div>
+                <!-- 移动端友好提示：仅在 Supabase 未配置时显示 -->
+                <div id="diag-banner" class="hidden mb-6 p-3 bg-muted border-2 border-border rounded-md text-xs font-medium text-fg/60 text-center"></div>
 
                 <form id="auth-form" class="flex flex-col gap-4" autocomplete="off">
                     <div class="flex flex-col gap-2">
                         <label class="text-xs font-semibold uppercase tracking-wider text-fg/60" for="auth-username">用户名</label>
                         <input id="auth-username" type="text" placeholder="输入用户名" maxlength="20" autocomplete="off"
-                               class="h-14 px-4 bg-muted text-fg rounded-md border-0 outline-none font-medium focus:bg-white focus:border-2 focus:border-primary transition-all duration-200">
+                               class="h-14 px-4 bg-muted text-fg text-base rounded-md border-0 outline-none font-medium focus:bg-white focus:border-2 focus:border-primary transition-all duration-200">
                     </div>
                     <div class="flex flex-col gap-2">
                         <label class="text-xs font-semibold uppercase tracking-wider text-fg/60" for="auth-password">密码</label>
                         <input id="auth-password" type="password" placeholder="输入密码" autocomplete="off"
-                               class="h-14 px-4 bg-muted text-fg rounded-md border-0 outline-none font-medium focus:bg-white focus:border-2 focus:border-primary transition-all duration-200">
+                               class="h-14 px-4 bg-muted text-fg text-base rounded-md border-0 outline-none font-medium focus:bg-white focus:border-2 focus:border-primary transition-all duration-200">
                     </div>
                     <div id="auth-error" class="min-h-[1.25rem] text-sm font-medium text-primary"></div>
 
@@ -148,16 +145,16 @@
     <!-- ============================================================
          MAIN APP CONTAINER
          ============================================================ -->
-    <div class="container hidden">
+    <div class="container mx-auto hidden">
 
         <!-- ============================================================
              顶部菜单（单行高级感）  Logo | View | Timeline | Cloud | User | +
              ============================================================ -->
-        <header class="sticky top-0 z-40 bg-white border-b-4 border-border">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 h-20 flex items-center justify-between gap-4">
+        <header class="sticky top-0 z-40 bg-white border-b-2 md:border-b-4 border-border">
+            <div class="max-w-7xl mx-auto px-3 sm:px-6 h-14 md:h-20 flex items-center justify-between gap-2 sm:gap-4">
 
-                <!-- Logo -->
-                <a href="#" class="flex items-center gap-2 shrink-0">
+                <!-- Logo（仅桌面端显示，手机端通过 FAB 节省空间） -->
+                <a href="#" class="hidden lg:flex items-center gap-2 shrink-0">
                     <div class="h-10 w-10 bg-primary text-white rounded-md flex items-center justify-center font-extrabold text-lg">V</div>
                     <span class="hidden sm:inline font-extrabold text-xl tracking-[-0.02em] text-fg">VEX-Timeline</span>
                 </a>
@@ -175,7 +172,7 @@
                 </div>
 
                 <!-- 时间轴选择器（自定义下拉） -->
-                <div id="timeline-selector" class="hidden md:block relative shrink-0">
+                <div id="timeline-selector" class="hidden lg:block relative shrink-0">
                     <button id="timeline-select-btn" type="button"
                             class="h-10 px-4 bg-white border-2 border-border rounded-md font-semibold text-sm flex items-center gap-2 hover:border-primary transition-all duration-200">
                         <i data-lucide="layers" class="w-4 h-4 text-primary"></i>
@@ -189,14 +186,14 @@
 
                 <div class="flex-1"></div>
 
-                <!-- 云状态 + 用户菜单 + 添加按钮（桌面） -->
+                <!-- 云状态 + 用户菜单（桌面） -->
                 <div class="flex items-center gap-2 sm:gap-3">
                     <button id="cloud-status" type="button" class="vx-cloud-status" title="点击刷新云端"
                             style="height:40px !important;width:40px !important;min-height:40px !important;min-width:40px !important;max-height:40px !important;max-width:40px !important;box-sizing:border-box !important;flex-shrink:0 !important;">
                         <span class="vx-cloud-icon"><i data-lucide="cloud" class="w-4 h-4"></i></span>
                     </button>
 
-                    <div id="user-info" class="hidden relative">
+                    <div id="user-info" class="hidden lg:flex relative items-center">
                         <button id="user-menu-btn" type="button"
                                 class="flex items-center gap-2 pl-1 pr-3 bg-muted rounded-full hover:bg-gray-200 transition-all duration-200"
                                 style="height:40px !important;min-height:40px !important;max-height:40px !important;box-sizing:border-box !important;overflow:hidden !important;flex-shrink:0 !important;">
@@ -223,12 +220,6 @@
                         </div>
                     </div>
 
-                    <button id="add-btn" type="button"
-                            class="h-12 sm:h-14 px-4 sm:px-5 bg-primary text-white rounded-md font-semibold tracking-wider uppercase text-sm flex items-center gap-2 hover:bg-primary-hover hover:scale-105 transition-all duration-200">
-                        <i data-lucide="plus" class="w-5 h-5"></i>
-                        <span class="hidden sm:inline">添加记录</span>
-                    </button>
-
                     <!-- 移动端汉堡 -->
                     <button id="mobile-menu-btn" type="button"
                             class="md:hidden h-10 w-10 flex items-center justify-center bg-muted rounded-md hover:bg-gray-200 transition-all duration-200">
@@ -238,25 +229,33 @@
             </div>
         </header>
 
+        <!-- 浮动添加按钮（FAB）：右下角 56px 圆形大按钮（所有屏幕尺寸统一入口） -->
+        <button id="mobile-fab" type="button"
+                class="fixed bottom-6 right-6 z-30 h-14 w-14 rounded-full bg-primary text-white shadow-[0_8px_24px_rgba(0,0,0,0.18)] flex items-center justify-center hover:bg-primary-hover hover:scale-105 active:scale-95 transition-all duration-200"
+                style="box-sizing:border-box;flex-shrink:0;"
+                aria-label="添加记录">
+            <i data-lucide="plus" class="w-7 h-7"></i>
+        </button>
+
         <!-- ============================================================
              MAIN AREA
              ============================================================ -->
-        <main class="max-w-7xl mx-auto px-4 sm:px-6 py-8 relative">
+        <main class="max-w-7xl mx-auto px-4 sm:px-6 py-8 relative overflow-x-hidden md:overflow-visible">
 
-            <!-- 装饰几何（背景大圆） -->
-            <div class="absolute -top-12 -right-24 h-80 w-80 rounded-full bg-primary/5 pointer-events-none"></div>
-            <div class="absolute top-1/2 -left-32 h-72 w-72 rotate-12 bg-secondary/5 pointer-events-none"></div>
+            <!-- 装饰几何（背景大圆）  手机端隐藏，避免 5% 透明色带形成可见切割 -->
+            <div class="hidden md:block absolute -top-12 -right-24 h-80 w-80 rounded-full bg-primary/5 pointer-events-none"></div>
+            <div class="hidden md:block absolute top-1/2 -left-32 h-72 w-72 rotate-12 bg-secondary/5 pointer-events-none"></div>
 
             <!-- ============= TIMELINE VIEW ============= -->
             <section id="timeline-container" class="relative z-10">
-                <div id="filter-bar" class="mb-8 p-6 bg-muted rounded-lg">
+                <div id="filter-bar" class="mb-6 sm:mb-8 p-4 sm:p-6 bg-muted rounded-lg">
                     <div class="flex items-center gap-4 flex-wrap">
-                        <span class="text-xs font-semibold uppercase tracking-wider text-fg/60">重要性</span>
+                        <span class="text-sm sm:text-xs font-semibold uppercase tracking-wider text-fg/60">重要性</span>
                         <div class="flex gap-2 flex-wrap">
-                            <button data-filter="all"    class="h-10 px-4 rounded-md text-sm font-semibold tracking-wider uppercase bg-fg text-white transition-all duration-200">全部</button>
-                            <button data-filter="high"   class="h-10 px-4 rounded-md text-sm font-semibold tracking-wider uppercase bg-white text-fg transition-all duration-200">高</button>
-                            <button data-filter="medium" class="h-10 px-4 rounded-md text-sm font-semibold tracking-wider uppercase bg-white text-fg transition-all duration-200">中</button>
-                            <button data-filter="low"    class="h-10 px-4 rounded-md text-sm font-semibold tracking-wider uppercase bg-white text-fg transition-all duration-200">低</button>
+                            <button data-filter="all"    class="h-11 sm:h-10 px-4 rounded-md text-base sm:text-sm font-semibold tracking-wider uppercase bg-fg text-white transition-all duration-200">全部</button>
+                            <button data-filter="high"   class="h-11 sm:h-10 px-4 rounded-md text-base sm:text-sm font-semibold tracking-wider uppercase bg-white text-fg transition-all duration-200">高</button>
+                            <button data-filter="medium" class="h-11 sm:h-10 px-4 rounded-md text-base sm:text-sm font-semibold tracking-wider uppercase bg-white text-fg transition-all duration-200">中</button>
+                            <button data-filter="low"    class="h-11 sm:h-10 px-4 rounded-md text-base sm:text-sm font-semibold tracking-wider uppercase bg-white text-fg transition-all duration-200">低</button>
                         </div>
                     </div>
                 </div>
@@ -488,6 +487,21 @@
                 <button data-view-toggle="month"
                         class="h-12 rounded-md text-sm font-semibold tracking-wider uppercase bg-muted text-fg/60 transition-all duration-200">
                     <i data-lucide="calendar" class="w-4 h-4 inline-block -mt-0.5 mr-1"></i>月历
+                </button>
+            </div>
+        </div>
+
+        <!-- 移动端快捷操作（云状态 + 添加记录） -->
+        <div class="mb-6">
+            <div class="text-xs font-semibold uppercase tracking-wider text-fg/60 mb-2">快捷操作</div>
+            <div class="flex flex-col gap-2">
+                <button id="mobile-add-btn" type="button"
+                        class="h-12 bg-primary text-white rounded-md font-semibold tracking-wider uppercase text-sm flex items-center justify-center gap-2 hover:bg-primary-hover transition-all duration-200">
+                    <i data-lucide="plus" class="w-4 h-4"></i>添加记录
+                </button>
+                <button id="mobile-cloud-refresh-btn" type="button"
+                        class="h-12 border-2 border-border bg-white text-fg rounded-md font-semibold tracking-wider uppercase text-sm flex items-center justify-center gap-2 hover:border-primary hover:text-primary transition-all duration-200">
+                    <i data-lucide="cloud" class="w-4 h-4"></i>刷新云端
                 </button>
             </div>
         </div>
