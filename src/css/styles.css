@@ -37,6 +37,7 @@
 
 html {
   font-size: 16px;
+  overflow-x: hidden;            /* 防止任何子元素撑出视口造成横向滚动 */
 }
 
 body {
@@ -47,6 +48,7 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   min-height: 100vh;
+  overflow-x: hidden;            /* 移动端保险：禁止横向滚动，避免装饰元素或子组件溢出 */
 }
 
 /* ----------- lucide 图标默认更醒目 ------------- */

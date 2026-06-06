@@ -166,11 +166,12 @@ class App {
   }
 
   _setAddEnabled(enabled) {
-    const addBtn = document.getElementById('add-btn');
-    if (addBtn) {
-      addBtn.style.display = enabled ? 'inline-flex' : 'none';
-      addBtn.disabled = !enabled;
-      addBtn.title = enabled ? '' : '云端连接失败，无法添加记录';
+    // 添加按钮已统一为浮动 FAB（#mobile-fab）
+    const fab = document.getElementById('mobile-fab');
+    if (fab) {
+      fab.style.display = enabled ? 'flex' : 'none';
+      fab.disabled = !enabled;
+      fab.title = enabled ? '添加记录' : '云端连接失败，无法添加记录';
     }
   }
 
@@ -474,10 +475,7 @@ class App {
       });
     });
 
-    // 顶部添加按钮
-    document.getElementById('add-btn').addEventListener('click', () => this.openModal());
-
-    // 移动端 FAB（右下角浮动添加按钮）
+    // 浮动添加按钮（FAB，所有屏幕尺寸统一入口）
     const mobileFab = document.getElementById('mobile-fab');
     if (mobileFab) mobileFab.addEventListener('click', () => this.openModal());
 

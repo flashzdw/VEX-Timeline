@@ -182,7 +182,7 @@
 
                 <div class="flex-1"></div>
 
-                <!-- 云状态 + 用户菜单 + 添加按钮（桌面） -->
+                <!-- 云状态 + 用户菜单（桌面） -->
                 <div class="flex items-center gap-2 sm:gap-3">
                     <button id="cloud-status" type="button" class="vx-cloud-status" title="点击刷新云端"
                             style="height:40px !important;width:40px !important;min-height:40px !important;min-width:40px !important;max-height:40px !important;max-width:40px !important;box-sizing:border-box !important;flex-shrink:0 !important;">
@@ -216,12 +216,6 @@
                         </div>
                     </div>
 
-                    <button id="add-btn" type="button"
-                            class="hidden lg:flex h-10 sm:h-14 px-3 sm:px-5 bg-primary text-white rounded-md font-semibold tracking-wider uppercase text-sm items-center gap-2 hover:bg-primary-hover hover:scale-105 transition-all duration-200">
-                        <i data-lucide="plus" class="w-5 h-5"></i>
-                        <span class="hidden sm:inline">添加记录</span>
-                    </button>
-
                     <!-- 移动端汉堡 -->
                     <button id="mobile-menu-btn" type="button"
                             class="md:hidden h-10 w-10 flex items-center justify-center bg-muted rounded-md hover:bg-gray-200 transition-all duration-200">
@@ -231,9 +225,9 @@
             </div>
         </header>
 
-        <!-- 移动端浮动添加按钮（FAB）：右下角 56px 圆形大按钮 -->
+        <!-- 浮动添加按钮（FAB）：右下角 56px 圆形大按钮（所有屏幕尺寸统一入口） -->
         <button id="mobile-fab" type="button"
-                class="lg:hidden fixed bottom-6 right-6 z-30 h-14 w-14 rounded-full bg-primary text-white shadow-[0_8px_24px_rgba(0,0,0,0.18)] flex items-center justify-center hover:bg-primary-hover hover:scale-105 active:scale-95 transition-all duration-200"
+                class="fixed bottom-6 right-6 z-30 h-14 w-14 rounded-full bg-primary text-white shadow-[0_8px_24px_rgba(0,0,0,0.18)] flex items-center justify-center hover:bg-primary-hover hover:scale-105 active:scale-95 transition-all duration-200"
                 style="box-sizing:border-box;flex-shrink:0;"
                 aria-label="添加记录">
             <i data-lucide="plus" class="w-7 h-7"></i>
@@ -242,7 +236,7 @@
         <!-- ============================================================
              MAIN AREA
              ============================================================ -->
-        <main class="max-w-7xl mx-auto px-4 sm:px-6 py-8 relative">
+        <main class="max-w-7xl mx-auto px-4 sm:px-6 py-8 relative overflow-x-hidden md:overflow-visible">
 
             <!-- 装饰几何（背景大圆） -->
             <div class="absolute -top-12 -right-24 h-80 w-80 rounded-full bg-primary/5 pointer-events-none"></div>
