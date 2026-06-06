@@ -13,7 +13,7 @@ class App {
     this.editingRecord = null;
     this.currentFilter = 'all';
     this.tempImageData = null;
-    this.currentTimelineId = this._loadStoredTimelineId() || 'local';
+    this.currentTimelineId = this._loadStoredTimelineId() || null;
     this.timelines = [];
     this.isOnline = navigator.onLine;
     this.syncInProgress = false;
@@ -33,7 +33,7 @@ class App {
 
   _saveStoredTimelineId(id) {
     try {
-      if (id && id !== 'local') localStorage.setItem('vex_current_timeline_id', id);
+      if (id) localStorage.setItem('vex_current_timeline_id', id);
       else localStorage.removeItem('vex_current_timeline_id');
     } catch (e) { /* ignore */ }
   }
@@ -172,16 +172,8 @@ class App {
   }
 
   onGuestMode() {
-    this.hideAuthPage();
-    this.currentTimelineId = 'local';
-    document.getElementById('user-info').classList.add('hidden');
-    document.getElementById('timeline-selector').classList.add('hidden');
-    document.querySelectorAll('[data-timeline-value]').forEach(b => b.classList.remove('active'));
-    const localBtn = document.querySelector('[data-timeline-value="local"]');
-    if (localBtn) localBtn.classList.add('active');
-    this.updateTimelineLabel('本地时间轴');
-    this.renderDate();
-    this.renderView();
+    // Round 4：离线模式已取消；保留此方法为 no-op 避免旧代码引用错误
+    console.warn('[VEX-Timeline] onGuestMode 已废弃：所有功能必须先登录');
   }
 
   // ============================================================
@@ -213,7 +205,7 @@ class App {
       return { success: false, error: lastErr.message || String(lastErr) };
     }
 
-    if (this.timelines.length > 0 && (this.currentTimelineId === 'local' || !this.timelines.find(t => t.id === this.currentTimelineId))) {
+    if (this.timelines.length > 0 && (!this.currentTimelineId || !this.timelines.find(t => t.id === this.currentTimelineId))) {
       const personal = this.timelines.find(t => t.type === 'personal');
       this.currentTimelineId = personal ? personal.id : this.timelines[0].id;
       this._saveStoredTimelineId(this.currentTimelineId);
@@ -231,16 +223,13 @@ class App {
     const mobileList = document.getElementById('mobile-timeline-list');
     if (!menu) return;
 
-    // 桌面下拉：保留第一个 local 项，追加其他
-    const items = [
-      { id: 'local', label: '本地时间轴', type: 'local' }
-    ];
-    this.timelines.forEach(t => items.push({ id: t.id, label: t.name, type: t.type }));
+    // Round 4：取消本地时间轴概念，只渲染云端时间轴
+    const items = this.timelines.map(t => ({ id: t.id, label: t.name, type: t.type }));
 
     // 桌面菜单渲染
     menu.innerHTML = items.map(item => `
       <button type="button" class="vx-timeline-menu-item${item.id === this.currentTimelineId ? ' active' : ''}" data-timeline-value="${item.id}">
-        <i data-lucide="${item.type === 'team' ? 'users' : (item.type === 'local' ? 'hard-drive' : 'user')}" class="w-4 h-4 text-fg/60"></i>
+        <i data-lucide="${item.type === 'team' ? 'users' : 'user'}" class="w-4 h-4 text-fg/60"></i>
         <span>${this._escapeHtml(item.label)}</span>
       </button>
     `).join('');
@@ -249,7 +238,7 @@ class App {
     if (mobileList) {
       mobileList.innerHTML = items.map(item => `
         <button type="button" class="vx-timeline-menu-item${item.id === this.currentTimelineId ? ' active' : ''}" data-timeline-value="${item.id}">
-          <i data-lucide="${item.type === 'team' ? 'users' : (item.type === 'local' ? 'hard-drive' : 'user')}" class="w-4 h-4 text-fg/60"></i>
+          <i data-lucide="${item.type === 'team' ? 'users' : 'user'}" class="w-4 h-4 text-fg/60"></i>
           <span>${this._escapeHtml(item.label)}</span>
         </button>
       `).join('');
@@ -281,9 +270,9 @@ class App {
   }
 
   _findTimelineName(id) {
-    if (id === 'local') return '本地时间轴';
+    if (!id) return '未选择';
     const t = this.timelines.find(x => x.id === id);
-    return t ? t.name : '本地时间轴';
+    return t ? t.name : '未选择';
   }
 
   updateTimelineLabel(name) {
@@ -391,7 +380,7 @@ class App {
   // 同步
   // ============================================================
   async syncFromCloud() {
-    if (!authManager.isLoggedIn() || !supabaseManager.isConfigured() || this.currentTimelineId === 'local') return;
+    if (!authManager.isLoggedIn() || !supabaseManager.isConfigured() || !this.currentTimelineId) return;
     if (this.syncInProgress) return;
     this.syncInProgress = true;
     this.updateCloudStatusIcon();
@@ -528,10 +517,9 @@ class App {
       if (e.target.id === 'day-records-overlay') this.closeDayRecords();
     });
 
-    // 登录/注册/离线
+    // 登录/注册（Round 4：取消离线按钮）
     document.getElementById('auth-login-btn').addEventListener('click', () => this.handleLogin());
     document.getElementById('auth-register-btn').addEventListener('click', () => this.handleRegister());
-    document.getElementById('auth-guest-btn').addEventListener('click', () => this.onGuestMode());
     document.getElementById('auth-username').addEventListener('keydown', (e) => {
       if (e.key === 'Enter') this.handleLogin();
     });
@@ -650,28 +638,38 @@ class App {
   // 同步视图/过滤器激活样式
   // ============================================================
   syncViewToggleState() {
+    // Round 4：用 classList 显式管理，避免正则替换残留（解决月历态无强调 bug）
     document.querySelectorAll('[data-view-toggle]').forEach(btn => {
       const isActive = btn.dataset.viewToggle === this.currentView;
+      btn.classList.remove(
+        'bg-fg', 'text-white',
+        'bg-muted', 'text-fg/60',
+        'bg-white', 'text-fg',
+        'hover:text-fg'
+      );
       if (isActive) {
-        btn.className = btn.className
-          .replace(/bg-(white|muted|fg) text-(fg|fg\/60|white)/g, '')
-          .trim();
         btn.classList.add('bg-fg', 'text-white');
       } else {
-        btn.classList.remove('bg-fg', 'text-white');
-        btn.classList.add('bg-muted', 'text-fg/60');
+        btn.classList.add('text-fg/60', 'hover:text-fg');
       }
     });
   }
 
   syncFilterState() {
+    // Round 4：选中态用对应语义色（红/黄/绿），而非统一黑色
+    const filterClasses = {
+      all:    ['bg-fg',        'text-white'],
+      high:   ['bg-danger',    'text-white'],
+      medium: ['bg-accent',    'text-white'],
+      low:    ['bg-secondary', 'text-white']
+    };
     document.querySelectorAll('#filter-bar [data-filter]').forEach(btn => {
-      const isActive = btn.dataset.filter === this.currentFilter;
+      const f = btn.dataset.filter;
+      const isActive = f === this.currentFilter;
+      btn.classList.remove('bg-fg', 'bg-danger', 'bg-accent', 'bg-secondary', 'text-white', 'bg-white', 'text-fg');
       if (isActive) {
-        btn.classList.remove('bg-white', 'text-fg');
-        btn.classList.add('bg-fg', 'text-white');
+        filterClasses[f].forEach(c => btn.classList.add(c));
       } else {
-        btn.classList.remove('bg-fg', 'text-white');
         btn.classList.add('bg-white', 'text-fg');
       }
     });
@@ -757,7 +755,7 @@ class App {
 
   async handleLogout() {
     await authManager.logout();
-    this.currentTimelineId = 'local';
+    this.currentTimelineId = null;
     this._saveStoredTimelineId(null);
     this.timelines = [];
     this.showAuthPage();
@@ -1026,7 +1024,7 @@ class App {
 
     if (this.editingRecord) {
       await dbManager.updateRecord(this.editingRecord.id, recordData);
-      if (authManager.isLoggedIn() && supabaseManager.isConfigured() && this.currentTimelineId !== 'local') {
+      if (authManager.isLoggedIn() && supabaseManager.isConfigured() && this.currentTimelineId) {
         if (this.isOnline) {
           try {
             const cloudId = this.editingRecord.cloud_id;
@@ -1042,7 +1040,7 @@ class App {
       }
     } else {
       const localId = await dbManager.addRecord(recordData);
-      if (authManager.isLoggedIn() && supabaseManager.isConfigured() && this.currentTimelineId !== 'local') {
+      if (authManager.isLoggedIn() && supabaseManager.isConfigured() && this.currentTimelineId) {
         if (this.isOnline) {
           try {
             const cloudRecord = await cloudDBManager.addRecord(this.currentTimelineId, { date, time, title, content, importance, image_url: image });
@@ -1064,7 +1062,7 @@ class App {
     if (!confirm('确定要删除这条记录吗？')) return;
     const record = this.records.find(r => r.id === id);
     await dbManager.deleteRecord(id);
-    if (authManager.isLoggedIn() && supabaseManager.isConfigured() && this.currentTimelineId !== 'local' && record) {
+   if (authManager.isLoggedIn() && supabaseManager.isConfigured() && this.currentTimelineId && record) {
       if (this.isOnline) {
         try {
           if (record.cloud_id) await cloudDBManager.deleteRecord(record.cloud_id);
@@ -1121,6 +1119,13 @@ class App {
 
     this.syncViewToggleState();
 
+    // Round 4：未登录或未选择时间轴时不渲染内容（防止本地/云端错乱）
+    if (!authManager.isLoggedIn() || !this.currentTimelineId) {
+      timelineContainer.classList.add('hidden');
+      calendarContainer.classList.add('hidden');
+      return;
+    }
+
     if (this.currentView === 'month') {
       timelineContainer.classList.add('hidden');
       calendarContainer.classList.remove('hidden');
@@ -1137,28 +1142,36 @@ class App {
     const year = this.currentDate.getFullYear();
     const month = this.currentDate.getMonth();
 
-    let datesWithRecords;
-    if (this.currentTimelineId === 'local') {
-      datesWithRecords = await dbManager.getDatesWithRecords(year, month + 1);
-    } else {
-      const allRecords = await this.getRecordsForCurrentTimeline();
-      const dates = new Set();
-      allRecords.forEach(r => {
-        const [rYear, rMonth] = r.date.split('-');
-        if (parseInt(rYear) === year && parseInt(rMonth) === month + 1) dates.add(r.date);
-      });
-      datesWithRecords = Array.from(dates).sort();
+    // Round 4：取消本地时间轴，统一走云端路径
+    if (!this.currentTimelineId) {
+      calendar.innerHTML = '<div class="vx-empty" style="grid-column: 1 / -1;">请先选择时间轴</div>';
+      return;
     }
+
+    const allRecords = await this.getRecordsForCurrentTimeline();
+    const dates = new Set();
+    allRecords.forEach(r => {
+      const [rYear, rMonth] = r.date.split('-');
+      if (parseInt(rYear) === year && parseInt(rMonth) === month + 1) dates.add(r.date);
+    });
+    const datesWithRecords = Array.from(dates).sort();
     const datesSet = new Set(datesWithRecords);
 
     // 同时获取 records 用来判断高/中 importance
-    const allRecords = await this.getRecordsForCurrentTimeline();
     const highDatesSet = new Set(
       allRecords.filter(r => r.importance === 'high').map(r => r.date)
     );
     const mediumDatesSet = new Set(
       allRecords.filter(r => r.importance === 'medium').map(r => r.date)
     );
+
+    // Round 4：按 date 聚合 importances（用于每记录一个点）
+    const recordsByDate = {};
+    allRecords.forEach(r => {
+      if (parseInt(r.date.split('-')[0]) === year && parseInt(r.date.split('-')[1]) === month + 1) {
+        (recordsByDate[r.date] = recordsByDate[r.date] || []).push(r.importance || 'medium');
+      }
+    });
 
     const firstDay = new Date(year, month, 1);
     const firstDayOfWeek = firstDay.getDay();
@@ -1197,7 +1210,6 @@ class App {
       const isWeekend = dow === 0 || dow === 6;
 
       const classes = ['vx-calendar-cell'];
-      if (hasRecords) classes.push('has-records');
       if (hasHigh) classes.push('has-high');
       // 仅当不是 high 时才标 has-medium（high 优先）
       else if (hasMedium) classes.push('has-medium');
@@ -1206,9 +1218,18 @@ class App {
       // 最后一行追加 vx-calendar-row-last（用于 CSS 移除 border-bottom）
       if (cellIdx >= lastRowStart) classes.push('vx-calendar-row-last');
 
+      // Round 4：每条记录一个点，按 importance 着色（最多 5 个 + "+N" 溢出）
+      const dateImportances = recordsByDate[dateStr] || [];
+      const dotsHTML = dateImportances.length > 0
+        ? `<div class="vx-calendar-dots">${dateImportances.slice(0, 5).map(imp =>
+            `<span class="vx-calendar-dot ${imp}"></span>`
+          ).join('')}${dateImportances.length > 5 ? `<span class="text-[8px] font-semibold text-fg/60 ml-0.5">+${dateImportances.length - 5}</span>` : ''}</div>`
+        : '';
+
       cellsHTML += `
         <div class="${classes.join(' ')}" data-date="${dateStr}">
           <span class="vx-calendar-day-number">${day}</span>
+          ${dotsHTML}
         </div>
       `;
       cellIdx++;
@@ -1228,7 +1249,7 @@ class App {
   }
 
   async getRecordsForCurrentTimeline() {
-    if (this.currentTimelineId === 'local') return await dbManager.getAllRecords();
+    if (!this.currentTimelineId) return [];
     return await dbManager.getRecordsByTimeline(this.currentTimelineId);
   }
 
@@ -1362,7 +1383,7 @@ class App {
             ` : ''}
             <div class="flex items-center gap-2 mb-1.5">
               <span class="text-xs font-semibold uppercase tracking-wider text-fg/60">${this._escapeHtml(time)}</span>
-              <span class="text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded-md ${importanceBadgeColors[importance]}">${importanceLabel[importance]}</span>
+              <span class="inline-block text-[10px] font-semibold uppercase px-1.5 py-px rounded ${importanceBadgeColors[importance]}">${importanceLabel[importance]}</span>
             </div>
             <div class="font-semibold text-lg mb-1 text-fg">${this._escapeHtml(record.title)}</div>
             ${record.content ? `<div class="text-fg/60 text-sm mb-3">${this._escapeHtml(record.content)}</div>` : ''}
@@ -1396,7 +1417,7 @@ class App {
   }
 
   canEditRecord(record) {
-    if (this.currentTimelineId === 'local') return true;
+    if (!this.currentTimelineId) return false;
     if (!authManager.isLoggedIn()) return true;
     const current = this.timelines.find(t => t.id === this.currentTimelineId);
     if (!current) return true;

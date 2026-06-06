@@ -103,7 +103,7 @@
                 </div>
 
                 <h2 class="font-extrabold text-4xl tracking-[-0.02em] text-fg mb-2">欢迎回来</h2>
-                <p class="text-sm font-semibold uppercase tracking-wider text-fg/60 mb-8">登录 · 注册 · 或离线使用</p>
+                <p class="text-sm font-semibold uppercase tracking-wider text-fg/60 mb-8">登录 · 注册</p>
 
                 <div id="diag-banner" class="hidden mb-6 p-4 bg-red-50 border-2 border-primary rounded-md text-sm font-medium text-red-700"></div>
 
@@ -141,18 +141,6 @@
                         </button>
                     </div>
                 </form>
-
-                <div class="flex items-center gap-4 my-6">
-                    <div class="flex-1 h-0.5 bg-border"></div>
-                    <span class="text-xs font-semibold uppercase tracking-wider text-fg/60">或</span>
-                    <div class="flex-1 h-0.5 bg-border"></div>
-                </div>
-
-                <button id="auth-guest-btn" type="button"
-                        class="w-full h-14 bg-muted text-fg rounded-md font-semibold tracking-wider uppercase text-sm flex items-center justify-center gap-2 hover:bg-gray-200 transition-all duration-200">
-                    <i data-lucide="hard-drive" class="w-5 h-5"></i>
-                    离线使用
-                </button>
             </div>
         </div>
     </div>
@@ -191,15 +179,11 @@
                     <button id="timeline-select-btn" type="button"
                             class="h-10 px-4 bg-white border-2 border-border rounded-md font-semibold text-sm flex items-center gap-2 hover:border-primary transition-all duration-200">
                         <i data-lucide="layers" class="w-4 h-4 text-primary"></i>
-                        <span id="timeline-select-label">本地时间轴</span>
+                        <span id="timeline-select-label">未选择</span>
                         <i data-lucide="chevron-down" class="w-4 h-4 text-fg/60"></i>
                     </button>
                     <div id="timeline-menu" class="vx-timeline-menu">
-                        <button type="button" data-timeline-value="local" class="vx-timeline-menu-item">
-                            <i data-lucide="hard-drive" class="w-4 h-4 text-fg/60"></i>
-                            <span>本地时间轴</span>
-                        </button>
-                        <!-- 动态插入其他时间轴选项（app.js） -->
+                        <!-- 时间轴选项由 app.js 动态插入（云端时间轴） -->
                     </div>
                 </div>
 
@@ -267,10 +251,10 @@
                     <div class="flex items-center gap-4 flex-wrap">
                         <span class="text-xs font-semibold uppercase tracking-wider text-fg/60">重要性</span>
                         <div class="flex gap-2 flex-wrap">
-                            <button data-filter="all"    class="h-10 px-4 rounded-md text-sm font-semibold tracking-wider uppercase bg-fg text-white transition-all duration-200 hover:scale-105">全部</button>
-                            <button data-filter="high"   class="h-10 px-4 rounded-md text-sm font-semibold tracking-wider uppercase bg-white text-fg transition-all duration-200 hover:bg-red-50 hover:scale-105">高</button>
-                            <button data-filter="medium" class="h-10 px-4 rounded-md text-sm font-semibold tracking-wider uppercase bg-white text-fg transition-all duration-200 hover:bg-amber-50 hover:scale-105">中</button>
-                            <button data-filter="low"    class="h-10 px-4 rounded-md text-sm font-semibold tracking-wider uppercase bg-white text-fg transition-all duration-200 hover:bg-emerald-50 hover:scale-105">低</button>
+                            <button data-filter="all"    class="h-10 px-4 rounded-md text-sm font-semibold tracking-wider uppercase bg-fg text-white transition-all duration-200">全部</button>
+                            <button data-filter="high"   class="h-10 px-4 rounded-md text-sm font-semibold tracking-wider uppercase bg-white text-fg transition-all duration-200">高</button>
+                            <button data-filter="medium" class="h-10 px-4 rounded-md text-sm font-semibold tracking-wider uppercase bg-white text-fg transition-all duration-200">中</button>
+                            <button data-filter="low"    class="h-10 px-4 rounded-md text-sm font-semibold tracking-wider uppercase bg-white text-fg transition-all duration-200">低</button>
                         </div>
                     </div>
                 </div>
@@ -309,7 +293,7 @@
                         <i data-lucide="chevron-right" class="w-5 h-5"></i>
                     </button>
                 </div>
-                <div id="calendar" class="grid grid-cols-7 gap-0 border-2 border-border rounded-lg overflow-hidden"></div>
+                <div id="calendar" class="grid grid-cols-7 gap-0 border-2 border-border rounded-lg overflow-hidden max-w-3xl mx-auto"></div>
             </section>
         </main>
 

@@ -154,7 +154,9 @@ body {
    最外圈 2px 边框由父容器提供。
    ============================================================ */
 .vx-calendar-cell {
-  aspect-ratio: 1;
+  /* Round 4：移除 aspect-ratio: 1（避免 1280px 视口下每格 170×170px 过大）
+     改用 min-height 控制高度，月历容器 max-w-3xl 约束整体宽度 → 单格约 100px */
+  min-height: 90px;
   background-color: var(--color-bg);
   border-right: 1px solid var(--color-border);
   border-bottom: 1px solid var(--color-border);
@@ -167,6 +169,15 @@ body {
   transition: background-color 0.2s, color 0.2s, transform 0.2s;
   position: relative;
   font-weight: 600;
+  overflow: hidden;
+}
+
+/* 响应式：移动端紧凑、桌面更大 */
+@media (max-width: 640px) {
+  .vx-calendar-cell { min-height: 64px; }
+}
+@media (min-width: 1024px) {
+  .vx-calendar-cell { min-height: 100px; }
 }
 
 /* 第 7 列移除右边框（最右一列由父容器右边框收口） */
@@ -224,20 +235,29 @@ body {
   background-color: #FFFBEB;
 }
 
-.vx-calendar-cell.has-records::after {
-  content: '';
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  width: 8px;
-  height: 8px;
-  background-color: var(--color-secondary);
-  border-radius: 999px;
-}
+/* Round 4：移除旧的 .has-records::after 单点机制
+   改用 .vx-calendar-dots 容器，每条记录一个点，按 importance 着色 */
 
-.vx-calendar-cell.has-high.has-records::after {
-  background-color: var(--color-primary);
+.vx-calendar-dots {
+  position: absolute;
+  bottom: 4px;
+  left: 4px;
+  right: 4px;
+  display: flex;
+  gap: 2px;
+  flex-wrap: wrap;
+  align-items: center;
+  max-width: calc(100% - 8px);
 }
+.vx-calendar-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+.vx-calendar-dot.high   { background-color: var(--color-danger); }
+.vx-calendar-dot.medium { background-color: var(--color-accent); }
+.vx-calendar-dot.low    { background-color: var(--color-secondary); }
 
 /* ============================================================
    用户菜单展开收起
@@ -445,10 +465,8 @@ body {
 .vx-timeline-item[data-importance="medium"] .vx-rail-dot i { color: var(--color-accent); }
 .vx-timeline-item[data-importance="low"]    .vx-rail-dot i { color: var(--color-secondary); }
 
-/* 重要性高亮边框（左 4px） */
-.vx-timeline-item[data-importance="high"]   { border-left: 4px solid var(--color-danger); }
-.vx-timeline-item[data-importance="medium"] { border-left: 4px solid var(--color-accent); }
-.vx-timeline-item[data-importance="low"]    { border-left: 4px solid var(--color-secondary); }
+/* Round 4：移除 4px 语义色 border-left（避免 3 重色彩过载）
+   item 边框统一用 var(--color-border)，语义信息由 rail 圆点 + 标签承担 */
 
 /* ============================================================
    工具：空状态/加载占位
