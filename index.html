@@ -93,38 +93,31 @@
         </div>
 
         <!-- 右侧登录表单 -->
-        <div class="flex-1 flex items-center justify-center p-8 lg:p-12 bg-bg relative overflow-hidden">
+        <div class="flex-1 flex items-center justify-center p-6 sm:p-8 lg:p-12 bg-bg relative overflow-y-auto">
             <div class="absolute -bottom-24 -right-24 h-64 w-64 rounded-full bg-primary/5 pointer-events-none"></div>
 
-            <div class="relative z-10 w-full max-w-md">
-                <div class="lg:hidden flex items-center gap-3 mb-8">
+            <div class="relative z-10 w-full max-w-md py-6 sm:py-0">
+                <div class="lg:hidden flex items-center gap-3 mb-6 sm:mb-8">
                     <div class="h-10 w-10 bg-primary text-white rounded-md flex items-center justify-center font-extrabold">V</div>
                     <span class="text-xl font-extrabold tracking-[-0.02em]">VEX-Timeline</span>
                 </div>
 
-                <h2 class="font-extrabold text-4xl tracking-[-0.02em] text-fg mb-2">欢迎回来</h2>
-                <p class="text-sm font-semibold uppercase tracking-wider text-fg/60 mb-8">登录 · 注册</p>
+                <h2 class="font-extrabold text-3xl sm:text-4xl tracking-[-0.02em] text-fg mb-2">欢迎回来</h2>
+                <p class="text-xs sm:text-sm font-semibold uppercase tracking-wider text-fg/60 mb-6 sm:mb-8">登录 · 注册</p>
 
-                <div id="diag-banner" class="hidden mb-6 p-4 bg-red-50 border-2 border-primary rounded-md text-sm font-medium text-red-700"></div>
-
-                <div id="diagnostic-bar" class="mb-6 p-4 bg-muted border-2 border-border rounded-md text-xs font-medium leading-relaxed">
-                    <div class="flex justify-between" id="diag-url">URL: 检测中…</div>
-                    <div class="flex justify-between" id="diag-key">Key: 检测中…</div>
-                    <div class="flex justify-between" id="diag-session">Session: 检测中…</div>
-                    <div class="flex justify-between" id="diag-user">Token: 检测中…</div>
-                    <div class="flex justify-between" id="diag-timeline">时间轴: 检测中…</div>
-                </div>
+                <!-- 移动端友好提示：仅在 Supabase 未配置时显示 -->
+                <div id="diag-banner" class="hidden mb-6 p-3 bg-muted border-2 border-border rounded-md text-xs font-medium text-fg/60 text-center"></div>
 
                 <form id="auth-form" class="flex flex-col gap-4" autocomplete="off">
                     <div class="flex flex-col gap-2">
                         <label class="text-xs font-semibold uppercase tracking-wider text-fg/60" for="auth-username">用户名</label>
                         <input id="auth-username" type="text" placeholder="输入用户名" maxlength="20" autocomplete="off"
-                               class="h-14 px-4 bg-muted text-fg rounded-md border-0 outline-none font-medium focus:bg-white focus:border-2 focus:border-primary transition-all duration-200">
+                               class="h-14 px-4 bg-muted text-fg text-base rounded-md border-0 outline-none font-medium focus:bg-white focus:border-2 focus:border-primary transition-all duration-200">
                     </div>
                     <div class="flex flex-col gap-2">
                         <label class="text-xs font-semibold uppercase tracking-wider text-fg/60" for="auth-password">密码</label>
                         <input id="auth-password" type="password" placeholder="输入密码" autocomplete="off"
-                               class="h-14 px-4 bg-muted text-fg rounded-md border-0 outline-none font-medium focus:bg-white focus:border-2 focus:border-primary transition-all duration-200">
+                               class="h-14 px-4 bg-muted text-fg text-base rounded-md border-0 outline-none font-medium focus:bg-white focus:border-2 focus:border-primary transition-all duration-200">
                     </div>
                     <div id="auth-error" class="min-h-[1.25rem] text-sm font-medium text-primary"></div>
 
@@ -154,7 +147,7 @@
              顶部菜单（单行高级感）  Logo | View | Timeline | Cloud | User | +
              ============================================================ -->
         <header class="sticky top-0 z-40 bg-white border-b-4 border-border">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 h-20 flex items-center justify-between gap-4">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 md:h-20 flex items-center justify-between gap-4">
 
                 <!-- Logo -->
                 <a href="#" class="flex items-center gap-2 shrink-0">
@@ -488,6 +481,21 @@
                 <button data-view-toggle="month"
                         class="h-12 rounded-md text-sm font-semibold tracking-wider uppercase bg-muted text-fg/60 transition-all duration-200">
                     <i data-lucide="calendar" class="w-4 h-4 inline-block -mt-0.5 mr-1"></i>月历
+                </button>
+            </div>
+        </div>
+
+        <!-- 移动端快捷操作（云状态 + 添加记录） -->
+        <div class="mb-6">
+            <div class="text-xs font-semibold uppercase tracking-wider text-fg/60 mb-2">快捷操作</div>
+            <div class="flex flex-col gap-2">
+                <button id="mobile-add-btn" type="button"
+                        class="h-12 bg-primary text-white rounded-md font-semibold tracking-wider uppercase text-sm flex items-center justify-center gap-2 hover:bg-primary-hover transition-all duration-200">
+                    <i data-lucide="plus" class="w-4 h-4"></i>添加记录
+                </button>
+                <button id="mobile-cloud-refresh-btn" type="button"
+                        class="h-12 border-2 border-border bg-white text-fg rounded-md font-semibold tracking-wider uppercase text-sm flex items-center justify-center gap-2 hover:border-primary hover:text-primary transition-all duration-200">
+                    <i data-lucide="cloud" class="w-4 h-4"></i>刷新云端
                 </button>
             </div>
         </div>

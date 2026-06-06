@@ -329,11 +329,15 @@ class App {
   }
 
   // ============================================================
-  // 诊断条
+  // 诊断条（已下线：保留为 no-op 以兼容历史调用）
   // ============================================================
   renderDiagnosticBar() {
+    // DOM 中已删除 #diagnostic-bar 与调试字段；此方法保留为 no-op，
+    // 以避免在 handleLogin/handleRegister/handleLogout 中调用时抛 null 引用。
     const el = document.getElementById('diagnostic-bar');
     if (!el) return;
+
+    // 下面是仅在调试 DOM 存在时才会执行的旧逻辑（理论上不会触发）
     const status = supabaseManager.getConfigStatus();
     const isLoggedIn = authManager.isLoggedIn();
     const username = authManager.getUsername() || '未登录';
@@ -369,16 +373,12 @@ class App {
       tlEl.innerHTML = `时间轴: <code>${this._escapeHtml(tlName)}</code>`;
     }
 
+    // 用户友好的提示（不再使用红色 banner）
     const banner = document.getElementById('diag-banner');
     if (banner) {
       if (!cloudOk) {
         banner.classList.remove('hidden');
-        banner.className = 'mb-6 p-4 bg-red-50 border-2 border-primary rounded-md text-sm font-medium text-red-700';
-        banner.innerHTML = `
-          <strong>⚠️ 云端未配置</strong><br>
-          登录后数据无法上云，刷新后会丢失登录状态。<br>
-          <small>请在 Vercel Dashboard 设置 <code>SUPABASE_URL</code> 和 <code>SUPABASE_ANON_KEY</code>，然后 Redeploy。</small>
-        `;
+        banner.textContent = '云端服务暂不可用，请稍后再试或联系管理员。';
       } else {
         banner.classList.add('hidden');
       }
@@ -598,6 +598,36 @@ class App {
     if (mobileBtn) mobileBtn.addEventListener('click', () => this.openMobileDrawer());
     const mobileClose = document.getElementById('mobile-drawer-close');
     if (mobileClose) mobileClose.addEventListener('click', () => this.closeMobileDrawer());
+
+    // 移动端快捷操作：添加记录 / 刷新云端
+    const mobileAdd = document.getElementById('mobile-add-btn');
+    if (mobileAdd) {
+      mobileAdd.addEventListener('click', () => {
+        this.closeMobileDrawer();
+        this.openModal();
+      });
+    }
+    const mobileCloudRefresh = document.getElementById('mobile-cloud-refresh-btn');
+    if (mobileCloudRefresh) {
+      mobileCloudRefresh.addEventListener('click', async () => {
+        this.closeMobileDrawer();
+        if (!authManager.isLoggedIn() || !this.currentTimelineId) {
+          this.showToast('请先登录并选择时间轴', 'warning');
+          return;
+        }
+        if (this.syncInProgress) {
+          this.showToast('正在同步中，请稍候', 'info');
+          return;
+        }
+        this.showToast('正在从云端刷新…', 'info');
+        try {
+          await this.syncFromCloud();
+          this.showToast('云端数据已同步', 'success');
+        } catch (err) {
+          this.showToast('刷新失败: ' + (err.message || err), 'error');
+        }
+      });
+    }
 
     // 点击外部关闭所有菜单
     document.addEventListener('click', (e) => {
