@@ -1480,7 +1480,7 @@ class App {
               <i data-lucide="${importanceIcons[importance]}"></i>
             </div>
             ${canEdit ? `
-              <div class="flex gap-2 justify-end mb-2">
+              <div class="vx-timeline-actions">
                 <button class="vx-action-btn h-7 w-7 bg-muted text-fg rounded-md flex items-center justify-center hover:bg-primary hover:text-white transition-all duration-200 vx-edit-btn" data-id="${recordIdStr}" title="编辑">
                   <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
                 </button>
