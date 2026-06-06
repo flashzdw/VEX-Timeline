@@ -482,7 +482,7 @@ body {
   background-color: var(--color-bg);
   border: 2px solid var(--color-border) !important;       /* Round 9：!important 覆盖 line 127 旧版 border-left */
   border-radius: var(--radius-md);
-  padding: 0.25rem 0.75rem 0.5rem 0.75rem !important;    /* Round 9：!important 覆盖 line 127 旧版 padding: 1.5rem */
+  padding: 0.5rem 0.75rem 0.5rem 0.75rem !important;    /* Round 11：top 0.25rem→0.5rem（时间离顶端 4px→8px，与底部间距协调） */
   transition: border-color 0.2s, transform 0.2s;
 }
 .vx-timeline-item:hover {

@@ -1475,7 +1475,7 @@ class App {
         // Round 6：卡片内部只显示时间；重要性 inline 在标题前
         // Round 10：内联 style 强制 padding/border 紧凑，绕过任何 CSS 优先级问题
         html += `
-          <div class="vx-timeline-item" data-importance="${importance}" style="padding:4px 12px 8px 12px !important;border:2px solid var(--color-border) !important;border-radius:6px !important;box-sizing:border-box;">
+          <div class="vx-timeline-item" data-importance="${importance}" style="padding:8px 12px 8px 12px !important;border:2px solid var(--color-border) !important;border-radius:6px !important;box-sizing:border-box;">
             <div class="vx-rail-dot">
               <i data-lucide="${importanceIcons[importance]}"></i>
             </div>
