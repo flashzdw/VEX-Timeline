@@ -186,10 +186,30 @@ body {
 .vx-calendar-cell.today {
   background-color: var(--color-primary);
   color: var(--color-bg);
+  border: 2px solid var(--color-primary);
 }
 
-.vx-calendar-cell.today:hover {
-  background-color: #2563EB;
+/* 今天 + has-high 组合：白底蓝边 + 深字 + 蓝点（避免白字撞浅红） */
+.vx-calendar-cell.today.has-high {
+  background-color: var(--color-bg);
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+.vx-calendar-cell.today.has-high::before {
+  content: '';
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 6px;
+  height: 6px;
+  background-color: var(--color-primary);
+  border-radius: 999px;
+}
+
+/* has-high / has-medium / has-records 等覆盖类也覆盖 color（避免 today 白字撞浅红/浅黄） */
+.vx-calendar-cell.has-high,
+.vx-calendar-cell.has-medium {
+  color: var(--color-fg);
 }
 
 .vx-calendar-cell.weekend {
@@ -198,6 +218,10 @@ body {
 
 .vx-calendar-cell.has-high {
   background-color: #FEF2F2;
+}
+
+.vx-calendar-cell.has-medium {
+  background-color: #FFFBEB;
 }
 
 .vx-calendar-cell.has-records::after {
@@ -363,6 +387,68 @@ body {
 .vx-deco-float {
   animation: vx-deco-float 6s ease-in-out infinite;
 }
+
+/* ============================================================
+   时间轴竖线 + 圆形指示器
+   - 容器 vx-timeline-rail 提供 padding-left 让出圆形空间
+   - ::before 画 2px 竖线（贯穿首末圆形之间）
+   - 每个 item 的 vx-rail-dot 骑在竖线上
+   ============================================================ */
+.vx-timeline-rail {
+  position: relative;
+  padding-left: 32px;
+}
+.vx-timeline-rail::before {
+  content: '';
+  position: absolute;
+  left: 14px;
+  top: 28px;
+  bottom: 28px;
+  width: 2px;
+  background-color: var(--color-border);
+}
+.vx-timeline-item {
+  position: relative;
+  background-color: var(--color-bg);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 1rem;
+  transition: border-color 0.2s, transform 0.2s;
+}
+.vx-timeline-item:hover {
+  border-color: var(--color-fg);
+}
+.vx-timeline-item .vx-rail-dot {
+  position: absolute;
+  left: -32px;
+  top: 8px;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background-color: var(--color-bg);
+  border: 2px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+}
+.vx-timeline-item .vx-rail-dot i {
+  width: 14px;
+  height: 14px;
+  stroke-width: 2.5;
+}
+/* 不同 importance 的圆点颜色 */
+.vx-timeline-item[data-importance="high"]   .vx-rail-dot { border-color: var(--color-danger); }
+.vx-timeline-item[data-importance="medium"] .vx-rail-dot { border-color: var(--color-accent); }
+.vx-timeline-item[data-importance="low"]    .vx-rail-dot { border-color: var(--color-secondary); }
+.vx-timeline-item[data-importance="high"]   .vx-rail-dot i { color: var(--color-danger); }
+.vx-timeline-item[data-importance="medium"] .vx-rail-dot i { color: var(--color-accent); }
+.vx-timeline-item[data-importance="low"]    .vx-rail-dot i { color: var(--color-secondary); }
+
+/* 重要性高亮边框（左 4px） */
+.vx-timeline-item[data-importance="high"]   { border-left: 4px solid var(--color-danger); }
+.vx-timeline-item[data-importance="medium"] { border-left: 4px solid var(--color-accent); }
+.vx-timeline-item[data-importance="low"]    { border-left: 4px solid var(--color-secondary); }
 
 /* ============================================================
    工具：空状态/加载占位

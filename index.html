@@ -11,6 +11,20 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
     <!-- Tailwind Play CDN + Design Tokens (DESIGN.md §二/三/四) -->
+    <!-- Tailwind Play CDN（开发/演示用；生产环境建议切换到 Tailwind CLI / PostCSS） -->
+    <script>
+      // 抑制 Tailwind Play CDN 的"production"警告（无害，仅用于开发阶段）
+      (function () {
+        var origWarn = console.warn;
+        console.warn = function () {
+          if (arguments[0] && typeof arguments[0] === 'string' &&
+              arguments[0].indexOf('cdn.tailwindcss.com should not be used in production') !== -1) {
+            return;
+          }
+          return origWarn.apply(console, arguments);
+        };
+      })();
+    </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
@@ -568,5 +582,8 @@
         });
       }
     </script>
+
+    <!-- Toast 提示（被 app.js showToast 调用） -->
+    <div id="vx-toast" class="hidden"></div>
 </body>
 </html>

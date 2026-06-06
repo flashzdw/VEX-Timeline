@@ -677,13 +677,26 @@ class App {
     });
   }
 
+  // 语义化颜色：选中态 = 红/黄/绿；未选中态 = 灰
+  importanceSelectedClasses = {
+    high:   ['bg-danger',     'text-white', 'border-danger'],
+    medium: ['bg-accent',     'text-white', 'border-accent'],
+    low:    ['bg-secondary',  'text-white', 'border-secondary']
+  };
+
   setImportance(val) {
     document.querySelectorAll('#importance-selector [data-importance]').forEach(btn => {
-      if (btn.dataset.importance === val) {
-        btn.classList.remove('bg-muted', 'text-fg/60');
-        btn.classList.add('bg-fg', 'text-white');
+      const v = btn.dataset.importance;
+      const isSelected = v === val;
+      // 清除所有相关类
+      btn.classList.remove(
+        'bg-fg', 'text-white', 'bg-muted', 'text-fg/60',
+        'bg-danger', 'bg-accent', 'bg-secondary',
+        'border-danger', 'border-accent', 'border-secondary'
+      );
+      if (isSelected) {
+        this.importanceSelectedClasses[v].forEach(c => btn.classList.add(c));
       } else {
-        btn.classList.remove('bg-fg', 'text-white');
         btn.classList.add('bg-muted', 'text-fg/60');
       }
     });
@@ -821,26 +834,36 @@ class App {
 
   async handleManageTeam() {
     const current = this.timelines.find(t => t.id === this.currentTimelineId);
-    if (!current || current.type !== 'team') return;
+    if (!current || current.type !== 'team') {
+      // 不再静默 return —— 给用户明确反馈
+      this.showToast('请先在时间轴下拉中选择一个赛队', 'warning');
+      return;
+    }
 
     document.getElementById('invite-code-display').textContent = current.invite_code || '---';
 
+    const membersList = document.getElementById('members-list');
+    membersList.innerHTML = '<div class="px-4 py-3 text-sm text-fg/60">加载中…</div>';
+
     try {
       const members = await cloudDBManager.getTimelineMembers(this.currentTimelineId);
-      const membersList = document.getElementById('members-list');
       const isOwner = current.owner_id === authManager.getCurrentUser()?.id;
 
-      membersList.innerHTML = members.map(member => `
-        <div class="flex justify-between items-center px-4 py-3 border-b-2 border-border last:border-b-0">
-          <div class="flex flex-col gap-0.5">
-            <span class="font-semibold text-sm">${this._escapeHtml(member.users?.username || '未知')}</span>
-            <span class="text-xs font-semibold uppercase tracking-wider text-fg/60">${member.role === 'owner' ? '所有者' : '成员'}</span>
+      if (!members || members.length === 0) {
+        membersList.innerHTML = '<div class="px-4 py-3 text-sm text-fg/60">暂无成员</div>';
+      } else {
+        membersList.innerHTML = members.map(member => `
+          <div class="flex justify-between items-center px-4 py-3 border-b-2 border-border last:border-b-0">
+            <div class="flex flex-col gap-0.5">
+              <span class="font-semibold text-sm">${this._escapeHtml(member.users?.username || '未知')}</span>
+              <span class="text-xs font-semibold uppercase tracking-wider text-fg/60">${member.role === 'owner' ? '所有者' : '成员'}</span>
+            </div>
+            ${isOwner && member.role !== 'owner' ? `
+              <button class="vx-member-remove-btn h-8 px-3 bg-white border-2 border-border rounded-md text-xs font-semibold uppercase tracking-wider hover:border-danger hover:text-danger transition-all duration-200" data-user-id="${member.user_id}">移除</button>
+            ` : ''}
           </div>
-          ${isOwner && member.role !== 'owner' ? `
-            <button class="vx-member-remove-btn h-8 px-3 bg-white border-2 border-border rounded-md text-xs font-semibold uppercase tracking-wider hover:border-primary hover:text-primary transition-all duration-200" data-user-id="${member.user_id}">移除</button>
-          ` : ''}
-        </div>
-      `).join('');
+        `).join('');
+      }
 
       if (window.lucide && lucide.createIcons) lucide.createIcons();
 
@@ -850,14 +873,39 @@ class App {
           try {
             await cloudDBManager.removeMember(this.currentTimelineId, userId);
             e.currentTarget.closest('.flex').remove();
-          } catch (err) { console.error(err); }
+            this.showToast('已移除成员', 'success');
+          } catch (err) {
+            console.error(err);
+            this.showToast('移除失败: ' + (err.message || err), 'error');
+          }
         });
       });
     } catch (e) {
-      console.error(e);
+      console.error('[VEX-Timeline] getTimelineMembers failed:', e);
+      membersList.innerHTML = `<div class="px-4 py-3 text-sm text-danger">加载失败: ${this._escapeHtml(e.message || String(e))}</div>`;
+      this.showToast('加载成员失败: ' + (e.message || e), 'error');
     }
 
     this.openModalById('invite-modal');
+  }
+
+  // ============================================================
+  // Toast 提示（替代 alert / 静默 return）
+  // ============================================================
+  showToast(message, type = 'info') {
+    const t = document.getElementById('vx-toast');
+    if (!t) return;
+    const colors = {
+      info:    'bg-fg text-white',
+      success: 'bg-secondary text-white',
+      warning: 'bg-accent text-white',
+      error:   'bg-danger text-white'
+    };
+    t.className = `fixed bottom-6 left-1/2 -translate-x-1/2 px-5 py-3 rounded-md text-sm font-semibold z-[200] shadow-none ${colors[type] || colors.info}`;
+    t.textContent = message;
+    t.classList.remove('hidden');
+    clearTimeout(this._toastTimer);
+    this._toastTimer = setTimeout(() => t.classList.add('hidden'), 3000);
   }
 
   copyInviteCode() {
@@ -1103,10 +1151,13 @@ class App {
     }
     const datesSet = new Set(datesWithRecords);
 
-    // 同时获取 records 用来判断高 importance
+    // 同时获取 records 用来判断高/中 importance
     const allRecords = await this.getRecordsForCurrentTimeline();
     const highDatesSet = new Set(
       allRecords.filter(r => r.importance === 'high').map(r => r.date)
+    );
+    const mediumDatesSet = new Set(
+      allRecords.filter(r => r.importance === 'medium').map(r => r.date)
     );
 
     const firstDay = new Date(year, month, 1);
@@ -1140,6 +1191,7 @@ class App {
       const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
       const hasRecords = datesSet.has(dateStr);
       const hasHigh = highDatesSet.has(dateStr);
+      const hasMedium = mediumDatesSet.has(dateStr);
       const isToday = dateStr === todayStr;
       const dow = new Date(year, month, day).getDay();
       const isWeekend = dow === 0 || dow === 6;
@@ -1147,6 +1199,8 @@ class App {
       const classes = ['vx-calendar-cell'];
       if (hasRecords) classes.push('has-records');
       if (hasHigh) classes.push('has-high');
+      // 仅当不是 high 时才标 has-medium（high 优先）
+      else if (hasMedium) classes.push('has-medium');
       if (isToday) classes.push('today');
       if (isWeekend) classes.push('weekend');
       // 最后一行追加 vx-calendar-row-last（用于 CSS 移除 border-bottom）
@@ -1196,15 +1250,16 @@ class App {
         const time = record.time || '';
         const importance = record.importance || 'medium';
         const imgSrc = record.image || record.image_url || '';
+        // 语义化颜色（红/黄/绿）
         const importanceColors = {
-          high:   'bg-primary',
-          medium: 'bg-accent',
-          low:    'bg-secondary'
+          high:   'bg-danger',       // 红
+          medium: 'bg-accent',       // 黄
+          low:    'bg-secondary'     // 绿
         };
         const importanceBg = {
           high:   'bg-red-50',
           medium: 'bg-white',
-          low:    'bg-muted'
+          low:    'bg-emerald-50'
         };
         html += `
           <div class="vx-day-record vx-timeline-item p-6 ${importanceBg[importance]}" data-importance="${importance}">
@@ -1255,30 +1310,31 @@ class App {
     });
     const sortedDates = Object.keys(grouped).sort((a, b) => b.localeCompare(a));
 
+    // 语义化颜色（红/黄/绿）—— 高=红 / 中=黄 / 低=绿
+    const importanceBadgeColors = {
+      high:   'bg-danger text-white',       // 红 #EF4444
+      medium: 'bg-accent text-white',       // 黄 #F59E0B
+      low:    'bg-secondary text-white'     // 绿 #10B981
+    };
+    const importanceIcons = {
+      high:   'alert-circle',
+      medium: 'circle-dot',
+      low:    'check-circle'
+    };
+    const importanceLabel = { high: '高', medium: '中', low: '低' };
+
     let html = '';
     sortedDates.forEach(dateStr => {
       const dateRecords = grouped[dateStr];
       dateRecords.sort((a, b) => (b.time || '00:00').localeCompare(a.time || '00:00'));
 
-      const importanceBadgeColors = {
-        high:   'bg-primary text-white',
-        medium: 'bg-accent text-white',
-        low:    'bg-secondary text-white'
-      };
-      const importanceIcons = {
-        high:   'alert-circle',
-        medium: 'circle-dot',
-        low:    'check-circle'
-      };
-      const importanceLabel = { high: '高', medium: '中', low: '低' };
-
       html += `
         <section class="flex flex-col gap-4">
-          <div class="bg-fg text-white px-6 py-4 rounded-md flex items-center justify-between">
-            <span class="font-extrabold text-2xl tracking-[-0.02em]">${this._escapeHtml(this.formatDateDisplay(dateStr))}</span>
-            <span class="text-xs font-semibold uppercase tracking-wider opacity-80">${dateRecords.length} 条</span>
+          <div class="flex items-baseline gap-3 px-1 pb-2 border-b-2 border-border">
+            <h2 class="font-extrabold text-2xl tracking-[-0.02em] text-fg">${this._escapeHtml(this.formatDateDisplay(dateStr))}</h2>
+            <span class="text-xs font-semibold uppercase tracking-wider text-fg/60">${dateRecords.length} 条</span>
           </div>
-          <div class="flex flex-col gap-3">
+          <div class="vx-timeline-rail flex flex-col gap-4">
       `;
 
       dateRecords.forEach(record => {
@@ -1286,33 +1342,31 @@ class App {
         const importance = record.importance || 'medium';
         const imgSrc = record.image || record.image_url || '';
         const canEdit = this.canEditRecord(record);
+        // 用 String() 强制转换为字符串以兼容 UUID 和数字 id
+        const recordIdStr = String(record.id);
 
         html += `
-          <div class="vx-timeline-item group" data-importance="${importance}">
+          <div class="vx-timeline-item" data-importance="${importance}">
+            <div class="vx-rail-dot">
+              <i data-lucide="${importanceIcons[importance]}"></i>
+            </div>
             ${canEdit ? `
-              <div class="flex gap-2 justify-end mb-3 -mt-1">
-                <button class="vx-action-btn h-9 w-9 bg-white text-fg rounded-md flex items-center justify-center hover:bg-primary hover:text-white transition-all duration-200 vx-edit-btn" data-id="${record.id}" title="编辑">
+              <div class="flex gap-2 justify-end mb-3">
+                <button class="vx-action-btn h-8 w-8 bg-muted text-fg rounded-md flex items-center justify-center hover:bg-primary hover:text-white transition-all duration-200 vx-edit-btn" data-id="${recordIdStr}" title="编辑">
                   <i data-lucide="pencil" class="w-4 h-4"></i>
                 </button>
-                <button class="vx-action-btn h-9 w-9 bg-white text-fg rounded-md flex items-center justify-center hover:bg-primary hover:text-white transition-all duration-200 vx-delete-btn" data-id="${record.id}" title="删除">
+                <button class="vx-action-btn h-8 w-8 bg-muted text-fg rounded-md flex items-center justify-center hover:bg-danger hover:text-white transition-all duration-200 vx-delete-btn" data-id="${recordIdStr}" title="删除">
                   <i data-lucide="trash-2" class="w-4 h-4"></i>
                 </button>
               </div>
             ` : ''}
-            <div class="flex items-start gap-4">
-              <div class="h-14 w-14 rounded-full bg-white ${importanceBadgeColors[importance].replace('bg-', 'text-').replace(' text-white', '')} border-2 border-border flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform duration-200">
-                <i data-lucide="${importanceIcons[importance]}" class="w-6 h-6"></i>
-              </div>
-              <div class="flex-1 min-w-0">
-                <div class="flex items-center gap-2 mb-1">
-                  <span class="text-xs font-semibold uppercase tracking-wider text-fg/60">${this._escapeHtml(time)}</span>
-                  <span class="text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded-md ${importanceBadgeColors[importance]}">${importanceLabel[importance]}</span>
-                </div>
-                <div class="font-semibold text-lg mb-1 text-fg">${this._escapeHtml(record.title)}</div>
-                ${record.content ? `<div class="text-fg/60 text-sm mb-3">${this._escapeHtml(record.content)}</div>` : ''}
-                ${imgSrc ? `<img src="${this._escapeHtml(imgSrc)}" class="max-w-full max-h-72 object-cover rounded-md border-2 border-border" alt="记录图片">` : ''}
-              </div>
+            <div class="flex items-center gap-2 mb-1.5">
+              <span class="text-xs font-semibold uppercase tracking-wider text-fg/60">${this._escapeHtml(time)}</span>
+              <span class="text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded-md ${importanceBadgeColors[importance]}">${importanceLabel[importance]}</span>
             </div>
+            <div class="font-semibold text-lg mb-1 text-fg">${this._escapeHtml(record.title)}</div>
+            ${record.content ? `<div class="text-fg/60 text-sm mb-3">${this._escapeHtml(record.content)}</div>` : ''}
+            ${imgSrc ? `<img src="${this._escapeHtml(imgSrc)}" class="max-w-full max-h-72 object-cover rounded-md border-2 border-border" alt="记录图片">` : ''}
           </div>
         `;
       });
@@ -1323,16 +1377,19 @@ class App {
     timeline.innerHTML = html;
     if (window.lucide && lucide.createIcons) lucide.createIcons();
 
+    // 修复 parseInt 致命 bug：UUID 字符串 parseInt → NaN，导致 dbManager.deleteRecord(NaN) 报错
+    // 改用 String(r.id) === dataset.id 字符串比较，兼容 UUID 和数字 id
     document.querySelectorAll('.vx-edit-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
-        const id = parseInt(e.currentTarget.dataset.id);
-        const record = this.records.find(r => r.id === id);
+        const id = e.currentTarget.dataset.id;
+        const record = this.records.find(r => String(r.id) === id);
         if (record) this.openModal(record);
+        else console.warn('[VEX-Timeline] Edit: record not found for id', id);
       });
     });
     document.querySelectorAll('.vx-delete-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
-        const id = parseInt(e.currentTarget.dataset.id);
+        const id = e.currentTarget.dataset.id;
         this.deleteRecord(id);
       });
     });

@@ -44,22 +44,36 @@ class AuthManager {
     }
 
     // Subscribe to auth state changes (token refresh, sign out from other tab, etc.)
+    // 防御性：先 unsubscribe 旧的（防止 init 被多次调用造成多个订阅并存）
     this._subscribeAuthState(supabase);
   }
 
   _subscribeAuthState(supabase) {
-    if (this._authSubscription) return;
+    // 清理旧订阅（如果有）
+    if (this._authSubscription && this._authSubscription.unsubscribe) {
+      try { this._authSubscription.unsubscribe(); } catch (e) {}
+      this._authSubscription = null;
+    }
+    if (!supabase) return;
     try {
       const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-        console.log('[VEX-Timeline] Auth state changed:', event);
+        // 防御性日志：只在 debug 模式下输出，避免控制台噪声
+        if (window.VEX_CONFIG && window.VEX_CONFIG.debug) {
+          console.log(`[VEX-Timeline] Auth state changed: ${event}`);
+        }
         if (event === 'SIGNED_OUT' || !session) {
           this.currentUser = null;
           this.session = null;
           this._clearSessionFromStorage();
         } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-          this.session = session;
-          if (session.user) {
-            await this._loadUserProfile(session.user.id);
+          // TOKEN_REFRESHED 频繁触发（每 1h），不重复 reload profile
+          if (event === 'SIGNED_IN' || !this.currentUser) {
+            this.session = session;
+            if (session.user) {
+              await this._loadUserProfile(session.user.id);
+            }
+          } else {
+            this.session = session;  // 仅更新 session
           }
         }
       });
