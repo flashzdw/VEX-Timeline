@@ -1473,8 +1473,9 @@ class App {
         const recordIdStr = String(record.id);
 
         // Round 6：卡片内部只显示时间；重要性 inline 在标题前
+        // Round 10：内联 style 强制 padding/border 紧凑，绕过任何 CSS 优先级问题
         html += `
-          <div class="vx-timeline-item" data-importance="${importance}">
+          <div class="vx-timeline-item" data-importance="${importance}" style="padding:4px 12px 8px 12px !important;border:2px solid var(--color-border) !important;border-radius:6px !important;box-sizing:border-box;">
             <div class="vx-rail-dot">
               <i data-lucide="${importanceIcons[importance]}"></i>
             </div>
@@ -1488,7 +1489,7 @@ class App {
                 </button>
               </div>
             ` : ''}
-            <div class="vx-item-time">${this._escapeHtml(time)}</div>
+            <div class="vx-item-time" style="display:block !important;font-size:10px !important;line-height:1 !important;margin:0 0 4px 0 !important;padding:0 !important;color:rgba(17,24,39,0.6) !important;font-weight:600 !important;text-transform:uppercase !important;letter-spacing:0.05em !important;">${this._escapeHtml(time)}</div>
             <div class="vx-item-title-row">
               <span class="inline-flex items-center justify-center text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded ${importanceBadgeColors[importance]}">${importanceLabel[importance]}</span>
               <h4 class="vx-item-title">${this._escapeHtml(record.title)}</h4>
