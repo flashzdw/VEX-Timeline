@@ -1,7 +1,7 @@
 // Bump CACHE_NAME version whenever JS/CSS changes are deployed.
 // This forces the new service worker to skip the old cache and refetch everything.
-// v18: 登录页 form 面板加 overflow-x-hidden 并隐藏装饰圆，修复手机端可滑动空白
-const CACHE_NAME = 'vex-timeline-cache-v18';
+// v19: 登录页改为 h-screen + overflow-hidden 固定布局，禁止上下滚动
+const CACHE_NAME = 'vex-timeline-cache-v19';
 
 // Only cache the static shell — NEVER cache JS files (auth.js, app.js, config.js, etc.)
 // because they change with each deploy and JS bugs in cached files can break the app.
