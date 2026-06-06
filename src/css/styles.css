@@ -389,6 +389,24 @@ body {
 .vx-cloud-status.is-syncing .vx-cloud-icon { animation: vx-spin 1.2s linear infinite; }
 .vx-cloud-status.is-syncing { background-color: var(--color-muted); color: var(--color-primary); border-color: var(--color-primary); }
 
+/* Round 8：用户菜单按钮高度锁定为 2.5rem（与云朵按钮一致，避免被内容撑高） */
+#user-menu-btn {
+  height: 2.5rem;
+  min-height: 2.5rem;
+  max-height: 2.5rem;
+  box-sizing: border-box;
+}
+#user-avatar {
+  height: 2rem;
+  width: 2rem;
+  min-height: 2rem;
+  min-width: 2rem;
+  max-height: 2rem;
+  max-width: 2rem;
+  font-size: 0.875rem;        /* 锁定字号防止 Tailwind 主题覆写 */
+  line-height: 1;
+}
+
 /* ============================================================
    移动端汉堡抽屉
    ============================================================ */
@@ -464,7 +482,7 @@ body {
   background-color: var(--color-bg);
   border: 2px solid var(--color-border);
   border-radius: var(--radius-md);
-  padding: 0.5rem 0.75rem;   /* Round 7：10/14px → 8/12px（缩上方留白） */
+  padding: 0.375rem 0.75rem;   /* Round 8：8/12px → 6/12px（再缩上方留白，让 14:30 紧贴顶部边框） */
   transition: border-color 0.2s, transform 0.2s;
 }
 .vx-timeline-item:hover {
@@ -478,7 +496,8 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: rgba(17, 24, 39, 0.6);
-  margin-bottom: 4px;
+  line-height: 1;             /* Round 8：压缩行高（默认 1.5=15px → 10px）让 14:30 紧贴边框 */
+  margin: 0 0 4px 0;          /* Round 8：显式 margin: 0 去掉浏览器默认 margin */
 }
 .vx-item-title-row {
   display: flex;
