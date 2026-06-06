@@ -1,7 +1,7 @@
 // Bump CACHE_NAME version whenever JS/CSS changes are deployed.
 // This forces the new service worker to skip the old cache and refetch everything.
-// v17: 生成 192/512 PNG 图标；新增 favicon / apple-touch-icon 链接，消除 404 和 PWA 警告
-const CACHE_NAME = 'vex-timeline-cache-v17';
+// v20: 登录页改用 position: fixed + inset-0 彻底锁死，绕过 iOS 橡皮筋与 body 滚动
+const CACHE_NAME = 'vex-timeline-cache-v20';
 
 // Only cache the static shell — NEVER cache JS files (auth.js, app.js, config.js, etc.)
 // because they change with each deploy and JS bugs in cached files can break the app.

@@ -69,7 +69,7 @@
     <!-- ============================================================
          AUTH PAGE  海报式 左右分栏
          ============================================================ -->
-    <div id="auth-page" class="min-h-screen flex">
+    <div id="auth-page" class="fixed inset-0 flex overflow-hidden">
         <!-- 左侧 Hero（色块 + 装饰几何） -->
         <div class="hidden lg:flex relative flex-1 bg-primary text-white p-12 flex-col justify-between overflow-hidden">
             <div class="absolute -top-32 -right-32 h-96 w-96 rounded-full bg-white/10 pointer-events-none"></div>
@@ -96,9 +96,9 @@
             </div>
         </div>
 
-        <!-- 右侧登录表单 -->
-        <div class="flex-1 flex items-center justify-center p-6 sm:p-8 lg:p-12 bg-bg relative overflow-y-auto">
-            <div class="absolute -bottom-24 -right-24 h-64 w-64 rounded-full bg-primary/5 pointer-events-none"></div>
+        <!-- 右侧登录表单  fixed + overflow-hidden 彻底锁死，禁止任何滚动（包括 iOS 橡皮筋） -->
+        <div class="flex-1 flex items-center justify-center p-6 sm:p-8 lg:p-12 bg-bg relative overflow-hidden">
+            <div class="hidden md:block absolute -bottom-24 -right-24 h-64 w-64 rounded-full bg-primary/5 pointer-events-none"></div>
 
             <div class="relative z-10 w-full max-w-md py-6 sm:py-0">
                 <div class="lg:hidden flex items-center gap-3 mb-6 sm:mb-8">
