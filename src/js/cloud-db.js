@@ -116,12 +116,41 @@ class CloudDBManager {
   async getTimelinesForUser() {
     const client = this._getClient();
     const userId = authManager.getCurrentUser().id;
-    const { data, error } = await client
+    if (!userId) throw new Error('未登录用户');
+
+    // Step 1: 拉我作为 owner 的所有 timelines
+    const { data: owned, error: oErr } = await client
       .from('timelines')
       .select('*')
-      .or(`owner_id.eq.${userId},id.in.(select timeline_id from timeline_members where user_id = ${userId})`);
-    if (error) throw error;
-    return data;
+      .eq('owner_id', userId);
+    if (oErr) throw oErr;
+    const ownedArr = owned || [];
+
+    // Step 2: 拉我作为 member 的所有 timeline_id
+    const { data: memberships, error: mErr } = await client
+      .from('timeline_members')
+      .select('timeline_id')
+      .eq('user_id', userId);
+    if (mErr) throw mErr;
+
+    // 去重：去掉 owner 已经在 ownedArr 里的（避免重复返回 personal timeline）
+    const ownedIds = new Set(ownedArr.map(t => t.id));
+    const memberIds = (memberships || [])
+      .map(m => m.timeline_id)
+      .filter(id => !ownedIds.has(id));
+
+    // Step 3: 拉我作为 member 的 timelines（用 JS .in() 列表方法，稳态）
+    let memberArr = [];
+    if (memberIds.length > 0) {
+      const { data: mData, error: mTErr } = await client
+        .from('timelines')
+        .select('*')
+        .in('id', memberIds);
+      if (mTErr) throw mTErr;
+      memberArr = mData || [];
+    }
+
+    return [...ownedArr, ...memberArr];
   }
 
   async getTimelineById(timelineId) {

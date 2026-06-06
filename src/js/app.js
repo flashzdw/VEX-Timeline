@@ -1,3 +1,10 @@
+/**
+ * VEX-Timeline 主应用类
+ * ----------------------------------------
+ * 业务逻辑（DB / Supabase / IndexedDB 同步）保持与 v1 兼容；
+ * UI 选择器、菜单交互、渲染模板已迁移到 DESIGN.md 规范
+ * （Flat Design / Tailwind class / lucide 图标 / 色块化）。
+ */
 class App {
   constructor() {
     this.currentDate = new Date();
@@ -6,50 +13,54 @@ class App {
     this.editingRecord = null;
     this.currentFilter = 'all';
     this.tempImageData = null;
-    this.currentTimelineId = this._loadStoredTimelineId() || 'local';
+    this.currentTimelineId = this._loadStoredTimelineId() || null;
     this.timelines = [];
     this.isOnline = navigator.onLine;
     this.syncInProgress = false;
-    this.cloudSyncStatus = 'unknown'; // 'ok' | 'error' | 'offline' | 'unknown'
+    this.cloudSyncStatus = 'unknown';
     this.cloudErrorMessage = '';
 
     this.init();
   }
 
+  // ============================================================
+  // 持久化
+  // ============================================================
   _loadStoredTimelineId() {
-    try {
-      return localStorage.getItem('vex_current_timeline_id');
-    } catch (e) {
-      return null;
-    }
+    try { return localStorage.getItem('vex_current_timeline_id'); }
+    catch (e) { return null; }
   }
 
   _saveStoredTimelineId(id) {
     try {
-      if (id && id !== 'local') {
-        localStorage.setItem('vex_current_timeline_id', id);
-      } else {
-        localStorage.removeItem('vex_current_timeline_id');
-      }
-    } catch (e) {
-      // ignore
-    }
+      if (id) localStorage.setItem('vex_current_timeline_id', id);
+      else localStorage.removeItem('vex_current_timeline_id');
+    } catch (e) { /* ignore */ }
   }
 
+  // ============================================================
+  // 初始化
+  // ============================================================
   async init() {
     await dbManager.initDB();
     supabaseManager.init();
     await authManager.init();
 
+    // 关键：等 user profile 就绪（session 可能先就绪，profile 还在加载中），
+    // 否则后续 onLoginSuccess 中访问 authManager.getCurrentUser().id 会 throw
+    await this._waitForUserProfile(3000);
+
     this.bindEvents();
     this.setupNetworkListener();
     this.renderDiagnosticBar();
+
+    // Round 5：启动 5 分钟自动刷新云端
+    this._startAutoRefresh();
 
     if (authManager.isLoggedIn()) {
       if (supabaseManager.isConfigured()) {
         await this.onLoginSuccess();
       } else {
-        // Logged in (have session) but Supabase not configured - weird state, force re-login
         console.warn('[VEX-Timeline] Session exists but Supabase not configured. Clearing session.');
         await authManager.logout();
         this.showAuthPage();
@@ -59,72 +70,118 @@ class App {
     }
   }
 
+  /**
+   * 等待 user profile 就绪（最多 maxMs 毫秒）
+   * - 已就绪 → 立即返回 true
+   * - 未登录（无 session）→ 立即返回 false
+   * - 已登录但 profile 还在加载中 → 轮询等待
+   * - 超时 → 返回 false（外层会显示错误条）
+   */
+  async _waitForUserProfile(maxMs = 3000) {
+    const start = Date.now();
+    while (Date.now() - start < maxMs) {
+      if (authManager.getCurrentUser()) return true;
+      if (!authManager.session) return false;  // 未登录直接退出
+      await new Promise(r => setTimeout(r, 100));
+    }
+    return false;
+  }
+
   showAuthPage() {
     document.getElementById('auth-page').classList.remove('hidden');
-    document.querySelector('.container').style.display = 'none';
+    const container = document.querySelector('.container');
+    if (container) container.classList.add('hidden');
   }
 
   hideAuthPage() {
     document.getElementById('auth-page').classList.add('hidden');
-    document.querySelector('.container').style.display = '';
+    const container = document.querySelector('.container');
+    if (container) container.classList.remove('hidden');
   }
 
+  // ============================================================
+  // 登录成功/失败
+  // ============================================================
   async onLoginSuccess() {
     this.hideAuthPage();
-    document.getElementById('user-info').style.display = 'flex';
-    document.getElementById('user-name').textContent = authManager.getUsername();
-    document.getElementById('timeline-actions').style.display = 'flex';
+    document.getElementById('user-info').classList.remove('hidden');
+    const username = authManager.getUsername() || 'User';
+    document.getElementById('user-name').textContent = username;
+    document.getElementById('user-menu-name').textContent = username;
+    const avatar = document.getElementById('user-avatar');
+    if (avatar) avatar.textContent = username.charAt(0).toUpperCase();
 
+    // 重置状态
+    this._clearCloudError();
+
+    // 第一步：拉取所有 timeline 列表
     const loadResult = await this.loadTimelines();
 
     if (!loadResult.success) {
-      // Cloud unreachable - show clear error and disable add
+      // 拉取失败 → 显示错误条 + 隐藏 add 按钮
       this.cloudSyncStatus = 'error';
       this.cloudErrorMessage = loadResult.error || '无法连接到云端';
       this.updateCloudStatusIcon();
-      const errorEl = document.getElementById('auth-error');
-      if (errorEl) errorEl.textContent = '';
-      this._showCloudError(this.cloudErrorMessage);
+      this._setCloudError(this.cloudErrorMessage);
       this._setAddEnabled(false);
     } else {
       this.cloudSyncStatus = 'ok';
       this.cloudErrorMessage = '';
       this.updateCloudStatusIcon();
       this._setAddEnabled(true);
+
+      // 第二步：等云同步完成后才渲染（避免首次空数据闪烁）
+      try {
+        await this.syncFromCloud();
+      } catch (e) {
+        this._setCloudError('同步云端记录失败: ' + (e.message || e));
+        // sync 失败不影响渲染本地已有数据
+      }
     }
 
     this.renderDate();
     await this.renderView();
-    if (loadResult.success) {
-      await this.syncFromCloud();
-    }
-    this.renderDiagnosticBar();
+  }
+
+  // ============================================================
+  // 云端错误条（顶部红条 + 重试按钮）
+  // ============================================================
+  _setCloudError(msg) {
+    const bar = document.getElementById('cloud-error-bar');
+    const msgEl = document.getElementById('cloud-error-message');
+    if (!bar) return;
+    if (msgEl) msgEl.textContent = msg || '未知错误';
+    bar.classList.remove('hidden');
+    // lucide 图标在 bar 内，确保渲染
+    if (window.lucide && lucide.createIcons) lucide.createIcons();
+  }
+
+  _clearCloudError() {
+    const bar = document.getElementById('cloud-error-bar');
+    if (bar) bar.classList.add('hidden');
   }
 
   _showCloudError(msg) {
-    // Surface error to user in a non-intrusive way
     console.error('[VEX-Timeline] Cloud error:', msg);
   }
 
   _setAddEnabled(enabled) {
     const addBtn = document.getElementById('add-btn');
     if (addBtn) {
-      addBtn.style.display = enabled ? 'flex' : 'none';
+      addBtn.style.display = enabled ? 'inline-flex' : 'none';
       addBtn.disabled = !enabled;
       addBtn.title = enabled ? '' : '云端连接失败，无法添加记录';
     }
   }
 
   onGuestMode() {
-    this.hideAuthPage();
-    this.currentTimelineId = 'local';
-    document.getElementById('user-info').style.display = 'none';
-    document.getElementById('timeline-actions').style.display = 'none';
-    document.getElementById('timeline-selector').style.display = 'none';
-    this.renderDate();
-    this.renderView();
+    // Round 4：离线模式已取消；保留此方法为 no-op 避免旧代码引用错误
+    console.warn('[VEX-Timeline] onGuestMode 已废弃：所有功能必须先登录');
   }
 
+  // ============================================================
+  // 时间轴加载 & 自定义下拉
+  // ============================================================
   async loadTimelines() {
     if (!authManager.isLoggedIn() || !supabaseManager.isConfigured()) {
       this.updateTimelineSelector();
@@ -141,9 +198,7 @@ class App {
       } catch (e) {
         console.warn(`[VEX-Timeline] loadTimelines attempt ${attempt} failed:`, e);
         lastErr = e;
-        if (attempt < maxAttempts) {
-          await new Promise(r => setTimeout(r, 1000));
-        }
+        if (attempt < maxAttempts) await new Promise(r => setTimeout(r, 1000));
       }
     }
 
@@ -153,7 +208,7 @@ class App {
       return { success: false, error: lastErr.message || String(lastErr) };
     }
 
-    if (this.timelines.length > 0 && (this.currentTimelineId === 'local' || !this.timelines.find(t => t.id === this.currentTimelineId))) {
+    if (this.timelines.length > 0 && (!this.currentTimelineId || !this.timelines.find(t => t.id === this.currentTimelineId))) {
       const personal = this.timelines.find(t => t.type === 'personal');
       this.currentTimelineId = personal ? personal.id : this.timelines[0].id;
       this._saveStoredTimelineId(this.currentTimelineId);
@@ -163,66 +218,119 @@ class App {
     return { success: true };
   }
 
+  /**
+   * 重新填充时间轴下拉菜单
+   */
   updateTimelineSelector() {
-    const select = document.getElementById('timeline-select');
-    select.innerHTML = '<option value="local">本地时间轴</option>';
+    const menu = document.getElementById('timeline-menu');
+    const mobileList = document.getElementById('mobile-timeline-list');
+    if (!menu) return;
 
-    this.timelines.forEach(timeline => {
-      const option = document.createElement('option');
-      option.value = timeline.id;
-      const prefix = timeline.type === 'personal' ? '👤 ' : '👥 ';
-      option.textContent = prefix + timeline.name;
-      if (timeline.id === this.currentTimelineId) {
-        option.selected = true;
-      }
-      select.appendChild(option);
+    // Round 4：取消本地时间轴概念，只渲染云端时间轴
+    const items = this.timelines.map(t => ({ id: t.id, label: t.name, type: t.type }));
+
+    // 桌面菜单渲染
+    menu.innerHTML = items.map(item => `
+      <button type="button" class="vx-timeline-menu-item${item.id === this.currentTimelineId ? ' active' : ''}" data-timeline-value="${item.id}">
+        <i data-lucide="${item.type === 'team' ? 'users' : 'user'}" class="w-4 h-4 text-fg/60"></i>
+        <span>${this._escapeHtml(item.label)}</span>
+      </button>
+    `).join('');
+
+    // 移动端列表
+    if (mobileList) {
+      mobileList.innerHTML = items.map(item => `
+        <button type="button" class="vx-timeline-menu-item${item.id === this.currentTimelineId ? ' active' : ''}" data-timeline-value="${item.id}">
+          <i data-lucide="${item.type === 'team' ? 'users' : 'user'}" class="w-4 h-4 text-fg/60"></i>
+          <span>${this._escapeHtml(item.label)}</span>
+        </button>
+      `).join('');
+    }
+
+    // 重新渲染 lucide 图标
+    if (window.lucide && lucide.createIcons) lucide.createIcons();
+
+    // 绑定选择事件
+    document.querySelectorAll('[data-timeline-value]').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const id = e.currentTarget.dataset.timelineValue;
+        if (id === this.currentTimelineId) {
+          // 同一时间轴：不重新拉取，关闭菜单
+          this.closeAllMenus();
+          return;
+        }
+        this.currentTimelineId = id;
+        this._saveStoredTimelineId(this.currentTimelineId);
+        this.updateTimelineSelector();
+        this.updateTimelineLabel(this._findTimelineName(id));
+        this.updateManageButton();
+        this.closeAllMenus();
+        await this.renderView();         // 先用本地缓存快速渲染
+        this.syncFromCloud();             // Round 5：后台拉取云端最新数据
+      });
     });
 
-    document.getElementById('timeline-selector').style.display =
-      authManager.isLoggedIn() ? '' : 'none';
-
+    this.updateTimelineLabel(this._findTimelineName(this.currentTimelineId));
     this.updateManageButton();
+
+    const isLoggedIn = authManager.isLoggedIn();
+    const desktop = document.getElementById('timeline-selector');
+    if (desktop) desktop.classList.toggle('hidden', !isLoggedIn);
+  }
+
+  _findTimelineName(id) {
+    if (!id) return '未选择';
+    const t = this.timelines.find(x => x.id === id);
+    return t ? t.name : '未选择';
+  }
+
+  updateTimelineLabel(name) {
+    const label = document.getElementById('timeline-select-label');
+    if (label) label.textContent = name;
   }
 
   updateManageButton() {
-    const manageBtn = document.getElementById('manage-team-btn');
     const current = this.timelines.find(t => t.id === this.currentTimelineId);
-    if (current && current.type === 'team' && current.owner_id === authManager.getCurrentUser()?.id) {
-      manageBtn.style.display = 'flex';
-    } else {
-      manageBtn.style.display = 'none';
-    }
+    const isTeamOwner = current && current.type === 'team' && current.owner_id === authManager.getCurrentUser()?.id;
+    const desktopBtn = document.getElementById('manage-team-btn');
+    const mobileBtn = document.getElementById('mobile-manage-team-btn');
+    [desktopBtn, mobileBtn].forEach(btn => {
+      if (btn) btn.classList.toggle('hidden', !isTeamOwner);
+    });
   }
 
+  // ============================================================
+  // 云端状态指示器
+  // ============================================================
   updateCloudStatusIcon() {
     const el = document.getElementById('cloud-status');
     if (!el) return;
-    let icon = '?', label = '未知';
+    let iconName = 'cloud', label = '未知', cls = '';
+
     if (!supabaseManager.isConfigured()) {
-      icon = '⚠';
-      label = 'Supabase 未配置';
-      el.className = 'cloud-status cloud-status-error';
+      iconName = 'alert-triangle'; label = 'Supabase 未配置'; cls = 'is-error';
     } else if (this.cloudSyncStatus === 'error') {
-      icon = '⚠';
-      label = '云端错误: ' + (this.cloudErrorMessage || '未知');
-      el.className = 'cloud-status cloud-status-error';
+      iconName = 'alert-triangle'; label = '云端错误: ' + (this.cloudErrorMessage || '未知'); cls = 'is-error';
     } else if (!this.isOnline) {
-      icon = '⊘';
-      label = '离线';
-      el.className = 'cloud-status cloud-status-offline';
+      iconName = 'cloud-off'; label = '离线'; cls = 'is-offline';
     } else if (this.syncInProgress) {
-      icon = '↻';
-      label = '同步中';
-      el.className = 'cloud-status cloud-status-syncing';
+      iconName = 'refresh-cw'; label = '同步中'; cls = 'is-syncing';
     } else {
-      icon = '☁';
-      label = '云端已连接';
-      el.className = 'cloud-status cloud-status-ok';
+      iconName = 'cloud'; label = '云端已连接'; cls = 'is-ok';
     }
-    el.textContent = icon;
+
+    el.className = 'vx-cloud-status' + (cls ? ' ' + cls : '');
     el.title = label;
+    const iconWrap = el.querySelector('.vx-cloud-icon');
+    if (iconWrap) {
+      iconWrap.innerHTML = `<i data-lucide="${iconName}" class="w-4 h-4"></i>`;
+      if (window.lucide && lucide.createIcons) lucide.createIcons();
+    }
   }
 
+  // ============================================================
+  // 诊断条
+  // ============================================================
   renderDiagnosticBar() {
     const el = document.getElementById('diagnostic-bar');
     if (!el) return;
@@ -240,49 +348,48 @@ class App {
 
     if (urlEl) {
       urlEl.innerHTML = status.hasUrl
-        ? `URL: <span class="diag-ok">✓</span> <code>${status.urlPrefix || '已设置'}</code>`
-        : `URL: <span class="diag-bad">✗ 未配置</span>`;
+        ? `URL: <span class="text-secondary font-bold">✓</span> <code>${this._escapeHtml(status.urlPrefix || '已设置')}</code>`
+        : `URL: <span class="text-primary font-bold">✗ 未配置</span>`;
     }
     if (keyEl) {
       keyEl.innerHTML = status.hasKey
-        ? `Key: <span class="diag-ok">✓</span> 已设置`
-        : `Key: <span class="diag-bad">✗ 未配置</span>`;
+        ? `Key: <span class="text-secondary font-bold">✓</span> 已设置`
+        : `Key: <span class="text-primary font-bold">✗ 未配置</span>`;
     }
     if (sessEl) {
       sessEl.innerHTML = isLoggedIn
-        ? `Session: <span class="diag-ok">✓ 已登录</span> (${username})`
-        : `Session: <span class="diag-warn">⊘ 未登录</span>`;
+        ? `Session: <span class="text-secondary font-bold">✓ 已登录</span> (${this._escapeHtml(username)})`
+        : `Session: <span class="text-accent font-bold">⊘ 未登录</span>`;
     }
     if (userEl) {
-      userEl.innerHTML = sessionOk ? `Token: <span class="diag-ok">✓</span>` : `Token: <span class="diag-bad">✗</span>`;
+      userEl.innerHTML = sessionOk ? `Token: <span class="text-secondary font-bold">✓</span>` : `Token: <span class="text-primary font-bold">✗</span>`;
     }
     if (tlEl) {
-      const tlName = this.timelines.find(t => t.id === this.currentTimelineId)?.name
-        || (this.currentTimelineId === 'local' ? '本地' : this.currentTimelineId);
-      tlEl.innerHTML = `时间轴: <code>${tlName}</code>`;
+      const tlName = this._findTimelineName(this.currentTimelineId);
+      tlEl.innerHTML = `时间轴: <code>${this._escapeHtml(tlName)}</code>`;
     }
 
-    // Show banner if cloud is misconfigured
     const banner = document.getElementById('diag-banner');
     if (banner) {
       if (!cloudOk) {
-        banner.style.display = 'block';
+        banner.classList.remove('hidden');
+        banner.className = 'mb-6 p-4 bg-red-50 border-2 border-primary rounded-md text-sm font-medium text-red-700';
         banner.innerHTML = `
           <strong>⚠️ 云端未配置</strong><br>
           登录后数据无法上云，刷新后会丢失登录状态。<br>
           <small>请在 Vercel Dashboard 设置 <code>SUPABASE_URL</code> 和 <code>SUPABASE_ANON_KEY</code>，然后 Redeploy。</small>
         `;
-        banner.className = 'diag-banner diag-banner-error';
       } else {
-        banner.style.display = 'none';
+        banner.classList.add('hidden');
       }
     }
   }
 
+  // ============================================================
+  // 同步
+  // ============================================================
   async syncFromCloud() {
-    if (!authManager.isLoggedIn() || !supabaseManager.isConfigured() || this.currentTimelineId === 'local') {
-      return;
-    }
+    if (!authManager.isLoggedIn() || !supabaseManager.isConfigured() || !this.currentTimelineId) return;
     if (this.syncInProgress) return;
     this.syncInProgress = true;
     this.updateCloudStatusIcon();
@@ -309,34 +416,33 @@ class App {
 
   async processSyncQueue() {
     if (!this.isOnline || !authManager.isLoggedIn()) return;
-
     const queue = await dbManager.getSyncQueue();
+    let succeeded = 0, failed = 0;
     for (const item of queue) {
       try {
         await this.executeSyncOperation(item);
         await dbManager.removeFromSyncQueue(item.id);
+        succeeded++;
       } catch (e) {
-        break;
+        // 失败项不删除、也不 break；保留在队列等待下次重试（自愈）
+        failed++;
+        console.warn(`[VEX-Timeline] Sync queue item ${item.id} (${item.operation}) failed, will retry:`, e.message || e);
       }
+    }
+    if (succeeded > 0 || failed > 0) {
+      console.log(`[VEX-Timeline] Sync queue: ${succeeded} succeeded, ${failed} failed (kept in queue)`);
     }
   }
 
   async executeSyncOperation(item) {
     if (!supabaseManager.isConfigured()) return;
-
     switch (item.operation) {
-      case 'add':
-        await cloudDBManager.addRecord(item.data.timeline_id, item.data);
-        break;
+      case 'add':    await cloudDBManager.addRecord(item.data.timeline_id, item.data); break;
       case 'update':
-        if (item.data.cloud_id) {
-          await cloudDBManager.updateRecord(item.data.cloud_id, item.data);
-        }
+        if (item.data.cloud_id) await cloudDBManager.updateRecord(item.data.cloud_id, item.data);
         break;
       case 'delete':
-        if (item.data.cloud_id) {
-          await cloudDBManager.deleteRecord(item.data.cloud_id);
-        }
+        if (item.data.cloud_id) await cloudDBManager.deleteRecord(item.data.cloud_id);
         break;
     }
   }
@@ -345,9 +451,7 @@ class App {
     window.addEventListener('online', () => {
       this.isOnline = true;
       this.updateCloudStatusIcon();
-      if (authManager.isLoggedIn()) {
-        this.processSyncQueue();
-      }
+      if (authManager.isLoggedIn()) this.processSyncQueue();
     });
     window.addEventListener('offline', () => {
       this.isOnline = false;
@@ -355,181 +459,301 @@ class App {
     });
   }
 
+  // ============================================================
+  // 事件绑定
+  // ============================================================
   bindEvents() {
+    // 视图切换
+    document.querySelectorAll('[data-view-toggle]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const view = e.currentTarget.dataset.viewToggle;
+        this.currentView = view;
+        this.syncViewToggleState();
+        this.renderDate();
+        this.renderView();
+      });
+    });
+
+    // 顶部添加按钮
+    document.getElementById('add-btn').addEventListener('click', () => this.openModal());
+
+    // 记录模态框
+    document.getElementById('cancel-btn').addEventListener('click', () => this.closeModal());
+    document.getElementById('save-btn').addEventListener('click', () => this.saveRecord());
+    document.getElementById('record-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      this.saveRecord();
+    });
+    document.getElementById('record-modal').addEventListener('click', (e) => {
+      if (e.target.id === 'record-modal') this.closeModal();
+    });
+
+    // 重要性按钮（模态框内）
+    document.querySelectorAll('#importance-selector [data-importance]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const val = e.currentTarget.dataset.importance;
+        this.setImportance(val);
+      });
+    });
+
+    document.getElementById('record-image').addEventListener('change', (e) => this.handleImageUpload(e));
+    document.getElementById('remove-image-btn').addEventListener('click', () => this.removeImage());
+
+    // 过滤器
+    document.querySelectorAll('#filter-bar [data-filter]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        this.currentFilter = e.currentTarget.dataset.filter;
+        this.syncFilterState();
+        this.renderTimeline();
+      });
+    });
+
+    // 日历导航
     document.getElementById('prev-month').addEventListener('click', () => {
       this.currentDate.setMonth(this.currentDate.getMonth() - 1);
       this.renderDate();
       this.renderView();
     });
-
     document.getElementById('next-month').addEventListener('click', () => {
       this.currentDate.setMonth(this.currentDate.getMonth() + 1);
       this.renderDate();
       this.renderView();
     });
 
-    document.querySelectorAll('.view-toggle-btn').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        document.querySelectorAll('.view-toggle-btn').forEach(b => b.classList.remove('active'));
-        e.target.classList.add('active');
-        this.currentView = e.target.dataset.view;
-        this.renderDate();
-        this.renderView();
-      });
-    });
-
-    document.getElementById('add-btn').addEventListener('click', () => {
-      this.openModal();
-    });
-
-    document.getElementById('cancel-btn').addEventListener('click', () => {
-      this.closeModal();
-    });
-
-    document.getElementById('save-btn').addEventListener('click', () => {
-      this.saveRecord();
-    });
-
-    document.getElementById('record-form').addEventListener('submit', (e) => {
-      e.preventDefault();
-      this.saveRecord();
-    });
-
-    document.getElementById('record-modal').addEventListener('click', (e) => {
-      if (e.target.id === 'record-modal') {
-        this.closeModal();
-      }
-    });
-
-    document.querySelectorAll('.importance-btn').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        document.querySelectorAll('.importance-btn').forEach(b => b.classList.remove('active'));
-        e.target.classList.add('active');
-      });
-    });
-
-    document.getElementById('record-image').addEventListener('change', (e) => {
-      this.handleImageUpload(e);
-    });
-
-    document.getElementById('remove-image-btn').addEventListener('click', () => {
-      this.removeImage();
-    });
-
-    document.querySelectorAll('.filter-btn').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-        e.target.classList.add('active');
-        this.currentFilter = e.target.dataset.filter;
-        this.renderTimeline();
-      });
-    });
-
-    document.getElementById('close-day-records').addEventListener('click', () => {
-      this.closeDayRecords();
-    });
-
+    // 日内记录浮层
+    document.getElementById('close-day-records').addEventListener('click', () => this.closeDayRecords());
     document.getElementById('day-records-overlay').addEventListener('click', (e) => {
-      if (e.target.id === 'day-records-overlay') {
-        this.closeDayRecords();
-      }
+      if (e.target.id === 'day-records-overlay') this.closeDayRecords();
     });
 
-    document.getElementById('auth-login-btn').addEventListener('click', () => {
-      this.handleLogin();
-    });
-
-    document.getElementById('auth-register-btn').addEventListener('click', () => {
-      this.handleRegister();
-    });
-
-    document.getElementById('auth-guest-btn').addEventListener('click', () => {
-      this.onGuestMode();
-    });
-
+    // 登录/注册（Round 4：取消离线按钮）
+    document.getElementById('auth-login-btn').addEventListener('click', () => this.handleLogin());
+    document.getElementById('auth-register-btn').addEventListener('click', () => this.handleRegister());
     document.getElementById('auth-username').addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        this.handleLogin();
-      }
+      if (e.key === 'Enter') this.handleLogin();
     });
-
     document.getElementById('auth-password').addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        this.handleLogin();
-      }
+      if (e.key === 'Enter') this.handleLogin();
     });
 
-    document.getElementById('logout-btn').addEventListener('click', () => {
-      this.handleLogout();
-    });
+    // 登出（桌面 + 移动）
+    document.getElementById('logout-btn').addEventListener('click', () => this.handleLogout());
+    const mobileLogout = document.getElementById('mobile-logout-btn');
+    if (mobileLogout) mobileLogout.addEventListener('click', () => this.handleLogout());
 
-    document.getElementById('timeline-select').addEventListener('change', (e) => {
-      this.currentTimelineId = e.target.value;
-      this._saveStoredTimelineId(this.currentTimelineId);
-      this.updateManageButton();
-      this.renderView();
-    });
-
-    document.getElementById('create-team-btn').addEventListener('click', () => {
-      document.getElementById('create-team-modal').classList.add('active');
-    });
-
-    document.getElementById('cancel-team-btn').addEventListener('click', () => {
-      document.getElementById('create-team-modal').classList.remove('active');
-    });
-
-    document.getElementById('save-team-btn').addEventListener('click', () => {
-      this.handleCreateTeam();
-    });
-
-    document.getElementById('join-team-btn').addEventListener('click', () => {
-      document.getElementById('join-team-modal').classList.add('active');
-    });
-
-    document.getElementById('cancel-join-btn').addEventListener('click', () => {
-      document.getElementById('join-team-modal').classList.remove('active');
-    });
-
-    document.getElementById('confirm-join-btn').addEventListener('click', () => {
-      this.handleJoinTeam();
-    });
-
-    document.getElementById('manage-team-btn').addEventListener('click', () => {
-      this.handleManageTeam();
-    });
-
-    document.getElementById('close-invite-btn').addEventListener('click', () => {
-      document.getElementById('invite-modal').classList.remove('active');
-    });
-
-    document.getElementById('copy-invite-btn').addEventListener('click', () => {
-      const code = document.getElementById('invite-code-display').textContent;
-      navigator.clipboard.writeText(code).then(() => {
-        const btn = document.getElementById('copy-invite-btn');
-        btn.style.color = 'var(--color-importance-low)';
-        setTimeout(() => { btn.style.color = ''; }, 1500);
+    // 时间轴下拉（自定义）
+    const tlBtn = document.getElementById('timeline-select-btn');
+    if (tlBtn) {
+      tlBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.toggleMenu('timeline-menu', 'user-menu');
       });
+    }
+
+    // Round 5：云状态指示器 → 刷新按钮
+    const cloudStatusBtn = document.getElementById('cloud-status');
+    if (cloudStatusBtn) {
+      cloudStatusBtn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        if (!authManager.isLoggedIn() || !this.currentTimelineId) {
+          this.showToast('请先登录并选择时间轴', 'warning');
+          return;
+        }
+        if (this.syncInProgress) {
+          this.showToast('正在同步中，请稍候', 'info');
+          return;
+        }
+        this.showToast('正在从云端刷新…', 'info');
+        try {
+          await this.syncFromCloud();
+          this.showToast('云端数据已同步', 'success');
+        } catch (err) {
+          this.showToast('刷新失败: ' + (err.message || err), 'error');
+        }
+      });
+    }
+
+    // 用户菜单
+    const userMenuBtn = document.getElementById('user-menu-btn');
+    if (userMenuBtn) {
+      userMenuBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.toggleMenu('user-menu', 'timeline-menu');
+      });
+    }
+
+    // 赛队操作（事件委托到 document，包括移动端和桌面端的下拉项）
+    document.addEventListener('click', (e) => {
+      const teamBtn = e.target.closest('[data-team-action]');
+      if (teamBtn) {
+        const action = teamBtn.dataset.teamAction;
+        this.handleTeamAction(action);
+        this.closeAllMenus();
+        this.closeMobileDrawer();
+      }
     });
 
+    // 移动端汉堡菜单
+    const mobileBtn = document.getElementById('mobile-menu-btn');
+    if (mobileBtn) mobileBtn.addEventListener('click', () => this.openMobileDrawer());
+    const mobileClose = document.getElementById('mobile-drawer-close');
+    if (mobileClose) mobileClose.addEventListener('click', () => this.closeMobileDrawer());
+
+    // 点击外部关闭所有菜单
+    document.addEventListener('click', (e) => {
+      const inMenu = e.target.closest('#timeline-menu, #timeline-select-btn, #user-menu, #user-menu-btn, #mobile-drawer, #mobile-menu-btn');
+      if (!inMenu) this.closeAllMenus();
+    });
+
+    // 赛队模态框
+    document.getElementById('cancel-team-btn').addEventListener('click', () => this.closeModalById('create-team-modal'));
+    document.getElementById('save-team-btn').addEventListener('click', () => this.handleCreateTeam());
     document.getElementById('create-team-modal').addEventListener('click', (e) => {
-      if (e.target.id === 'create-team-modal') {
-        document.getElementById('create-team-modal').classList.remove('active');
-      }
+      if (e.target.id === 'create-team-modal') this.closeModalById('create-team-modal');
     });
 
+    document.getElementById('cancel-join-btn').addEventListener('click', () => this.closeModalById('join-team-modal'));
+    document.getElementById('confirm-join-btn').addEventListener('click', () => this.handleJoinTeam());
     document.getElementById('join-team-modal').addEventListener('click', (e) => {
-      if (e.target.id === 'join-team-modal') {
-        document.getElementById('join-team-modal').classList.remove('active');
-      }
+      if (e.target.id === 'join-team-modal') this.closeModalById('join-team-modal');
     });
 
+    document.getElementById('close-invite-btn').addEventListener('click', () => this.closeModalById('invite-modal'));
     document.getElementById('invite-modal').addEventListener('click', (e) => {
-      if (e.target.id === 'invite-modal') {
-        document.getElementById('invite-modal').classList.remove('active');
+      if (e.target.id === 'invite-modal') this.closeModalById('invite-modal');
+    });
+
+    document.getElementById('copy-invite-btn').addEventListener('click', () => this.copyInviteCode());
+
+    // 云端重试按钮
+    const retryBtn = document.getElementById('cloud-retry-btn');
+    if (retryBtn) {
+      retryBtn.addEventListener('click', async () => {
+        this._clearCloudError();
+        this._setCloudError('正在重试…');
+        try {
+          await this.onLoginSuccess();
+        } catch (e) {
+          this._setCloudError('重试失败: ' + (e.message || e));
+        }
+      });
+    }
+  }
+
+  // ============================================================
+  // 菜单 / 抽屉 控制
+  // ============================================================
+  toggleMenu(openId, closeId) {
+    const target = document.getElementById(openId);
+    const other = document.getElementById(closeId);
+    if (!target) return;
+    const willOpen = !target.classList.contains('open');
+    if (other) other.classList.remove('open');
+    target.classList.toggle('open', willOpen);
+  }
+
+  closeAllMenus() {
+    document.querySelectorAll('.vx-user-menu, .vx-timeline-menu').forEach(m => m.classList.remove('open'));
+  }
+
+  openMobileDrawer() {
+    const d = document.getElementById('mobile-drawer');
+    if (d) d.classList.add('open');
+  }
+
+  closeMobileDrawer() {
+    const d = document.getElementById('mobile-drawer');
+    if (d) d.classList.remove('open');
+  }
+
+  // ============================================================
+  // 同步视图/过滤器激活样式
+  // ============================================================
+  syncViewToggleState() {
+    // Round 4：用 classList 显式管理，避免正则替换残留（解决月历态无强调 bug）
+    document.querySelectorAll('[data-view-toggle]').forEach(btn => {
+      const isActive = btn.dataset.viewToggle === this.currentView;
+      btn.classList.remove(
+        'bg-fg', 'text-white',
+        'bg-muted', 'text-fg/60',
+        'bg-white', 'text-fg',
+        'hover:text-fg'
+      );
+      if (isActive) {
+        btn.classList.add('bg-fg', 'text-white');
+      } else {
+        btn.classList.add('text-fg/60', 'hover:text-fg');
       }
     });
   }
 
+  syncFilterState() {
+    // Round 4：选中态用对应语义色（红/黄/绿），而非统一黑色
+    const filterClasses = {
+      all:    ['bg-fg',        'text-white'],
+      high:   ['bg-danger',    'text-white'],
+      medium: ['bg-accent',    'text-white'],
+      low:    ['bg-secondary', 'text-white']
+    };
+    document.querySelectorAll('#filter-bar [data-filter]').forEach(btn => {
+      const f = btn.dataset.filter;
+      const isActive = f === this.currentFilter;
+      btn.classList.remove('bg-fg', 'bg-danger', 'bg-accent', 'bg-secondary', 'text-white', 'bg-white', 'text-fg');
+      if (isActive) {
+        filterClasses[f].forEach(c => btn.classList.add(c));
+      } else {
+        btn.classList.add('bg-white', 'text-fg');
+      }
+    });
+  }
+
+  // 语义化颜色：选中态 = 红/黄/绿；未选中态 = 灰
+  importanceSelectedClasses = {
+    high:   ['bg-danger',     'text-white', 'border-danger'],
+    medium: ['bg-accent',     'text-white', 'border-accent'],
+    low:    ['bg-secondary',  'text-white', 'border-secondary']
+  };
+
+  // Round 5：dataURL（base64）转 File 对象（用于上传到 Supabase Storage）
+  _dataURLtoFile(dataURL, filename = 'image.png') {
+    try {
+      const [meta, base64] = dataURL.split(',');
+      const mimeMatch = meta.match(/data:([^;]+);base64/);
+      const mime = mimeMatch ? mimeMatch[1] : 'image/png';
+      const binary = atob(base64);
+      const array = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) array[i] = binary.charCodeAt(i);
+      return new File([array], filename, { type: mime });
+    } catch (e) {
+      console.error('[VEX-Timeline] dataURL → File 转换失败:', e);
+      return null;
+    }
+  }
+
+  setImportance(val) {
+    document.querySelectorAll('#importance-selector [data-importance]').forEach(btn => {
+      const v = btn.dataset.importance;
+      const isSelected = v === val;
+      // 清除所有相关类
+      btn.classList.remove(
+        'bg-fg', 'text-white', 'bg-muted', 'text-fg/60',
+        'bg-danger', 'bg-accent', 'bg-secondary',
+        'border-danger', 'border-accent', 'border-secondary'
+      );
+      // Round 5：用 data-selected 属性追踪选中态（更可靠，不依赖 class）
+      if (isSelected) {
+        btn.setAttribute('data-selected', 'true');
+        this.importanceSelectedClasses[v].forEach(c => btn.classList.add(c));
+      } else {
+        btn.removeAttribute('data-selected');
+        btn.classList.add('bg-muted', 'text-fg/60');
+      }
+    });
+  }
+
+  // ============================================================
+  // 登录/注册/登出
+  // ============================================================
   async handleLogin() {
     const usernameInput = document.getElementById('auth-username');
     const passwordInput = document.getElementById('auth-password');
@@ -543,15 +767,8 @@ class App {
       this.renderDiagnosticBar();
       return;
     }
-
-    if (!username) {
-      errorEl.textContent = '请输入用户名';
-      return;
-    }
-    if (!password) {
-      errorEl.textContent = '请输入密码';
-      return;
-    }
+    if (!username) { errorEl.textContent = '请输入用户名'; return; }
+    if (!password) { errorEl.textContent = '请输入密码'; return; }
 
     try {
       await authManager.login(username, password);
@@ -575,15 +792,8 @@ class App {
       this.renderDiagnosticBar();
       return;
     }
-
-    if (!username) {
-      errorEl.textContent = '请输入用户名';
-      return;
-    }
-    if (!password || password.length < 6) {
-      errorEl.textContent = '密码长度至少6位';
-      return;
-    }
+    if (!username) { errorEl.textContent = '请输入用户名'; return; }
+    if (!password || password.length < 6) { errorEl.textContent = '密码长度至少 6 位'; return; }
 
     try {
       await authManager.register(username, password);
@@ -595,8 +805,10 @@ class App {
   }
 
   async handleLogout() {
+    // Round 5：停止自动刷新（避免内存泄漏 + 登出后继续拉取）
+    this._stopAutoRefresh();
     await authManager.logout();
-    this.currentTimelineId = 'local';
+    this.currentTimelineId = null;
     this._saveStoredTimelineId(null);
     this.timelines = [];
     this.showAuthPage();
@@ -608,6 +820,50 @@ class App {
     this.cloudErrorMessage = '';
     this.updateCloudStatusIcon();
     this.renderDiagnosticBar();
+  }
+
+  // ============================================================
+  // Round 5：5 分钟自动刷新云端
+  // ============================================================
+  _startAutoRefresh() {
+    if (this._autoRefreshInterval) clearInterval(this._autoRefreshInterval);
+    this._autoRefreshInterval = setInterval(async () => {
+      if (!authManager.isLoggedIn() || !this.currentTimelineId || !this.isOnline) return;
+      if (this.syncInProgress) return;                            // 避免重叠
+      if (this.cloudSyncStatus === 'error') return;                // 错误态不重试
+      try {
+        await this.syncFromCloud();
+        console.log('[VEX-Timeline] Auto refresh @', new Date().toLocaleTimeString());
+      } catch (e) {
+        console.warn('[VEX-Timeline] Auto refresh failed:', e.message || e);
+      }
+    }, 5 * 60 * 1000);
+  }
+
+  _stopAutoRefresh() {
+    if (this._autoRefreshInterval) {
+      clearInterval(this._autoRefreshInterval);
+      this._autoRefreshInterval = null;
+    }
+  }
+
+  // ============================================================
+  // 赛队操作
+  // ============================================================
+  handleTeamAction(action) {
+    if (action === 'create') this.openModalById('create-team-modal');
+    else if (action === 'join') this.openModalById('join-team-modal');
+    else if (action === 'manage') this.handleManageTeam();
+  }
+
+  openModalById(id) {
+    const m = document.getElementById(id);
+    if (m) m.classList.add('active');
+  }
+
+  closeModalById(id) {
+    const m = document.getElementById(id);
+    if (m) m.classList.remove('active');
   }
 
   async handleCreateTeam() {
@@ -623,11 +879,11 @@ class App {
         this.updateTimelineSelector();
       }
     } catch (e) {
-      // handle error
+      console.error('[VEX-Timeline] createTimeline failed:', e);
     }
 
     nameInput.value = '';
-    document.getElementById('create-team-modal').classList.remove('active');
+    this.closeModalById('create-team-modal');
     await this.renderView();
   }
 
@@ -649,61 +905,111 @@ class App {
     }
 
     codeInput.value = '';
-    document.getElementById('join-team-modal').classList.remove('active');
+    this.closeModalById('join-team-modal');
   }
 
   async handleManageTeam() {
     const current = this.timelines.find(t => t.id === this.currentTimelineId);
-    if (!current || current.type !== 'team') return;
+    if (!current || current.type !== 'team') {
+      // 不再静默 return —— 给用户明确反馈
+      this.showToast('请先在时间轴下拉中选择一个赛队', 'warning');
+      return;
+    }
 
     document.getElementById('invite-code-display').textContent = current.invite_code || '---';
 
+    const membersList = document.getElementById('members-list');
+    membersList.innerHTML = '<div class="px-4 py-3 text-sm text-fg/60">加载中…</div>';
+
     try {
       const members = await cloudDBManager.getTimelineMembers(this.currentTimelineId);
-      const membersList = document.getElementById('members-list');
       const isOwner = current.owner_id === authManager.getCurrentUser()?.id;
 
-      membersList.innerHTML = members.map(member => `
-        <div class="member-item">
-          <div>
-            <span class="member-name">${member.users?.username || '未知'}</span>
-            <span class="member-role">${member.role === 'owner' ? '所有者' : '成员'}</span>
+      if (!members || members.length === 0) {
+        membersList.innerHTML = '<div class="px-4 py-3 text-sm text-fg/60">暂无成员</div>';
+      } else {
+        membersList.innerHTML = members.map(member => `
+          <div class="flex justify-between items-center px-4 py-3 border-b-2 border-border last:border-b-0">
+            <div class="flex flex-col gap-0.5">
+              <span class="font-semibold text-sm">${this._escapeHtml(member.users?.username || '未知')}</span>
+              <span class="text-xs font-semibold uppercase tracking-wider text-fg/60">${member.role === 'owner' ? '所有者' : '成员'}</span>
+            </div>
+            ${isOwner && member.role !== 'owner' ? `
+              <button class="vx-member-remove-btn h-8 px-3 bg-white border-2 border-border rounded-md text-xs font-semibold uppercase tracking-wider hover:border-danger hover:text-danger transition-all duration-200" data-user-id="${member.user_id}">移除</button>
+            ` : ''}
           </div>
-          ${isOwner && member.role !== 'owner' ? `
-            <button class="member-remove-btn" data-user-id="${member.user_id}">移除</button>
-          ` : ''}
-        </div>
-      `).join('');
+        `).join('');
+      }
 
-      membersList.querySelectorAll('.member-remove-btn').forEach(btn => {
+      if (window.lucide && lucide.createIcons) lucide.createIcons();
+
+      membersList.querySelectorAll('.vx-member-remove-btn').forEach(btn => {
         btn.addEventListener('click', async (e) => {
-          const userId = e.target.dataset.userId;
+          const userId = e.currentTarget.dataset.userId;
           try {
             await cloudDBManager.removeMember(this.currentTimelineId, userId);
-            e.target.closest('.member-item').remove();
+            e.currentTarget.closest('.flex').remove();
+            this.showToast('已移除成员', 'success');
           } catch (err) {
-            // handle error
+            console.error(err);
+            this.showToast('移除失败: ' + (err.message || err), 'error');
           }
         });
       });
     } catch (e) {
-      // handle error
+      console.error('[VEX-Timeline] getTimelineMembers failed:', e);
+      membersList.innerHTML = `<div class="px-4 py-3 text-sm text-danger">加载失败: ${this._escapeHtml(e.message || String(e))}</div>`;
+      this.showToast('加载成员失败: ' + (e.message || e), 'error');
     }
 
-    document.getElementById('invite-modal').classList.add('active');
+    this.openModalById('invite-modal');
   }
 
+  // ============================================================
+  // Toast 提示（替代 alert / 静默 return）
+  // ============================================================
+  showToast(message, type = 'info') {
+    const t = document.getElementById('vx-toast');
+    if (!t) return;
+    const colors = {
+      info:    'bg-fg text-white',
+      success: 'bg-secondary text-white',
+      warning: 'bg-accent text-white',
+      error:   'bg-danger text-white'
+    };
+    t.className = `fixed bottom-6 left-1/2 -translate-x-1/2 px-5 py-3 rounded-md text-sm font-semibold z-[200] shadow-none ${colors[type] || colors.info}`;
+    t.textContent = message;
+    t.classList.remove('hidden');
+    clearTimeout(this._toastTimer);
+    this._toastTimer = setTimeout(() => t.classList.add('hidden'), 3000);
+  }
+
+  copyInviteCode() {
+    const code = document.getElementById('invite-code-display').textContent;
+    if (!code || code === '---') return;
+    navigator.clipboard.writeText(code).then(() => {
+      const btn = document.getElementById('copy-invite-btn');
+      if (!btn) return;
+      const original = btn.innerHTML;
+      btn.innerHTML = '<i data-lucide="check" class="w-5 h-5"></i>';
+      if (window.lucide && lucide.createIcons) lucide.createIcons();
+      setTimeout(() => { btn.innerHTML = original; if (window.lucide && lucide.createIcons) lucide.createIcons(); }, 1500);
+    });
+  }
+
+  // ============================================================
+  // 图片上传
+  // ============================================================
   handleImageUpload(e) {
     const file = e.target.files[0];
     if (!file) return;
-
     const reader = new FileReader();
     reader.onload = (event) => {
       this.tempImageData = event.target.result;
       const preview = document.getElementById('image-preview');
       const previewImg = document.getElementById('preview-img');
       previewImg.src = this.tempImageData;
-      preview.style.display = 'block';
+      preview.classList.remove('hidden');
     };
     reader.readAsDataURL(file);
   }
@@ -713,11 +1019,14 @@ class App {
     const preview = document.getElementById('image-preview');
     const previewImg = document.getElementById('preview-img');
     const imageInput = document.getElementById('record-image');
-    preview.style.display = 'none';
+    preview.classList.add('hidden');
     previewImg.src = '';
     imageInput.value = '';
   }
 
+  // ============================================================
+  // 记录模态框
+  // ============================================================
   openModal(record = null) {
     this.editingRecord = record;
     this.tempImageData = null;
@@ -727,7 +1036,6 @@ class App {
     const timeInput = document.getElementById('record-time');
     const titleInput = document.getElementById('record-title');
     const contentInput = document.getElementById('record-content');
-    const importanceBtns = document.querySelectorAll('.importance-btn');
     const imagePreview = document.getElementById('image-preview');
     const previewImg = document.getElementById('preview-img');
     const imageInput = document.getElementById('record-image');
@@ -738,20 +1046,14 @@ class App {
       timeInput.value = record.time || '';
       titleInput.value = record.title;
       contentInput.value = record.content || '';
-
-      importanceBtns.forEach(btn => {
-        btn.classList.remove('active');
-        if (btn.dataset.importance === record.importance) {
-          btn.classList.add('active');
-        }
-      });
+      this.setImportance(record.importance || 'medium');
 
       if (record.image || record.image_url) {
         this.tempImageData = record.image || record.image_url;
         previewImg.src = this.tempImageData;
-        imagePreview.style.display = 'block';
+        imagePreview.classList.remove('hidden');
       } else {
-        imagePreview.style.display = 'none';
+        imagePreview.classList.add('hidden');
         previewImg.src = '';
       }
     } else {
@@ -760,22 +1062,15 @@ class App {
       timeInput.value = this.formatTime(new Date());
       titleInput.value = '';
       contentInput.value = '';
-
-      importanceBtns.forEach(btn => {
-        btn.classList.remove('active');
-        if (btn.dataset.importance === 'medium') {
-          btn.classList.add('active');
-        }
-      });
-
-      imagePreview.style.display = 'none';
+      this.setImportance('medium');
+      imagePreview.classList.add('hidden');
       previewImg.src = '';
       this.tempImageData = null;
     }
 
     imageInput.value = '';
     modal.classList.add('active');
-    titleInput.focus();
+    setTimeout(() => titleInput.focus(), 50);
   }
 
   closeModal() {
@@ -790,46 +1085,45 @@ class App {
     const timeInput = document.getElementById('record-time');
     const titleInput = document.getElementById('record-title');
     const contentInput = document.getElementById('record-content');
-    const activeImportanceBtn = document.querySelector('.importance-btn.active');
+    // Round 5：三重 fallback 选择器（data-selected → 语义色 class → 第一个按钮）
+    const activeImportanceBtn = document.querySelector('#importance-selector [data-importance][data-selected="true"]') ||
+                                 document.querySelector('#importance-selector [data-importance].bg-danger, #importance-selector [data-importance].bg-accent, #importance-selector [data-importance].bg-secondary') ||
+                                 document.querySelector('#importance-selector [data-importance]');
 
     const date = dateInput.value;
     const time = timeInput.value;
     const title = titleInput.value.trim();
     const content = contentInput.value.trim();
-    const importance = activeImportanceBtn.dataset.importance;
-    const image = this.tempImageData;
+    const importance = activeImportanceBtn ? activeImportanceBtn.dataset.importance : 'medium';
+    let imageUrl = this.tempImageData;
 
-    if (!title) {
-      alert('请输入标题');
-      return;
+    if (!title) { alert('请输入标题'); return; }
+    if (!date)  { alert('请选择日期'); return; }
+
+    // Round 5：图片上传到 Supabase Storage（避免 base64 超过列长度导致丢失）
+    if (imageUrl && imageUrl.startsWith('data:')) {
+      try {
+        const file = this._dataURLtoFile(imageUrl, 'image.png');
+        if (file) {
+          imageUrl = await cloudDBManager.uploadImage(file, this.currentTimelineId);
+          console.log('[VEX-Timeline] 图片已上传:', imageUrl);
+        }
+      } catch (e) {
+        console.warn('[VEX-Timeline] 图片上传失败，保存原 base64（云端可能丢失）:', e);
+        // 降级：继续保存 base64，IndexedDB 还在，云端可能没图
+      }
     }
 
-    if (!date) {
-      alert('请选择日期');
-      return;
-    }
-
-    const recordData = {
-      date,
-      time,
-      title,
-      content,
-      importance,
-      image,
-      timeline_id: this.currentTimelineId
-    };
+    const recordData = { date, time, title, content, importance, image: imageUrl, timeline_id: this.currentTimelineId };
 
     if (this.editingRecord) {
       await dbManager.updateRecord(this.editingRecord.id, recordData);
-
-      if (authManager.isLoggedIn() && supabaseManager.isConfigured() && this.currentTimelineId !== 'local') {
+      if (authManager.isLoggedIn() && supabaseManager.isConfigured() && this.currentTimelineId) {
         if (this.isOnline) {
           try {
             const cloudId = this.editingRecord.cloud_id;
             if (cloudId) {
-              await cloudDBManager.updateRecord(cloudId, {
-                date, time, title, content, importance, image_url: image
-              });
+              await cloudDBManager.updateRecord(cloudId, { date, time, title, content, importance, image_url: imageUrl });
             }
           } catch (e) {
             await dbManager.addToSyncQueue('update', { ...recordData, cloud_id: this.editingRecord.cloud_id });
@@ -840,13 +1134,10 @@ class App {
       }
     } else {
       const localId = await dbManager.addRecord(recordData);
-
-      if (authManager.isLoggedIn() && supabaseManager.isConfigured() && this.currentTimelineId !== 'local') {
+      if (authManager.isLoggedIn() && supabaseManager.isConfigured() && this.currentTimelineId) {
         if (this.isOnline) {
           try {
-            const cloudRecord = await cloudDBManager.addRecord(this.currentTimelineId, {
-              date, time, title, content, importance, image_url: image
-            });
+            const cloudRecord = await cloudDBManager.addRecord(this.currentTimelineId, { date, time, title, content, importance, image_url: imageUrl });
             await dbManager.updateRecord(localId, { cloud_id: cloudRecord.id });
           } catch (e) {
             await dbManager.addToSyncQueue('add', recordData);
@@ -862,20 +1153,18 @@ class App {
   }
 
   async deleteRecord(id) {
-    if (!confirm('确定要删除这条记录吗？')) {
-      return;
-    }
-
+    if (!confirm('确定要删除这条记录吗？')) return;
     const record = this.records.find(r => r.id === id);
-
     await dbManager.deleteRecord(id);
-
-    if (authManager.isLoggedIn() && supabaseManager.isConfigured() && this.currentTimelineId !== 'local' && record) {
+    if (authManager.isLoggedIn() && supabaseManager.isConfigured() && this.currentTimelineId && record) {
+      // Round 5：删除记录时同步清理 Storage 图片（避免孤儿文件）
+      const imageSrc = record.image_url || record.image;
+      if (imageSrc && imageSrc.startsWith('http')) {
+        try { await cloudDBManager.deleteImage(imageSrc); } catch (e) { /* ignore */ }
+      }
       if (this.isOnline) {
         try {
-          if (record.cloud_id) {
-            await cloudDBManager.deleteRecord(record.cloud_id);
-          }
+          if (record.cloud_id) await cloudDBManager.deleteRecord(record.cloud_id);
         } catch (e) {
           await dbManager.addToSyncQueue('delete', { cloud_id: record.cloud_id, timeline_id: record.timeline_id });
         }
@@ -883,10 +1172,12 @@ class App {
         await dbManager.addToSyncQueue('delete', { cloud_id: record.cloud_id, timeline_id: record.timeline_id });
       }
     }
-
     await this.renderView();
   }
 
+  // ============================================================
+  // 日期/时间 格式化
+  // ============================================================
   formatDate(date) {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -896,17 +1187,14 @@ class App {
 
   formatDateLabel(date) {
     const months = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
-    const monthName = months[date.getMonth()];
-    const year = date.getFullYear();
-    return `${year}年 ${monthName}`;
+    return `${date.getFullYear()}年 ${months[date.getMonth()]}`;
   }
 
   formatDateDisplay(dateStr) {
     const [year, month, day] = dateStr.split('-');
     const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
     const days = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
-    const dayName = days[date.getDay()];
-    return `${year}年${month}月${day}日 ${dayName}`;
+    return `${year}年${month}月${day}日 ${days[date.getDay()]}`;
   }
 
   formatTime(date) {
@@ -915,25 +1203,35 @@ class App {
     return `${hours}:${minutes}`;
   }
 
+  // ============================================================
+  // 渲染
+  // ============================================================
   renderDate() {
     const dateLabel = document.getElementById('date-label');
-    dateLabel.textContent = this.formatDateLabel(this.currentDate);
+    if (dateLabel) dateLabel.textContent = this.formatDateLabel(this.currentDate);
   }
 
   async renderView() {
     const timelineContainer = document.getElementById('timeline-container');
     const calendarContainer = document.getElementById('calendar-container');
-    const addBtn = document.getElementById('add-btn');
+    if (!timelineContainer || !calendarContainer) return;
+
+    this.syncViewToggleState();
+
+    // Round 4：未登录或未选择时间轴时不渲染内容（防止本地/云端错乱）
+    if (!authManager.isLoggedIn() || !this.currentTimelineId) {
+      timelineContainer.classList.add('hidden');
+      calendarContainer.classList.add('hidden');
+      return;
+    }
 
     if (this.currentView === 'month') {
-      timelineContainer.style.display = 'none';
-      calendarContainer.style.display = 'block';
-      addBtn.style.display = 'flex';
+      timelineContainer.classList.add('hidden');
+      calendarContainer.classList.remove('hidden');
       await this.renderCalendar();
     } else {
-      timelineContainer.style.display = 'block';
-      calendarContainer.style.display = 'none';
-      addBtn.style.display = 'flex';
+      timelineContainer.classList.remove('hidden');
+      calendarContainer.classList.add('hidden');
       await this.renderTimeline();
     }
   }
@@ -943,86 +1241,114 @@ class App {
     const year = this.currentDate.getFullYear();
     const month = this.currentDate.getMonth();
 
-    let datesWithRecords;
-    if (this.currentTimelineId === 'local') {
-      datesWithRecords = await dbManager.getDatesWithRecords(year, month + 1);
-    } else {
-      const allRecords = await this.getRecordsForCurrentTimeline();
-      const dates = new Set();
-      allRecords.forEach(r => {
-        const [rYear, rMonth] = r.date.split('-');
-        if (parseInt(rYear) === year && parseInt(rMonth) === month + 1) {
-          dates.add(r.date);
-        }
-      });
-      datesWithRecords = Array.from(dates).sort();
+    // Round 4：取消本地时间轴，统一走云端路径
+    if (!this.currentTimelineId) {
+      calendar.innerHTML = '<div class="vx-empty" style="grid-column: 1 / -1;">请先选择时间轴</div>';
+      return;
     }
 
+    const allRecords = await this.getRecordsForCurrentTimeline();
+    const dates = new Set();
+    allRecords.forEach(r => {
+      const [rYear, rMonth] = r.date.split('-');
+      if (parseInt(rYear) === year && parseInt(rMonth) === month + 1) dates.add(r.date);
+    });
+    const datesWithRecords = Array.from(dates).sort();
     const datesSet = new Set(datesWithRecords);
 
-    const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
-    const prevLastDay = new Date(year, month, 0);
+    // 同时获取 records 用来判断高/中 importance
+    const highDatesSet = new Set(
+      allRecords.filter(r => r.importance === 'high').map(r => r.date)
+    );
+    const mediumDatesSet = new Set(
+      allRecords.filter(r => r.importance === 'medium').map(r => r.date)
+    );
 
+    // Round 4：按 date 聚合 importances（用于每记录一个点）
+    const recordsByDate = {};
+    allRecords.forEach(r => {
+      if (parseInt(r.date.split('-')[0]) === year && parseInt(r.date.split('-')[1]) === month + 1) {
+        (recordsByDate[r.date] = recordsByDate[r.date] || []).push(r.importance || 'medium');
+      }
+    });
+
+    const firstDay = new Date(year, month, 1);
     const firstDayOfWeek = firstDay.getDay();
-    const lastDateOfMonth = lastDay.getDate();
-    const lastDateOfPrevMonth = prevLastDay.getDate();
+    const lastDateOfMonth = new Date(year, month + 1, 0).getDate();
+    const lastDateOfPrevMonth = new Date(year, month, 0).getDate();
+
+    const todayStr = this.formatDate(new Date());
 
     const days = ['日', '一', '二', '三', '四', '五', '六'];
+    let headerHTML = days.map(d =>
+      `<div class="px-2 py-3 text-center text-xs font-semibold uppercase tracking-wider text-fg/60 bg-muted border-b-2 border-border">${d}</div>`
+    ).join('');
 
-    let calendarHTML = `
-      <div class="calendar-header">
-        ${days.map(day => `<div class="calendar-header-cell">${day}</div>`).join('')}
-      </div>
-      <div class="calendar-grid">
-    `;
+    let cellsHTML = '';
+    // 先计算 remainingCells（需在循环前确定），再据此算出最后一行起始索引
+    const firstRowTotal = firstDayOfWeek + lastDateOfMonth;
+    const remainingCells = (7 - (firstRowTotal % 7)) % 7;
+    const totalCells = firstDayOfWeek + lastDateOfMonth + remainingCells;
+    // 最后一行起始索引 = 总数 - 7（最后 7 个 cell 永远是最后一行）
+    const lastRowStart = totalCells - 7;
+    let cellIdx = 0;
+    const rowClass = () => (cellIdx >= lastRowStart ? ' vx-calendar-row-last' : '');
 
     for (let i = firstDayOfWeek - 1; i >= 0; i--) {
       const day = lastDateOfPrevMonth - i;
-      calendarHTML += `
-        <div class="calendar-cell other-month">
-          <span class="calendar-day-number">${day}</span>
-        </div>
-      `;
+      cellsHTML += `<div class="vx-calendar-cell other-month${rowClass()}"><span class="vx-calendar-day-number">${day}</span></div>`;
+      cellIdx++;
     }
-
     for (let day = 1; day <= lastDateOfMonth; day++) {
       const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
       const hasRecords = datesSet.has(dateStr);
-      const cellClass = hasRecords ? 'calendar-cell has-records' : 'calendar-cell';
+      const hasHigh = highDatesSet.has(dateStr);
+      const hasMedium = mediumDatesSet.has(dateStr);
+      const isToday = dateStr === todayStr;
+      const dow = new Date(year, month, day).getDay();
+      const isWeekend = dow === 0 || dow === 6;
 
-      calendarHTML += `
-        <div class="${cellClass}" data-date="${dateStr}">
-          <span class="calendar-day-number">${day}</span>
+      const classes = ['vx-calendar-cell'];
+      if (hasHigh) classes.push('has-high');
+      // 仅当不是 high 时才标 has-medium（high 优先）
+      else if (hasMedium) classes.push('has-medium');
+      if (isToday) classes.push('today');
+      if (isWeekend) classes.push('weekend');
+      // 最后一行追加 vx-calendar-row-last（用于 CSS 移除 border-bottom）
+      if (cellIdx >= lastRowStart) classes.push('vx-calendar-row-last');
+
+      // Round 4：每条记录一个点，按 importance 着色（最多 5 个 + "+N" 溢出）
+      const dateImportances = recordsByDate[dateStr] || [];
+      const dotsHTML = dateImportances.length > 0
+        ? `<div class="vx-calendar-dots">${dateImportances.slice(0, 5).map(imp =>
+            `<span class="vx-calendar-dot ${imp}"></span>`
+          ).join('')}${dateImportances.length > 5 ? `<span class="text-[8px] font-semibold text-fg/60 ml-0.5">+${dateImportances.length - 5}</span>` : ''}</div>`
+        : '';
+
+      cellsHTML += `
+        <div class="${classes.join(' ')}" data-date="${dateStr}">
+          <span class="vx-calendar-day-number">${day}</span>
+          ${dotsHTML}
         </div>
       `;
+      cellIdx++;
     }
-
-    const totalCells = firstDayOfWeek + lastDateOfMonth;
-    const remainingCells = (7 - (totalCells % 7)) % 7;
     for (let day = 1; day <= remainingCells; day++) {
-      calendarHTML += `
-        <div class="calendar-cell other-month">
-          <span class="calendar-day-number">${day}</span>
-        </div>
-      `;
+      cellsHTML += `<div class="vx-calendar-cell other-month${rowClass()}"><span class="vx-calendar-day-number">${day}</span></div>`;
+      cellIdx++;
     }
 
-    calendarHTML += `</div>`;
-    calendar.innerHTML = calendarHTML;
+    calendar.innerHTML = headerHTML + cellsHTML;
 
-    document.querySelectorAll('.calendar-cell:not(.other-month)').forEach(cell => {
+    document.querySelectorAll('.vx-calendar-cell:not(.other-month)').forEach(cell => {
       cell.addEventListener('click', (e) => {
-        const dateStr = e.currentTarget.dataset.date;
-        this.showDayRecords(dateStr);
+        this.showDayRecords(e.currentTarget.dataset.date);
       });
     });
   }
 
   async getRecordsForCurrentTimeline() {
-    if (this.currentTimelineId === 'local') {
-      return await dbManager.getAllRecords();
-    }
+    if (!this.currentTimelineId) return [];
     return await dbManager.getRecordsByTimeline(this.currentTimelineId);
   }
 
@@ -1030,49 +1356,45 @@ class App {
     const overlay = document.getElementById('day-records-overlay');
     const title = document.getElementById('day-records-title');
     const content = document.getElementById('day-records-content');
-
     title.textContent = this.formatDateDisplay(dateStr);
 
     const allRecords = await this.getRecordsForCurrentTimeline();
     const dayRecords = allRecords.filter(r => r.date === dateStr);
 
     if (dayRecords.length === 0) {
-      content.innerHTML = `
-        <div class="empty-state">
-          暂无记录
-        </div>
-      `;
+      content.innerHTML = `<div class="vx-empty">暂无记录</div>`;
     } else {
+      dayRecords.sort((a, b) => (a.time || '00:00').localeCompare(b.time || '00:00'));
       let html = '';
-      dayRecords.sort((a, b) => {
-        const timeA = a.time || '00:00';
-        const timeB = b.time || '00:00';
-        return timeB.localeCompare(timeA);
-      });
-
       dayRecords.forEach(record => {
         const time = record.time || '';
         const importance = record.importance || 'medium';
         const imgSrc = record.image || record.image_url || '';
-
+        // 语义化颜色（红/黄/绿）
+        const importanceColors = {
+          high:   'bg-danger',       // 红
+          medium: 'bg-accent',       // 黄
+          low:    'bg-secondary'     // 绿
+        };
+        const importanceBg = {
+          high:   'bg-red-50',
+          medium: 'bg-white',
+          low:    'bg-emerald-50'
+        };
         html += `
-          <div class="day-record-card">
-            <div class="day-record-importance" data-importance="${importance}"></div>
-            <div class="day-record-time">${time}</div>
-            <div class="day-record-title">${record.title}</div>
-            ${record.content ? `<div class="day-record-content">${record.content}</div>` : ''}
-            ${imgSrc ? `
-              <div class="day-record-image">
-                <img src="${imgSrc}" alt="记录图片">
-              </div>
-            ` : ''}
+          <div class="vx-day-record vx-timeline-item p-6 ${importanceBg[importance]}" data-importance="${importance}">
+            <div class="flex items-center gap-3 mb-3">
+              <span class="h-3 w-3 rounded-full ${importanceColors[importance]}"></span>
+              <span class="text-xs font-semibold uppercase tracking-wider text-fg/60">${time}</span>
+            </div>
+            <div class="font-semibold text-lg mb-2">${this._escapeHtml(record.title)}</div>
+            ${record.content ? `<div class="text-fg/60 text-sm mb-3">${this._escapeHtml(record.content)}</div>` : ''}
+            ${imgSrc ? `<img src="${this._escapeHtml(imgSrc)}" class="max-w-full max-h-64 object-cover rounded-md border-2 border-border" alt="记录图片">` : ''}
           </div>
         `;
       });
-
       content.innerHTML = html;
     }
-
     overlay.classList.add('active');
   }
 
@@ -1083,140 +1405,146 @@ class App {
 
   showLoadingState() {
     const timeline = document.getElementById('timeline');
-    timeline.innerHTML = `
-      <div class="loading-state">
-        加载中...
-      </div>
-    `;
+    timeline.innerHTML = `<div class="vx-empty">加载中…</div>`;
   }
 
   async renderTimeline() {
     const timeline = document.getElementById('timeline');
-
     this.showLoadingState();
-
-    await new Promise(resolve => setTimeout(resolve, 150));
+    await new Promise(resolve => setTimeout(resolve, 100));
 
     this.records = await this.getRecordsForCurrentTimeline();
-
     let filteredRecords = this.records;
     if (this.currentFilter !== 'all') {
       filteredRecords = this.records.filter(r => r.importance === this.currentFilter);
     }
 
     if (filteredRecords.length === 0) {
-      timeline.innerHTML = `
-        <div class="empty-state">
-          暂无记录
-        </div>
-      `;
+      timeline.innerHTML = `<div class="vx-empty">暂无记录</div>`;
       return;
     }
 
-    const groupedRecords = {};
-    filteredRecords.forEach(record => {
-      if (!groupedRecords[record.date]) {
-        groupedRecords[record.date] = [];
-      }
-      groupedRecords[record.date].push(record);
+    // 语义化颜色（红/黄/绿）—— 高=红 / 中=黄 / 低=绿
+    const importanceBadgeColors = {
+      high:   'bg-danger text-white',       // 红 #EF4444
+      medium: 'bg-accent text-white',       // 黄 #F59E0B
+      low:    'bg-secondary text-white'     // 绿 #10B981
+    };
+    const importanceIcons = {
+      high:   'alert-circle',
+      medium: 'circle-dot',
+      low:    'check-circle'
+    };
+    const importanceLabel = { high: '高', medium: '中', low: '低' };
+
+    // Round 5：按 date desc, time desc 排序
+    const sortedRecords = [...filteredRecords].sort((a, b) => {
+      const dateCmp = b.date.localeCompare(a.date);
+      if (dateCmp !== 0) return dateCmp;
+      return (b.time || '00:00').localeCompare(a.time || '00:00');
     });
 
-    const sortedDates = Object.keys(groupedRecords).sort((a, b) => b.localeCompare(a));
+    // Round 6：按日期分组（每个 day 一个 .vx-day-section，含大日期 header）
+    // 但仍用单一 .vx-timeline-rail 容器包裹（保留跨天连贯竖线）
+    const groups = {};
+    sortedRecords.forEach(r => {
+      (groups[r.date] = groups[r.date] || []).push(r);
+    });
+    const sortedDates = Object.keys(groups).sort((a, b) => b.localeCompare(a));
 
-    let timelineHTML = '';
+    let html = `<div class="vx-timeline-rail">`;
+
     sortedDates.forEach(dateStr => {
-      const dateRecords = groupedRecords[dateStr];
-      dateRecords.sort((a, b) => {
-        const timeA = a.time || '00:00';
-        const timeB = b.time || '00:00';
-        return timeB.localeCompare(timeA);
-      });
+      const dayRecords = groups[dateStr].sort((a, b) =>
+        (b.time || '00:00').localeCompare(a.time || '00:00')
+      );
+      const dayLabel = this.formatDateDisplay(dateStr);
 
-      timelineHTML += `
-        <div class="date-group">
-          <div class="date-header">
-            <span class="date-title">${this.formatDateDisplay(dateStr)}</span>
-            <span class="date-count">${dateRecords.length}条</span>
-          </div>
-          <div class="date-records">
-      `;
+      // Round 6：大日期 header（外部、上方，不加黑色横条）
+      html += `<section class="vx-day-section">`;
+      html += `<h3 class="vx-day-header">${this._escapeHtml(dayLabel)}</h3>`;
 
-      dateRecords.forEach(record => {
-        const time = record.time || this.formatTime(new Date(record.createdAt));
+      dayRecords.forEach(record => {
+        const time = record.time || '—';
         const importance = record.importance || 'medium';
         const imgSrc = record.image || record.image_url || '';
         const canEdit = this.canEditRecord(record);
+        // 用 String() 强制转换为字符串以兼容 UUID 和数字 id
+        const recordIdStr = String(record.id);
 
-        timelineHTML += `
-          <div class="timeline-item" data-importance="${importance}">
-            <div class="timeline-card">
-              ${canEdit ? `
-              <div class="timeline-card-actions">
-                <button class="action-btn edit-btn" data-id="${record.id}" title="编辑">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                  </svg>
+        // Round 6：卡片内部只显示时间；重要性 inline 在标题前
+        html += `
+          <div class="vx-timeline-item" data-importance="${importance}">
+            <div class="vx-rail-dot">
+              <i data-lucide="${importanceIcons[importance]}"></i>
+            </div>
+            ${canEdit ? `
+              <div class="flex gap-2 justify-end mb-2">
+                <button class="vx-action-btn h-7 w-7 bg-muted text-fg rounded-md flex items-center justify-center hover:bg-primary hover:text-white transition-all duration-200 vx-edit-btn" data-id="${recordIdStr}" title="编辑">
+                  <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
                 </button>
-                <button class="action-btn delete delete-btn" data-id="${record.id}" title="删除">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="3 6 5 6 21 6"></polyline>
-                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                  </svg>
+                <button class="vx-action-btn h-7 w-7 bg-muted text-fg rounded-md flex items-center justify-center hover:bg-danger hover:text-white transition-all duration-200 vx-delete-btn" data-id="${recordIdStr}" title="删除">
+                  <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
                 </button>
               </div>
-              ` : ''}
-              <div class="timeline-time">${time}</div>
-              <div class="timeline-title">${record.title}</div>
-              ${record.content ? `<div class="timeline-content">${record.content}</div>` : ''}
-              ${imgSrc ? `
-                <div class="timeline-image">
-                  <img src="${imgSrc}" alt="记录图片">
-                </div>
-              ` : ''}
+            ` : ''}
+            <div class="vx-item-time">${this._escapeHtml(time)}</div>
+            <div class="vx-item-title-row">
+              <span class="inline-flex items-center justify-center text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded ${importanceBadgeColors[importance]}">${importanceLabel[importance]}</span>
+              <h4 class="vx-item-title">${this._escapeHtml(record.title)}</h4>
             </div>
+            ${record.content ? `<div class="vx-item-content">${this._escapeHtml(record.content)}</div>` : ''}
+            ${imgSrc ? `<img src="${this._escapeHtml(imgSrc)}" class="max-w-full max-h-72 object-cover rounded-md border-2 border-border" alt="记录图片">` : ''}
           </div>
         `;
       });
 
-      timelineHTML += `
-          </div>
-        </div>
-      `;
+      html += `</section>`;
     });
 
-    timeline.innerHTML = timelineHTML;
+    html += `</div>`;
+    timeline.innerHTML = html;
+    if (window.lucide && lucide.createIcons) lucide.createIcons();
 
-    document.querySelectorAll('.edit-btn').forEach(btn => {
+    // 修复 parseInt 致命 bug：UUID 字符串 parseInt → NaN，导致 dbManager.deleteRecord(NaN) 报错
+    // 改用 String(r.id) === dataset.id 字符串比较，兼容 UUID 和数字 id
+    document.querySelectorAll('.vx-edit-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
-        const id = parseInt(e.currentTarget.dataset.id);
-        const record = this.records.find(r => r.id === id);
-        if (record) {
-          this.openModal(record);
-        }
+        const id = e.currentTarget.dataset.id;
+        const record = this.records.find(r => String(r.id) === id);
+        if (record) this.openModal(record);
+        else console.warn('[VEX-Timeline] Edit: record not found for id', id);
       });
     });
-
-    document.querySelectorAll('.delete-btn').forEach(btn => {
+    document.querySelectorAll('.vx-delete-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
-        const id = parseInt(e.currentTarget.dataset.id);
+        const id = e.currentTarget.dataset.id;
         this.deleteRecord(id);
       });
     });
   }
 
   canEditRecord(record) {
-    if (this.currentTimelineId === 'local') return true;
+    if (!this.currentTimelineId) return false;
     if (!authManager.isLoggedIn()) return true;
-
     const current = this.timelines.find(t => t.id === this.currentTimelineId);
     if (!current) return true;
-
     if (current.owner_id === authManager.getCurrentUser()?.id) return true;
-
     if (record.user_id === authManager.getCurrentUser()?.id) return true;
-
     return false;
+  }
+
+  // ============================================================
+  // 工具
+  // ============================================================
+  _escapeHtml(s) {
+    if (s == null) return '';
+    return String(s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
   }
 }
 

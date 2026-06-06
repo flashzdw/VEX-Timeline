@@ -4,282 +4,533 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>VEX-Timeline</title>
-    <meta name="theme-color" content="#5B9BF6">
-    
+    <meta name="theme-color" content="#3B82F6">
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Doto:wght@400;700&family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
-    
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Tailwind Play CDN + Design Tokens (DESIGN.md §二/三/四) -->
+    <!-- Tailwind Play CDN（开发/演示用；生产环境建议切换到 Tailwind CLI / PostCSS） -->
+    <script>
+      // 抑制 Tailwind Play CDN 的"production"警告（无害，仅用于开发阶段）
+      (function () {
+        var origWarn = console.warn;
+        console.warn = function () {
+          if (arguments[0] && typeof arguments[0] === 'string' &&
+              arguments[0].indexOf('cdn.tailwindcss.com should not be used in production') !== -1) {
+            return;
+          }
+          return origWarn.apply(console, arguments);
+        };
+      })();
+    </script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              bg:       '#FFFFFF',
+              fg:       '#111827',
+              primary:  '#3B82F6',
+              'primary-hover': '#2563EB',
+              secondary:'#10B981',
+              accent:   '#F59E0B',
+              muted:    '#F3F4F6',
+              border:   '#E5E7EB',
+              danger:   '#EF4444',
+            },
+            fontFamily: {
+              sans: ['Outfit', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+            },
+            borderRadius: {
+              md: '6px',
+              lg: '8px',
+            },
+          },
+        },
+        corePlugins: {
+          boxShadow: false,    // DESIGN.md §五 严格禁止阴影
+          backdropBlur: false,// DESIGN.md §五 严格禁止模糊
+        },
+      };
+    </script>
+
     <link rel="stylesheet" href="./src/css/styles.css">
     <link rel="manifest" href="./manifest.json">
 </head>
-<body>
-    <div class="auth-page" id="auth-page">
-        <div class="auth-container">
-            <h1 class="auth-title">VEX-Timeline</h1>
-            <p class="auth-subtitle">记录备赛每一天</p>
-            <div class="diag-banner" id="diag-banner" style="display: none;"></div>
-            <div class="diagnostic-bar" id="diagnostic-bar">
-                <div class="diag-row" id="diag-url">URL: 检测中...</div>
-                <div class="diag-row" id="diag-key">Key: 检测中...</div>
-                <div class="diag-row" id="diag-session">Session: 检测中...</div>
-                <div class="diag-row" id="diag-user">Token: 检测中...</div>
-                <div class="diag-row" id="diag-timeline">时间轴: 检测中...</div>
+<body class="bg-bg text-fg font-sans">
+
+    <!-- ============================================================
+         AUTH PAGE  海报式 左右分栏
+         ============================================================ -->
+    <div id="auth-page" class="min-h-screen flex">
+        <!-- 左侧 Hero（色块 + 装饰几何） -->
+        <div class="hidden lg:flex relative flex-1 bg-primary text-white p-12 flex-col justify-between overflow-hidden">
+            <div class="absolute -top-32 -right-32 h-96 w-96 rounded-full bg-white/10 pointer-events-none"></div>
+            <div class="absolute bottom-10 left-10 h-40 w-40 rotate-12 bg-accent/20 pointer-events-none"></div>
+            <div class="absolute top-1/2 right-20 h-20 w-20 rotate-45 bg-secondary/30 pointer-events-none"></div>
+
+            <div class="relative z-10">
+                <div class="flex items-center gap-3 mb-12">
+                    <div class="h-12 w-12 bg-white text-primary rounded-md flex items-center justify-center font-extrabold text-xl">V</div>
+                    <span class="text-2xl font-extrabold tracking-[-0.02em]">VEX-Timeline</span>
+                </div>
+                <h1 class="font-extrabold text-6xl tracking-[-0.02em] leading-[1.05] mb-6 max-w-md">
+                    记录备赛<br/>每一天。
+                </h1>
+                <p class="text-lg font-medium tracking-wider uppercase opacity-80 max-w-sm">
+                    Personal & team timeline for VEX robotics.
+                </p>
             </div>
-            <div class="auth-form">
-            <div class="form-group">
-                <label class="form-label" for="auth-username">用户名</label>
-                <input type="text" class="form-input" id="auth-username" placeholder="输入用户名" maxlength="20" autocomplete="off">
-            </div>
-            <div class="form-group">
-                <label class="form-label" for="auth-password">密码</label>
-                <input type="password" class="form-input" id="auth-password" placeholder="输入密码" autocomplete="off">
-            </div>
-            <div class="auth-error" id="auth-error"></div>
-            <div class="auth-buttons">
-                <button class="auth-btn login-btn" id="auth-login-btn">登录</button>
-                <button class="auth-btn register-btn" id="auth-register-btn">注册</button>
+
+            <div class="relative z-10 flex items-center gap-6 text-sm font-semibold uppercase tracking-wider opacity-80">
+                <span class="flex items-center gap-2"><i data-lucide="cloud" class="w-4 h-4"></i> 云端同步</span>
+                <span class="flex items-center gap-2"><i data-lucide="users" class="w-4 h-4"></i> 赛队协作</span>
+                <span class="flex items-center gap-2"><i data-lucide="image" class="w-4 h-4"></i> 图片记录</span>
             </div>
         </div>
-            <div class="auth-divider">
-                <span>或</span>
+
+        <!-- 右侧登录表单 -->
+        <div class="flex-1 flex items-center justify-center p-8 lg:p-12 bg-bg relative overflow-hidden">
+            <div class="absolute -bottom-24 -right-24 h-64 w-64 rounded-full bg-primary/5 pointer-events-none"></div>
+
+            <div class="relative z-10 w-full max-w-md">
+                <div class="lg:hidden flex items-center gap-3 mb-8">
+                    <div class="h-10 w-10 bg-primary text-white rounded-md flex items-center justify-center font-extrabold">V</div>
+                    <span class="text-xl font-extrabold tracking-[-0.02em]">VEX-Timeline</span>
+                </div>
+
+                <h2 class="font-extrabold text-4xl tracking-[-0.02em] text-fg mb-2">欢迎回来</h2>
+                <p class="text-sm font-semibold uppercase tracking-wider text-fg/60 mb-8">登录 · 注册</p>
+
+                <div id="diag-banner" class="hidden mb-6 p-4 bg-red-50 border-2 border-primary rounded-md text-sm font-medium text-red-700"></div>
+
+                <div id="diagnostic-bar" class="mb-6 p-4 bg-muted border-2 border-border rounded-md text-xs font-medium leading-relaxed">
+                    <div class="flex justify-between" id="diag-url">URL: 检测中…</div>
+                    <div class="flex justify-between" id="diag-key">Key: 检测中…</div>
+                    <div class="flex justify-between" id="diag-session">Session: 检测中…</div>
+                    <div class="flex justify-between" id="diag-user">Token: 检测中…</div>
+                    <div class="flex justify-between" id="diag-timeline">时间轴: 检测中…</div>
+                </div>
+
+                <form id="auth-form" class="flex flex-col gap-4" autocomplete="off">
+                    <div class="flex flex-col gap-2">
+                        <label class="text-xs font-semibold uppercase tracking-wider text-fg/60" for="auth-username">用户名</label>
+                        <input id="auth-username" type="text" placeholder="输入用户名" maxlength="20" autocomplete="off"
+                               class="h-14 px-4 bg-muted text-fg rounded-md border-0 outline-none font-medium focus:bg-white focus:border-2 focus:border-primary transition-all duration-200">
+                    </div>
+                    <div class="flex flex-col gap-2">
+                        <label class="text-xs font-semibold uppercase tracking-wider text-fg/60" for="auth-password">密码</label>
+                        <input id="auth-password" type="password" placeholder="输入密码" autocomplete="off"
+                               class="h-14 px-4 bg-muted text-fg rounded-md border-0 outline-none font-medium focus:bg-white focus:border-2 focus:border-primary transition-all duration-200">
+                    </div>
+                    <div id="auth-error" class="min-h-[1.25rem] text-sm font-medium text-primary"></div>
+
+                    <div class="flex flex-col gap-3 mt-2">
+                        <button id="auth-login-btn" type="button"
+                                class="h-14 bg-primary text-white rounded-md font-semibold tracking-wider uppercase text-sm flex items-center justify-center gap-2 hover:bg-primary-hover hover:scale-[1.02] transition-all duration-200">
+                            <i data-lucide="log-in" class="w-5 h-5"></i>
+                            登录
+                        </button>
+                        <button id="auth-register-btn" type="button"
+                                class="h-14 border-4 border-fg text-fg bg-transparent rounded-md font-semibold tracking-wider uppercase text-sm flex items-center justify-center gap-2 hover:bg-fg hover:text-white hover:scale-[1.02] transition-all duration-200">
+                            <i data-lucide="user-plus" class="w-5 h-5"></i>
+                            注册
+                        </button>
+                    </div>
+                </form>
             </div>
-            <button class="auth-btn guest-btn" id="auth-guest-btn">离线使用</button>
         </div>
     </div>
-    <div class="container">
-        <header class="header">
-            <h1 class="title">VEX-Timeline</h1>
-            
-            <div class="view-toggle">
-                <button class="view-toggle-btn active" data-view="timeline">时间轴</button>
-                <button class="view-toggle-btn" data-view="month">月历</button>
-            </div>
-            <div class="header-right">
-                <div class="timeline-selector" id="timeline-selector">
-                    <select class="timeline-select" id="timeline-select">
-                        <option value="local">本地时间轴</option>
-                    </select>
+
+    <!-- ============================================================
+         MAIN APP CONTAINER
+         ============================================================ -->
+    <div class="container hidden">
+
+        <!-- ============================================================
+             顶部菜单（单行高级感）  Logo | View | Timeline | Cloud | User | +
+             ============================================================ -->
+        <header class="sticky top-0 z-40 bg-white border-b-4 border-border">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 h-20 flex items-center justify-between gap-4">
+
+                <!-- Logo -->
+                <a href="#" class="flex items-center gap-2 shrink-0">
+                    <div class="h-10 w-10 bg-primary text-white rounded-md flex items-center justify-center font-extrabold text-lg">V</div>
+                    <span class="hidden sm:inline font-extrabold text-xl tracking-[-0.02em] text-fg">VEX-Timeline</span>
+                </a>
+
+                <!-- 视图切换（桌面） -->
+                <div class="hidden md:flex bg-muted rounded-md p-1 gap-1">
+                    <button data-view-toggle="timeline"
+                            class="h-10 px-4 rounded-md text-sm font-semibold tracking-wider uppercase bg-white text-fg transition-all duration-200">
+                        <i data-lucide="list" class="w-4 h-4 inline-block -mt-0.5 mr-1"></i>时间轴
+                    </button>
+                    <button data-view-toggle="month"
+                            class="h-10 px-4 rounded-md text-sm font-semibold tracking-wider uppercase text-fg/60 hover:text-fg transition-all duration-200">
+                        <i data-lucide="calendar" class="w-4 h-4 inline-block -mt-0.5 mr-1"></i>月历
+                    </button>
                 </div>
-                <div class="user-info" id="user-info" style="display: none;">
-                    <span class="cloud-status cloud-status-ok" id="cloud-status" title="云端状态">☁</span>
-                    <span class="user-name" id="user-name"></span>
-                    <button class="logout-btn" id="logout-btn" title="登出">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-                            <polyline points="16 17 21 12 16 7"></polyline>
-                            <line x1="21" y1="12" x2="9" y2="12"></line>
-                        </svg>
+
+                <!-- 时间轴选择器（自定义下拉） -->
+                <div id="timeline-selector" class="hidden md:block relative shrink-0">
+                    <button id="timeline-select-btn" type="button"
+                            class="h-10 px-4 bg-white border-2 border-border rounded-md font-semibold text-sm flex items-center gap-2 hover:border-primary transition-all duration-200">
+                        <i data-lucide="layers" class="w-4 h-4 text-primary"></i>
+                        <span id="timeline-select-label">未选择</span>
+                        <i data-lucide="chevron-down" class="w-4 h-4 text-fg/60"></i>
+                    </button>
+                    <div id="timeline-menu" class="vx-timeline-menu">
+                        <!-- 时间轴选项由 app.js 动态插入（云端时间轴） -->
+                    </div>
+                </div>
+
+                <div class="flex-1"></div>
+
+                <!-- 云状态 + 用户菜单 + 添加按钮（桌面） -->
+                <div class="flex items-center gap-2 sm:gap-3">
+                    <button id="cloud-status" type="button" class="vx-cloud-status" title="点击刷新云端"
+                            style="height:40px !important;width:40px !important;min-height:40px !important;min-width:40px !important;max-height:40px !important;max-width:40px !important;box-sizing:border-box !important;flex-shrink:0 !important;">
+                        <span class="vx-cloud-icon"><i data-lucide="cloud" class="w-4 h-4"></i></span>
+                    </button>
+
+                    <div id="user-info" class="hidden relative">
+                        <button id="user-menu-btn" type="button"
+                                class="flex items-center gap-2 pl-1 pr-3 bg-muted rounded-full hover:bg-gray-200 transition-all duration-200"
+                                style="height:40px !important;min-height:40px !important;max-height:40px !important;box-sizing:border-box !important;overflow:hidden !important;flex-shrink:0 !important;">
+                            <span id="user-avatar" class="rounded-full bg-primary text-white font-bold flex items-center justify-center" style="height:32px !important;width:32px !important;min-height:32px !important;min-width:32px !important;max-height:32px !important;max-width:32px !important;font-size:14px !important;line-height:1 !important;flex-shrink:0 !important;">U</span>
+                            <span id="user-name" class="hidden sm:inline font-semibold" style="font-size:16px !important;line-height:1 !important;flex-shrink:0 !important;"></span>
+                            <i data-lucide="chevron-down" class="w-4 h-4 text-fg/60" style="flex-shrink:0 !important;"></i>
+                        </button>
+                        <div id="user-menu" class="vx-user-menu">
+                            <div class="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-fg/60" id="user-menu-name">—</div>
+                            <div class="h-px bg-border my-1"></div>
+                            <button type="button" data-team-action="create">
+                                <i data-lucide="users" class="w-4 h-4"></i>创建赛队
+                            </button>
+                            <button type="button" data-team-action="join">
+                                <i data-lucide="user-plus" class="w-4 h-4"></i>加入赛队
+                            </button>
+                            <button type="button" data-team-action="manage" id="manage-team-btn" class="hidden">
+                                <i data-lucide="settings" class="w-4 h-4"></i>管理赛队
+                            </button>
+                            <div class="h-px bg-border my-1"></div>
+                            <button type="button" id="logout-btn" class="text-primary">
+                                <i data-lucide="log-out" class="w-4 h-4"></i>登出
+                            </button>
+                        </div>
+                    </div>
+
+                    <button id="add-btn" type="button"
+                            class="h-12 sm:h-14 px-4 sm:px-5 bg-primary text-white rounded-md font-semibold tracking-wider uppercase text-sm flex items-center gap-2 hover:bg-primary-hover hover:scale-105 transition-all duration-200">
+                        <i data-lucide="plus" class="w-5 h-5"></i>
+                        <span class="hidden sm:inline">添加记录</span>
+                    </button>
+
+                    <!-- 移动端汉堡 -->
+                    <button id="mobile-menu-btn" type="button"
+                            class="md:hidden h-10 w-10 flex items-center justify-center bg-muted rounded-md hover:bg-gray-200 transition-all duration-200">
+                        <i data-lucide="menu" class="w-5 h-5"></i>
                     </button>
                 </div>
             </div>
         </header>
-        
-        <main class="main">
-        <div class="timeline-container" id="timeline-container">
-            <div class="filter-bar" id="filter-bar">
-                <div class="filter-group">
-                    <label class="filter-label">重要性</label>
-                    <div class="filter-options">
-                        <button class="filter-btn active" data-filter="all">全部</button>
-                        <button class="filter-btn" data-filter="high">高</button>
-                        <button class="filter-btn" data-filter="medium">中</button>
-                        <button class="filter-btn" data-filter="low">低</button>
+
+        <!-- ============================================================
+             MAIN AREA
+             ============================================================ -->
+        <main class="max-w-7xl mx-auto px-4 sm:px-6 py-8 relative">
+
+            <!-- 装饰几何（背景大圆） -->
+            <div class="absolute -top-12 -right-24 h-80 w-80 rounded-full bg-primary/5 pointer-events-none"></div>
+            <div class="absolute top-1/2 -left-32 h-72 w-72 rotate-12 bg-secondary/5 pointer-events-none"></div>
+
+            <!-- ============= TIMELINE VIEW ============= -->
+            <section id="timeline-container" class="relative z-10">
+                <div id="filter-bar" class="mb-8 p-6 bg-muted rounded-lg">
+                    <div class="flex items-center gap-4 flex-wrap">
+                        <span class="text-xs font-semibold uppercase tracking-wider text-fg/60">重要性</span>
+                        <div class="flex gap-2 flex-wrap">
+                            <button data-filter="all"    class="h-10 px-4 rounded-md text-sm font-semibold tracking-wider uppercase bg-fg text-white transition-all duration-200">全部</button>
+                            <button data-filter="high"   class="h-10 px-4 rounded-md text-sm font-semibold tracking-wider uppercase bg-white text-fg transition-all duration-200">高</button>
+                            <button data-filter="medium" class="h-10 px-4 rounded-md text-sm font-semibold tracking-wider uppercase bg-white text-fg transition-all duration-200">中</button>
+                            <button data-filter="low"    class="h-10 px-4 rounded-md text-sm font-semibold tracking-wider uppercase bg-white text-fg transition-all duration-200">低</button>
+                        </div>
                     </div>
                 </div>
-            </div>
-            <div class="timeline" id="timeline"></div>
-        </div>
-        
-        <div class="calendar-container" id="calendar-container" style="display: none;">
-            <div class="date-navigation">
-                <button class="nav-btn" id="prev-month">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <polyline points="15 18 9 12 15 6"></polyline>
-                    </svg>
-                </button>
-                
-                <div class="date-display">
-                    <span class="date-label" id="date-label"></span>
+
+                <div id="timeline" class="flex flex-col gap-8"></div>
+            </section>
+
+            <!-- ============= CLOUD ERROR BAR (retry) ============= -->
+            <div id="cloud-error-bar" class="hidden mb-6 p-4 bg-red-50 border-2 border-primary rounded-md flex items-center justify-between gap-4">
+                <div class="flex items-center gap-3 min-w-0">
+                    <i data-lucide="alert-triangle" class="w-5 h-5 text-primary shrink-0"></i>
+                    <div class="flex flex-col min-w-0">
+                        <span class="font-semibold text-sm text-red-700">云端连接失败</span>
+                        <span id="cloud-error-message" class="text-xs font-medium text-red-600/80 truncate"></span>
+                    </div>
                 </div>
-                
-                <button class="nav-btn" id="next-month">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <polyline points="9 18 15 12 9 6"></polyline>
-                    </svg>
+                <button id="cloud-retry-btn" type="button"
+                        class="h-10 px-4 bg-primary text-white rounded-md font-semibold tracking-wider uppercase text-xs flex items-center gap-2 hover:bg-primary-hover hover:scale-105 transition-all duration-200 shrink-0">
+                    <i data-lucide="refresh-cw" class="w-4 h-4"></i>重试
                 </button>
             </div>
-            <div class="calendar" id="calendar"></div>
-            <div class="day-records-overlay" id="day-records-overlay" style="display: none;">
-                <div class="day-records-modal">
-                    <div class="day-records-header">
-                        <h3 class="day-records-title" id="day-records-title"></h3>
-                        <button class="close-day-records" id="close-day-records">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <line x1="18" y1="6" x2="6" y2="18"></line>
-                                <line x1="6" y1="6" x2="18" y2="18"></line>
-                            </svg>
+
+            <!-- ============= CALENDAR VIEW ============= -->
+            <section id="calendar-container" class="relative z-10 hidden">
+                <div class="flex items-center justify-between mb-8 gap-4">
+                    <button id="prev-month" type="button"
+                            class="h-14 w-14 bg-white border-2 border-border rounded-md flex items-center justify-center hover:bg-fg hover:text-white hover:border-fg transition-all duration-200">
+                        <i data-lucide="chevron-left" class="w-5 h-5"></i>
+                    </button>
+                    <div class="text-center">
+                        <div class="text-xs font-semibold uppercase tracking-wider text-fg/60">当前月份</div>
+                        <div id="date-label" class="font-extrabold text-3xl tracking-[-0.02em] uppercase"></div>
+                    </div>
+                    <button id="next-month" type="button"
+                            class="h-14 w-14 bg-white border-2 border-border rounded-md flex items-center justify-center hover:bg-fg hover:text-white hover:border-fg transition-all duration-200">
+                        <i data-lucide="chevron-right" class="w-5 h-5"></i>
+                    </button>
+                </div>
+                <div id="calendar" class="grid grid-cols-7 gap-0 border-2 border-border rounded-lg overflow-hidden max-w-4xl mx-auto"></div>
+            </section>
+        </main>
+
+        <!-- ============= DAY RECORDS OVERLAY ============= -->
+        <div id="day-records-overlay" class="vx-modal-overlay">
+            <div class="vx-modal max-w-2xl">
+                <div class="bg-fg text-white px-8 py-6 flex items-center justify-between">
+                    <h3 id="day-records-title" class="font-extrabold text-2xl tracking-[-0.02em] uppercase">—</h3>
+                    <button id="close-day-records" type="button"
+                            class="h-10 w-10 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded-md transition-all duration-200">
+                        <i data-lucide="x" class="w-5 h-5"></i>
+                    </button>
+                </div>
+                <div id="day-records-content" class="p-8 flex flex-col gap-4"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         MODALS（色块化）
+         ============================================================ -->
+
+    <!-- 记录添加/编辑 -->
+    <div id="record-modal" class="vx-modal-overlay">
+        <div class="vx-modal">
+            <div class="bg-primary text-white px-8 py-6 flex items-center justify-between">
+                <h2 id="modal-title" class="font-extrabold text-2xl tracking-[-0.02em] uppercase">添加记录</h2>
+                <i data-lucide="notebook-pen" class="w-6 h-6"></i>
+            </div>
+            <form id="record-form" class="p-8 flex flex-col gap-5">
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="flex flex-col gap-2">
+                        <label class="text-xs font-semibold uppercase tracking-wider text-fg/60" for="record-date">日期</label>
+                        <input id="record-date" type="date"
+                               class="h-12 px-4 bg-muted text-fg rounded-md border-0 outline-none font-medium focus:bg-white focus:border-2 focus:border-primary transition-all duration-200">
+                    </div>
+                    <div class="flex flex-col gap-2">
+                        <label class="text-xs font-semibold uppercase tracking-wider text-fg/60" for="record-time">时间</label>
+                        <input id="record-time" type="time"
+                               class="h-12 px-4 bg-muted text-fg rounded-md border-0 outline-none font-medium focus:bg-white focus:border-2 focus:border-primary transition-all duration-200">
+                    </div>
+                </div>
+                <div class="flex flex-col gap-2">
+                    <label class="text-xs font-semibold uppercase tracking-wider text-fg/60">重要性</label>
+                    <div id="importance-selector" class="grid grid-cols-3 gap-2">
+                        <button type="button" data-importance="high"   class="h-12 rounded-md text-sm font-semibold tracking-wider uppercase bg-muted text-fg/60 hover:bg-red-50 transition-all duration-200">高</button>
+                        <button type="button" data-importance="medium" class="h-12 rounded-md text-sm font-semibold tracking-wider uppercase bg-fg text-white transition-all duration-200">中</button>
+                        <button type="button" data-importance="low"    class="h-12 rounded-md text-sm font-semibold tracking-wider uppercase bg-muted text-fg/60 hover:bg-emerald-50 transition-all duration-200">低</button>
+                    </div>
+                </div>
+                <div class="flex flex-col gap-2">
+                    <label class="text-xs font-semibold uppercase tracking-wider text-fg/60" for="record-title">标题</label>
+                    <input id="record-title" type="text" placeholder="请输入标题"
+                           class="h-12 px-4 bg-muted text-fg rounded-md border-0 outline-none font-medium focus:bg-white focus:border-2 focus:border-primary transition-all duration-200">
+                </div>
+                <div class="flex flex-col gap-2">
+                    <label class="text-xs font-semibold uppercase tracking-wider text-fg/60" for="record-content">内容</label>
+                    <textarea id="record-content" placeholder="请输入内容" rows="4"
+                              class="p-4 bg-muted text-fg rounded-md border-0 outline-none font-medium resize-none focus:bg-white focus:border-2 focus:border-primary transition-all duration-200"></textarea>
+                </div>
+                <div class="flex flex-col gap-2">
+                    <label class="text-xs font-semibold uppercase tracking-wider text-fg/60" for="record-image">图片</label>
+                    <input id="record-image" type="file" accept="image/*"
+                           class="text-sm font-medium file:mr-3 file:py-2 file:px-4 file:rounded-md file:border-0 file:bg-fg file:text-white file:font-semibold file:uppercase file:tracking-wider file:text-xs file:cursor-pointer hover:file:bg-primary transition-all duration-200">
+                    <div id="image-preview" class="hidden mt-2 relative inline-block">
+                        <img id="preview-img" src="" alt="预览" class="max-w-[200px] max-h-[200px] object-cover rounded-md border-2 border-border">
+                        <button type="button" id="remove-image-btn"
+                                class="absolute -top-3 -right-3 h-8 w-8 bg-white border-2 border-border rounded-md flex items-center justify-center hover:bg-red-50 hover:border-primary transition-all duration-200">
+                            <i data-lucide="x" class="w-4 h-4"></i>
                         </button>
                     </div>
-                    <div class="day-records-content" id="day-records-content"></div>
                 </div>
+            </form>
+            <div class="bg-muted px-8 py-6 flex justify-end gap-3">
+                <button id="cancel-btn" type="button"
+                        class="h-12 px-6 bg-white border-2 border-border text-fg rounded-md font-semibold tracking-wider uppercase text-sm hover:bg-gray-100 transition-all duration-200">
+                    取消
+                </button>
+                <button id="save-btn" type="button"
+                        class="h-12 px-6 bg-primary text-white rounded-md font-semibold tracking-wider uppercase text-sm flex items-center gap-2 hover:bg-primary-hover hover:scale-105 transition-all duration-200">
+                    <i data-lucide="save" class="w-4 h-4"></i>保存
+                </button>
             </div>
         </div>
-            
-            <button class="add-btn" id="add-btn">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <line x1="12" y1="5" x2="12" y2="19"></line>
-                    <line x1="5" y1="12" x2="19" y2="12"></line>
-                </svg>
+    </div>
+
+    <!-- 创建赛队时间轴 -->
+    <div id="create-team-modal" class="vx-modal-overlay">
+        <div class="vx-modal">
+            <div class="bg-secondary text-white px-8 py-6 flex items-center justify-between">
+                <h2 class="font-extrabold text-2xl tracking-[-0.02em] uppercase">创建赛队时间轴</h2>
+                <i data-lucide="users" class="w-6 h-6"></i>
+            </div>
+            <form id="create-team-form" class="p-8 flex flex-col gap-4">
+                <div class="flex flex-col gap-2">
+                    <label class="text-xs font-semibold uppercase tracking-wider text-fg/60" for="team-name">时间轴名称</label>
+                    <input id="team-name" type="text" placeholder="输入赛队时间轴名称"
+                           class="h-12 px-4 bg-muted text-fg rounded-md border-0 outline-none font-medium focus:bg-white focus:border-2 focus:border-primary transition-all duration-200">
+                </div>
+            </form>
+            <div class="bg-muted px-8 py-6 flex justify-end gap-3">
+                <button id="cancel-team-btn" type="button"
+                        class="h-12 px-6 bg-white border-2 border-border text-fg rounded-md font-semibold tracking-wider uppercase text-sm hover:bg-gray-100 transition-all duration-200">取消</button>
+                <button id="save-team-btn" type="button"
+                        class="h-12 px-6 bg-secondary text-white rounded-md font-semibold tracking-wider uppercase text-sm flex items-center gap-2 hover:scale-105 transition-all duration-200">
+                    <i data-lucide="plus" class="w-4 h-4"></i>创建
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 邀请成员 -->
+    <div id="invite-modal" class="vx-modal-overlay">
+        <div class="vx-modal">
+            <div class="bg-accent text-white px-8 py-6 flex items-center justify-between">
+                <h2 class="font-extrabold text-2xl tracking-[-0.02em] uppercase">邀请成员</h2>
+                <i data-lucide="user-plus" class="w-6 h-6"></i>
+            </div>
+            <div class="p-8 flex flex-col gap-6">
+                <div class="flex flex-col gap-3">
+                    <label class="text-xs font-semibold uppercase tracking-wider text-fg/60">邀请码</label>
+                    <div class="bg-primary text-white rounded-lg p-6 flex items-center justify-between">
+                        <span id="invite-code-display" class="vx-mono font-extrabold text-4xl flex-1 text-center">---</span>
+                        <button id="copy-invite-btn" type="button"
+                                class="h-12 w-12 border-4 border-white text-white rounded-md flex items-center justify-center hover:bg-white hover:text-primary transition-all duration-200">
+                            <i data-lucide="copy" class="w-5 h-5"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="flex flex-col gap-3">
+                    <label class="text-xs font-semibold uppercase tracking-wider text-fg/60">成员列表</label>
+                    <div id="members-list" class="border-2 border-border rounded-md max-h-60 overflow-y-auto"></div>
+                </div>
+            </div>
+            <div class="bg-muted px-8 py-6 flex justify-end">
+                <button id="close-invite-btn" type="button"
+                        class="h-12 px-6 bg-white border-2 border-border text-fg rounded-md font-semibold tracking-wider uppercase text-sm hover:bg-gray-100 transition-all duration-200">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 加入赛队 -->
+    <div id="join-team-modal" class="vx-modal-overlay">
+        <div class="vx-modal">
+            <div class="bg-primary text-white px-8 py-6 flex items-center justify-between">
+                <h2 class="font-extrabold text-2xl tracking-[-0.02em] uppercase">加入赛队时间轴</h2>
+                <i data-lucide="user-plus" class="w-6 h-6"></i>
+            </div>
+            <form id="join-team-form" class="p-8 flex flex-col gap-4">
+                <div class="flex flex-col gap-2">
+                    <label class="text-xs font-semibold uppercase tracking-wider text-fg/60" for="invite-code-input">邀请码</label>
+                    <input id="invite-code-input" type="text" placeholder="输入 6 位邀请码" maxlength="6"
+                           class="h-14 px-4 bg-muted text-fg vx-mono font-extrabold text-2xl text-center rounded-md border-0 outline-none focus:bg-white focus:border-2 focus:border-primary transition-all duration-200">
+                </div>
+            </form>
+            <div class="bg-muted px-8 py-6 flex justify-end gap-3">
+                <button id="cancel-join-btn" type="button"
+                        class="h-12 px-6 bg-white border-2 border-border text-fg rounded-md font-semibold tracking-wider uppercase text-sm hover:bg-gray-100 transition-all duration-200">取消</button>
+                <button id="confirm-join-btn" type="button"
+                        class="h-12 px-6 bg-primary text-white rounded-md font-semibold tracking-wider uppercase text-sm flex items-center gap-2 hover:bg-primary-hover hover:scale-105 transition-all duration-200">
+                    <i data-lucide="log-in" class="w-4 h-4"></i>加入
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         移动端抽屉
+         ============================================================ -->
+    <div id="mobile-drawer" class="vx-mobile-drawer">
+        <div class="flex items-center justify-between mb-6">
+            <div class="flex items-center gap-2">
+                <div class="h-10 w-10 bg-primary text-white rounded-md flex items-center justify-center font-extrabold">V</div>
+                <span class="font-extrabold text-xl tracking-[-0.02em]">VEX-Timeline</span>
+            </div>
+            <button id="mobile-drawer-close" type="button"
+                    class="h-10 w-10 flex items-center justify-center bg-muted rounded-md hover:bg-gray-200 transition-all duration-200">
+                <i data-lucide="x" class="w-5 h-5"></i>
             </button>
-            <div class="timeline-actions" id="timeline-actions" style="display: none;">
-                <button class="action-btn-lg" id="create-team-btn" title="创建赛队时间轴">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                        <circle cx="9" cy="7" r="4"></circle>
-                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                    </svg>
-                    <span>创建赛队</span>
+        </div>
+
+        <!-- 移动端视图切换 -->
+        <div class="mb-6">
+            <div class="text-xs font-semibold uppercase tracking-wider text-fg/60 mb-2">视图</div>
+            <div class="grid grid-cols-2 gap-2">
+                <button data-view-toggle="timeline"
+                        class="h-12 rounded-md text-sm font-semibold tracking-wider uppercase bg-fg text-white transition-all duration-200">
+                    <i data-lucide="list" class="w-4 h-4 inline-block -mt-0.5 mr-1"></i>时间轴
                 </button>
-                <button class="action-btn-lg" id="join-team-btn" title="加入赛队时间轴">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
-                        <polyline points="10 17 15 12 10 7"></polyline>
-                        <line x1="15" y1="12" x2="3" y2="12"></line>
-                    </svg>
-                    <span>加入赛队</span>
-                </button>
-                <button class="action-btn-lg" id="manage-team-btn" title="管理赛队" style="display: none;">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="3"></circle>
-                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-                    </svg>
-                    <span>管理</span>
+                <button data-view-toggle="month"
+                        class="h-12 rounded-md text-sm font-semibold tracking-wider uppercase bg-muted text-fg/60 transition-all duration-200">
+                    <i data-lucide="calendar" class="w-4 h-4 inline-block -mt-0.5 mr-1"></i>月历
                 </button>
             </div>
-        </main>
-    </div>
-    
-    <div class="modal-overlay" id="record-modal">
-        <div class="modal">
-            <div class="modal-header">
-                <h2 class="modal-title" id="modal-title">添加记录</h2>
-            </div>
-            <div class="modal-body">
-                <form class="record-form" id="record-form">
-                    <div class="form-group">
-                        <label class="form-label" for="record-date">日期</label>
-                        <input type="date" class="form-input" id="record-date">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label" for="record-time">时间</label>
-                        <input type="time" class="form-input" id="record-time">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">重要性</label>
-                        <div class="importance-selector" id="importance-selector">
-                            <button type="button" class="importance-btn" data-importance="high">高</button>
-                            <button type="button" class="importance-btn active" data-importance="medium">中</button>
-                            <button type="button" class="importance-btn" data-importance="low">低</button>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label" for="record-title">标题</label>
-                        <input type="text" class="form-input" id="record-title" placeholder="请输入标题">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label" for="record-content">内容</label>
-                        <textarea class="form-textarea" id="record-content" placeholder="请输入内容"></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label" for="record-image">图片</label>
-                        <input type="file" class="form-input" id="record-image" accept="image/*">
-                        <div class="image-preview" id="image-preview" style="display: none;">
-                            <img id="preview-img" src="" alt="预览">
-                            <button type="button" class="remove-image-btn" id="remove-image-btn">移除</button>
-                        </div>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button class="modal-btn cancel-btn" id="cancel-btn">取消</button>
-                <button class="modal-btn save-btn" id="save-btn">保存</button>
+        </div>
+
+        <!-- 移动端时间轴选择 -->
+        <div class="mb-6">
+            <div class="text-xs font-semibold uppercase tracking-wider text-fg/60 mb-2">时间轴</div>
+            <div id="mobile-timeline-list" class="flex flex-col gap-1 border-2 border-border rounded-md p-2"></div>
+        </div>
+
+        <!-- 移动端赛队操作 -->
+        <div class="mb-6">
+            <div class="text-xs font-semibold uppercase tracking-wider text-fg/60 mb-2">赛队</div>
+            <div class="flex flex-col gap-2">
+                <button data-team-action="create" type="button"
+                        class="h-12 bg-secondary text-white rounded-md font-semibold tracking-wider uppercase text-sm flex items-center justify-center gap-2 hover:scale-105 transition-all duration-200">
+                    <i data-lucide="users" class="w-4 h-4"></i>创建赛队
+                </button>
+                <button data-team-action="join" type="button"
+                        class="h-12 border-4 border-secondary text-secondary rounded-md font-semibold tracking-wider uppercase text-sm flex items-center justify-center gap-2 hover:bg-secondary hover:text-white transition-all duration-200">
+                    <i data-lucide="user-plus" class="w-4 h-4"></i>加入赛队
+                </button>
+                <button data-team-action="manage" id="mobile-manage-team-btn" type="button"
+                        class="hidden h-12 border-4 border-fg text-fg rounded-md font-semibold tracking-wider uppercase text-sm flex items-center justify-center gap-2 hover:bg-fg hover:text-white transition-all duration-200">
+                    <i data-lucide="settings" class="w-4 h-4"></i>管理赛队
+                </button>
             </div>
         </div>
+
+        <!-- 移动端登出 -->
+        <button id="mobile-logout-btn" type="button"
+                class="mt-auto h-12 border-4 border-primary text-primary rounded-md font-semibold tracking-wider uppercase text-sm flex items-center justify-center gap-2 hover:bg-primary hover:text-white transition-all duration-200">
+            <i data-lucide="log-out" class="w-4 h-4"></i>登出
+        </button>
     </div>
-    
-    <div class="modal-overlay" id="create-team-modal">
-        <div class="modal">
-            <div class="modal-header">
-                <h2 class="modal-title">创建赛队时间轴</h2>
-            </div>
-            <div class="modal-body">
-                <form class="record-form" id="create-team-form">
-                    <div class="form-group">
-                        <label class="form-label" for="team-name">时间轴名称</label>
-                        <input type="text" class="form-input" id="team-name" placeholder="输入赛队时间轴名称">
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button class="modal-btn cancel-btn" id="cancel-team-btn">取消</button>
-                <button class="modal-btn save-btn" id="save-team-btn">创建</button>
-            </div>
-        </div>
+
+    <!-- 隐藏的旧 floating actions 占位（向后兼容） -->
+    <div id="timeline-actions" class="hidden">
+        <button id="create-team-btn" type="button" class="hidden"></button>
+        <button id="join-team-btn" type="button" class="hidden"></button>
     </div>
-    
-    <div class="modal-overlay" id="invite-modal">
-        <div class="modal">
-            <div class="modal-header">
-                <h2 class="modal-title">邀请成员</h2>
-            </div>
-            <div class="modal-body">
-                <div class="invite-content">
-                    <div class="invite-code-section">
-                        <label class="form-label">邀请码</label>
-                        <div class="invite-code-display">
-                            <span class="invite-code" id="invite-code-display">---</span>
-                            <button class="copy-btn" id="copy-invite-btn" title="复制">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                                </svg>
-                            </button>
-                        </div>
-                    </div>
-                    <div class="members-section">
-                        <label class="form-label">成员列表</label>
-                        <div class="members-list" id="members-list"></div>
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="modal-btn cancel-btn" id="close-invite-btn">关闭</button>
-            </div>
-        </div>
-    </div>
-    
-    <div class="modal-overlay" id="join-team-modal">
-        <div class="modal">
-            <div class="modal-header">
-                <h2 class="modal-title">加入赛队时间轴</h2>
-            </div>
-            <div class="modal-body">
-                <form class="record-form" id="join-team-form">
-                    <div class="form-group">
-                        <label class="form-label" for="invite-code-input">邀请码</label>
-                        <input type="text" class="form-input" id="invite-code-input" placeholder="输入6位邀请码" maxlength="6">
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button class="modal-btn cancel-btn" id="cancel-join-btn">取消</button>
-                <button class="modal-btn save-btn" id="confirm-join-btn">加入</button>
-            </div>
-        </div>
-    </div>
-    
+
+    <script src="https://unpkg.com/lucide@0.378.0"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="./src/js/config.js"></script>
     <script src="./src/js/db.js"></script>
@@ -288,17 +539,37 @@
     <script src="./src/js/cloud-db.js"></script>
     <script src="./src/js/app.js"></script>
     <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js')
-                    .then(registration => {
-                        console.log('ServiceWorker registration successful');
-                    })
-                    .catch(err => {
-                        console.log('ServiceWorker registration failed: ', err);
-                    });
-            });
+      // lucide 图标全局渲染（双保险：轮询 + DOMContentLoaded）
+      (function bootLucide() {
+        const tryIcons = () => {
+          if (window.lucide && lucide.createIcons) {
+            lucide.createIcons();
+            return true;
+          }
+          return false;
+        };
+        if (!tryIcons()) {
+          let attempts = 0;
+          const timer = setInterval(() => {
+            if (tryIcons() || ++attempts > 40) clearInterval(timer);
+          }, 50);
         }
+      })();
+      window.addEventListener('DOMContentLoaded', () => {
+        if (window.lucide && lucide.createIcons) lucide.createIcons();
+      });
+
+      // Service Worker
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('./sw.js')
+            .then(reg => console.log('ServiceWorker registration successful'))
+            .catch(err => console.log('ServiceWorker registration failed: ', err));
+        });
+      }
     </script>
+
+    <!-- Toast 提示（被 app.js showToast 调用） -->
+    <div id="vx-toast" class="hidden"></div>
 </body>
 </html>
