@@ -154,9 +154,8 @@ body {
    最外圈 2px 边框由父容器提供。
    ============================================================ */
 .vx-calendar-cell {
-  /* Round 4：移除 aspect-ratio: 1（避免 1280px 视口下每格 170×170px 过大）
-     改用 min-height 控制高度，月历容器 max-w-3xl 约束整体宽度 → 单格约 100px */
-  min-height: 90px;
+  /* Round 7：放大单格（90→110px，+22%）同时保持一屏可见 */
+  min-height: 110px;
   background-color: var(--color-bg);
   border-right: 1px solid var(--color-border);
   border-bottom: 1px solid var(--color-border);
@@ -174,10 +173,10 @@ body {
 
 /* 响应式：移动端紧凑、桌面更大 */
 @media (max-width: 640px) {
-  .vx-calendar-cell { min-height: 64px; }
+  .vx-calendar-cell { min-height: 80px; }    /* Round 7：64px → 80px */
 }
 @media (min-width: 1024px) {
-  .vx-calendar-cell { min-height: 100px; }
+  .vx-calendar-cell { min-height: 130px; }   /* Round 7：100px → 130px */
 }
 
 /* 第 7 列移除右边框（最右一列由父容器右边框收口） */
@@ -443,7 +442,7 @@ body {
 .vx-day-section {
   display: flex;
   flex-direction: column;
-  gap: 8px;          /* 同一天内 item 之间紧凑 */
+  gap: 4px;          /* Round 7：8px → 4px（缩上方留白） */
 }
 .vx-day-section + .vx-day-section {
   margin-top: 24px;  /* 每天之间留 24px */
@@ -455,7 +454,7 @@ body {
   font-weight: 800;
   letter-spacing: -0.01em;
   color: var(--color-fg);
-  margin-bottom: 4px;
+  margin-bottom: 0;   /* Round 7：4px → 0（缩上方留白） */
   /* 不加 border-b-2 border-border（避免 Round 4 旧版黑色块） */
 }
 
@@ -465,7 +464,7 @@ body {
   background-color: var(--color-bg);
   border: 2px solid var(--color-border);
   border-radius: var(--radius-md);
-  padding: 0.625rem 0.875rem;   /* Round 6：缩小到 10px/14px（原 1rem=16px） */
+  padding: 0.5rem 0.75rem;   /* Round 7：10/14px → 8/12px（缩上方留白） */
   transition: border-color 0.2s, transform 0.2s;
 }
 .vx-timeline-item:hover {
@@ -501,11 +500,11 @@ body {
   margin-bottom: 8px;
 }
 
-/* Round 6：圆点上移（配合更小的 item padding） */
+/* Round 7：圆点上移（配合更小的 item padding） */
 .vx-timeline-item .vx-rail-dot {
   position: absolute;
   left: -32px;
-  top: 6px;          /* 原 top: 8px → 6px */
+  top: 4px;          /* Round 7：6px → 4px */
   width: 28px;
   height: 28px;
   border-radius: 999px;
