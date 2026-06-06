@@ -1,7 +1,7 @@
 // Bump CACHE_NAME version whenever JS/CSS changes are deployed.
 // This forces the new service worker to skip the old cache and refetch everything.
-// v4 (Round 4 修复): 取消本地/离线模式 + 视觉精修（视图切换/时间轴色彩/标签尺寸/筛选语义色/月历 dots/格框尺寸）
-const CACHE_NAME = 'vex-timeline-cache-v4';
+// v5 (Round 5 修复): 月历背景色清理 / 重要性 data-selected / 时间轴连贯 + 小日期 / 图片 Storage / 切换刷云端 / 云状态刷新按钮 / 5 分钟自动刷新
+const CACHE_NAME = 'vex-timeline-cache-v5';
 
 // Only cache the static shell — NEVER cache JS files (auth.js, app.js, config.js, etc.)
 // because they change with each deploy and JS bugs in cached files can break the app.

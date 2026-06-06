@@ -54,6 +54,9 @@ class App {
     this.setupNetworkListener();
     this.renderDiagnosticBar();
 
+    // Round 5：启动 5 分钟自动刷新云端
+    this._startAutoRefresh();
+
     if (authManager.isLoggedIn()) {
       if (supabaseManager.isConfigured()) {
         await this.onLoginSuccess();
@@ -249,15 +252,21 @@ class App {
 
     // 绑定选择事件
     document.querySelectorAll('[data-timeline-value]').forEach(btn => {
-      btn.addEventListener('click', (e) => {
+      btn.addEventListener('click', async (e) => {
         const id = e.currentTarget.dataset.timelineValue;
+        if (id === this.currentTimelineId) {
+          // 同一时间轴：不重新拉取，关闭菜单
+          this.closeAllMenus();
+          return;
+        }
         this.currentTimelineId = id;
         this._saveStoredTimelineId(this.currentTimelineId);
         this.updateTimelineSelector();
         this.updateTimelineLabel(this._findTimelineName(id));
         this.updateManageButton();
         this.closeAllMenus();
-        this.renderView();
+        await this.renderView();         // 先用本地缓存快速渲染
+        this.syncFromCloud();             // Round 5：后台拉取云端最新数据
       });
     });
 
@@ -541,6 +550,29 @@ class App {
       });
     }
 
+    // Round 5：云状态指示器 → 刷新按钮
+    const cloudStatusBtn = document.getElementById('cloud-status');
+    if (cloudStatusBtn) {
+      cloudStatusBtn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        if (!authManager.isLoggedIn() || !this.currentTimelineId) {
+          this.showToast('请先登录并选择时间轴', 'warning');
+          return;
+        }
+        if (this.syncInProgress) {
+          this.showToast('正在同步中，请稍候', 'info');
+          return;
+        }
+        this.showToast('正在从云端刷新…', 'info');
+        try {
+          await this.syncFromCloud();
+          this.showToast('云端数据已同步', 'success');
+        } catch (err) {
+          this.showToast('刷新失败: ' + (err.message || err), 'error');
+        }
+      });
+    }
+
     // 用户菜单
     const userMenuBtn = document.getElementById('user-menu-btn');
     if (userMenuBtn) {
@@ -682,6 +714,22 @@ class App {
     low:    ['bg-secondary',  'text-white', 'border-secondary']
   };
 
+  // Round 5：dataURL（base64）转 File 对象（用于上传到 Supabase Storage）
+  _dataURLtoFile(dataURL, filename = 'image.png') {
+    try {
+      const [meta, base64] = dataURL.split(',');
+      const mimeMatch = meta.match(/data:([^;]+);base64/);
+      const mime = mimeMatch ? mimeMatch[1] : 'image/png';
+      const binary = atob(base64);
+      const array = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) array[i] = binary.charCodeAt(i);
+      return new File([array], filename, { type: mime });
+    } catch (e) {
+      console.error('[VEX-Timeline] dataURL → File 转换失败:', e);
+      return null;
+    }
+  }
+
   setImportance(val) {
     document.querySelectorAll('#importance-selector [data-importance]').forEach(btn => {
       const v = btn.dataset.importance;
@@ -692,9 +740,12 @@ class App {
         'bg-danger', 'bg-accent', 'bg-secondary',
         'border-danger', 'border-accent', 'border-secondary'
       );
+      // Round 5：用 data-selected 属性追踪选中态（更可靠，不依赖 class）
       if (isSelected) {
+        btn.setAttribute('data-selected', 'true');
         this.importanceSelectedClasses[v].forEach(c => btn.classList.add(c));
       } else {
+        btn.removeAttribute('data-selected');
         btn.classList.add('bg-muted', 'text-fg/60');
       }
     });
@@ -754,6 +805,8 @@ class App {
   }
 
   async handleLogout() {
+    // Round 5：停止自动刷新（避免内存泄漏 + 登出后继续拉取）
+    this._stopAutoRefresh();
     await authManager.logout();
     this.currentTimelineId = null;
     this._saveStoredTimelineId(null);
@@ -767,6 +820,31 @@ class App {
     this.cloudErrorMessage = '';
     this.updateCloudStatusIcon();
     this.renderDiagnosticBar();
+  }
+
+  // ============================================================
+  // Round 5：5 分钟自动刷新云端
+  // ============================================================
+  _startAutoRefresh() {
+    if (this._autoRefreshInterval) clearInterval(this._autoRefreshInterval);
+    this._autoRefreshInterval = setInterval(async () => {
+      if (!authManager.isLoggedIn() || !this.currentTimelineId || !this.isOnline) return;
+      if (this.syncInProgress) return;                            // 避免重叠
+      if (this.cloudSyncStatus === 'error') return;                // 错误态不重试
+      try {
+        await this.syncFromCloud();
+        console.log('[VEX-Timeline] Auto refresh @', new Date().toLocaleTimeString());
+      } catch (e) {
+        console.warn('[VEX-Timeline] Auto refresh failed:', e.message || e);
+      }
+    }, 5 * 60 * 1000);
+  }
+
+  _stopAutoRefresh() {
+    if (this._autoRefreshInterval) {
+      clearInterval(this._autoRefreshInterval);
+      this._autoRefreshInterval = null;
+    }
   }
 
   // ============================================================
@@ -1007,7 +1085,9 @@ class App {
     const timeInput = document.getElementById('record-time');
     const titleInput = document.getElementById('record-title');
     const contentInput = document.getElementById('record-content');
-    const activeImportanceBtn = document.querySelector('#importance-selector [data-importance].bg-fg') ||
+    // Round 5：三重 fallback 选择器（data-selected → 语义色 class → 第一个按钮）
+    const activeImportanceBtn = document.querySelector('#importance-selector [data-importance][data-selected="true"]') ||
+                                 document.querySelector('#importance-selector [data-importance].bg-danger, #importance-selector [data-importance].bg-accent, #importance-selector [data-importance].bg-secondary') ||
                                  document.querySelector('#importance-selector [data-importance]');
 
     const date = dateInput.value;
@@ -1015,12 +1095,26 @@ class App {
     const title = titleInput.value.trim();
     const content = contentInput.value.trim();
     const importance = activeImportanceBtn ? activeImportanceBtn.dataset.importance : 'medium';
-    const image = this.tempImageData;
+    let imageUrl = this.tempImageData;
 
     if (!title) { alert('请输入标题'); return; }
     if (!date)  { alert('请选择日期'); return; }
 
-    const recordData = { date, time, title, content, importance, image, timeline_id: this.currentTimelineId };
+    // Round 5：图片上传到 Supabase Storage（避免 base64 超过列长度导致丢失）
+    if (imageUrl && imageUrl.startsWith('data:')) {
+      try {
+        const file = this._dataURLtoFile(imageUrl, 'image.png');
+        if (file) {
+          imageUrl = await cloudDBManager.uploadImage(file, this.currentTimelineId);
+          console.log('[VEX-Timeline] 图片已上传:', imageUrl);
+        }
+      } catch (e) {
+        console.warn('[VEX-Timeline] 图片上传失败，保存原 base64（云端可能丢失）:', e);
+        // 降级：继续保存 base64，IndexedDB 还在，云端可能没图
+      }
+    }
+
+    const recordData = { date, time, title, content, importance, image: imageUrl, timeline_id: this.currentTimelineId };
 
     if (this.editingRecord) {
       await dbManager.updateRecord(this.editingRecord.id, recordData);
@@ -1029,7 +1123,7 @@ class App {
           try {
             const cloudId = this.editingRecord.cloud_id;
             if (cloudId) {
-              await cloudDBManager.updateRecord(cloudId, { date, time, title, content, importance, image_url: image });
+              await cloudDBManager.updateRecord(cloudId, { date, time, title, content, importance, image_url: imageUrl });
             }
           } catch (e) {
             await dbManager.addToSyncQueue('update', { ...recordData, cloud_id: this.editingRecord.cloud_id });
@@ -1043,7 +1137,7 @@ class App {
       if (authManager.isLoggedIn() && supabaseManager.isConfigured() && this.currentTimelineId) {
         if (this.isOnline) {
           try {
-            const cloudRecord = await cloudDBManager.addRecord(this.currentTimelineId, { date, time, title, content, importance, image_url: image });
+            const cloudRecord = await cloudDBManager.addRecord(this.currentTimelineId, { date, time, title, content, importance, image_url: imageUrl });
             await dbManager.updateRecord(localId, { cloud_id: cloudRecord.id });
           } catch (e) {
             await dbManager.addToSyncQueue('add', recordData);
@@ -1062,7 +1156,12 @@ class App {
     if (!confirm('确定要删除这条记录吗？')) return;
     const record = this.records.find(r => r.id === id);
     await dbManager.deleteRecord(id);
-   if (authManager.isLoggedIn() && supabaseManager.isConfigured() && this.currentTimelineId && record) {
+    if (authManager.isLoggedIn() && supabaseManager.isConfigured() && this.currentTimelineId && record) {
+      // Round 5：删除记录时同步清理 Storage 图片（避免孤儿文件）
+      const imageSrc = record.image_url || record.image;
+      if (imageSrc && imageSrc.startsWith('http')) {
+        try { await cloudDBManager.deleteImage(imageSrc); } catch (e) { /* ignore */ }
+      }
       if (this.isOnline) {
         try {
           if (record.cloud_id) await cloudDBManager.deleteRecord(record.cloud_id);
@@ -1325,12 +1424,6 @@ class App {
       return;
     }
 
-    const grouped = {};
-    filteredRecords.forEach(r => {
-      (grouped[r.date] = grouped[r.date] || []).push(r);
-    });
-    const sortedDates = Object.keys(grouped).sort((a, b) => b.localeCompare(a));
-
     // 语义化颜色（红/黄/绿）—— 高=红 / 中=黄 / 低=绿
     const importanceBadgeColors = {
       high:   'bg-danger text-white',       // 红 #EF4444
@@ -1344,57 +1437,54 @@ class App {
     };
     const importanceLabel = { high: '高', medium: '中', low: '低' };
 
-    let html = '';
-    sortedDates.forEach(dateStr => {
-      const dateRecords = grouped[dateStr];
-      dateRecords.sort((a, b) => (b.time || '00:00').localeCompare(a.time || '00:00'));
-
-      html += `
-        <section class="flex flex-col gap-4">
-          <div class="flex items-baseline gap-3 px-1 pb-2 border-b-2 border-border">
-            <h2 class="font-extrabold text-2xl tracking-[-0.02em] text-fg">${this._escapeHtml(this.formatDateDisplay(dateStr))}</h2>
-            <span class="text-xs font-semibold uppercase tracking-wider text-fg/60">${dateRecords.length} 条</span>
-          </div>
-          <div class="vx-timeline-rail flex flex-col gap-4">
-      `;
-
-      dateRecords.forEach(record => {
-        const time = record.time || '';
-        const importance = record.importance || 'medium';
-        const imgSrc = record.image || record.image_url || '';
-        const canEdit = this.canEditRecord(record);
-        // 用 String() 强制转换为字符串以兼容 UUID 和数字 id
-        const recordIdStr = String(record.id);
-
-        html += `
-          <div class="vx-timeline-item" data-importance="${importance}">
-            <div class="vx-rail-dot">
-              <i data-lucide="${importanceIcons[importance]}"></i>
-            </div>
-            ${canEdit ? `
-              <div class="flex gap-2 justify-end mb-3">
-                <button class="vx-action-btn h-8 w-8 bg-muted text-fg rounded-md flex items-center justify-center hover:bg-primary hover:text-white transition-all duration-200 vx-edit-btn" data-id="${recordIdStr}" title="编辑">
-                  <i data-lucide="pencil" class="w-4 h-4"></i>
-                </button>
-                <button class="vx-action-btn h-8 w-8 bg-muted text-fg rounded-md flex items-center justify-center hover:bg-danger hover:text-white transition-all duration-200 vx-delete-btn" data-id="${recordIdStr}" title="删除">
-                  <i data-lucide="trash-2" class="w-4 h-4"></i>
-                </button>
-              </div>
-            ` : ''}
-            <div class="flex items-center gap-2 mb-1.5">
-              <span class="text-xs font-semibold uppercase tracking-wider text-fg/60">${this._escapeHtml(time)}</span>
-              <span class="inline-block text-[10px] font-semibold uppercase px-1.5 py-px rounded ${importanceBadgeColors[importance]}">${importanceLabel[importance]}</span>
-            </div>
-            <div class="font-semibold text-lg mb-1 text-fg">${this._escapeHtml(record.title)}</div>
-            ${record.content ? `<div class="text-fg/60 text-sm mb-3">${this._escapeHtml(record.content)}</div>` : ''}
-            ${imgSrc ? `<img src="${this._escapeHtml(imgSrc)}" class="max-w-full max-h-72 object-cover rounded-md border-2 border-border" alt="记录图片">` : ''}
-          </div>
-        `;
-      });
-
-      html += `</div></section>`;
+    // Round 5：按 date desc, time desc 排序（不再按日期分块）
+    const sortedRecords = [...filteredRecords].sort((a, b) => {
+      const dateCmp = b.date.localeCompare(a.date);
+      if (dateCmp !== 0) return dateCmp;
+      return (b.time || '00:00').localeCompare(a.time || '00:00');
     });
 
+    // Round 5：单一 .vx-timeline-rail 容器包裹所有记录（跨天连贯、竖线不中断）
+    let html = `<div class="vx-timeline-rail flex flex-col gap-6">`;
+
+    sortedRecords.forEach(record => {
+      const time = record.time || '';
+      const importance = record.importance || 'medium';
+      const imgSrc = record.image || record.image_url || '';
+      const canEdit = this.canEditRecord(record);
+      // 用 String() 强制转换为字符串以兼容 UUID 和数字 id
+      const recordIdStr = String(record.id);
+      const dateLabel = this.formatDateDisplay(record.date);
+      // 小标题：日期 + 时间（如 "2026年06月06日 周六 · 14:30"）
+      const metaLine = `${this._escapeHtml(dateLabel)} · ${this._escapeHtml(time) || '—'}`;
+
+      html += `
+        <div class="vx-timeline-item" data-importance="${importance}">
+          <div class="vx-rail-dot">
+            <i data-lucide="${importanceIcons[importance]}"></i>
+          </div>
+          ${canEdit ? `
+            <div class="flex gap-2 justify-end mb-3">
+              <button class="vx-action-btn h-8 w-8 bg-muted text-fg rounded-md flex items-center justify-center hover:bg-primary hover:text-white transition-all duration-200 vx-edit-btn" data-id="${recordIdStr}" title="编辑">
+                <i data-lucide="pencil" class="w-4 h-4"></i>
+              </button>
+              <button class="vx-action-btn h-8 w-8 bg-muted text-fg rounded-md flex items-center justify-center hover:bg-danger hover:text-white transition-all duration-200 vx-delete-btn" data-id="${recordIdStr}" title="删除">
+                <i data-lucide="trash-2" class="w-4 h-4"></i>
+              </button>
+            </div>
+          ` : ''}
+          <div class="text-[10px] font-semibold uppercase tracking-wider text-fg/60 mb-1.5">${metaLine}</div>
+          <div class="flex items-center gap-2 mb-1.5">
+            <span class="inline-block text-[10px] font-semibold uppercase px-1.5 py-px rounded ${importanceBadgeColors[importance]}">${importanceLabel[importance]}</span>
+          </div>
+          <div class="font-semibold text-lg mb-1 text-fg">${this._escapeHtml(record.title)}</div>
+          ${record.content ? `<div class="text-fg/60 text-sm mb-3">${this._escapeHtml(record.content)}</div>` : ''}
+          ${imgSrc ? `<img src="${this._escapeHtml(imgSrc)}" class="max-w-full max-h-72 object-cover rounded-md border-2 border-border" alt="记录图片">` : ''}
+        </div>
+      `;
+    });
+
+    html += `</div>`;
     timeline.innerHTML = html;
     if (window.lucide && lucide.createIcons) lucide.createIcons();
 

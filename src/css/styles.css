@@ -227,13 +227,9 @@ body {
   background-color: var(--color-muted);
 }
 
-.vx-calendar-cell.has-high {
-  background-color: #FEF2F2;
-}
-
-.vx-calendar-cell.has-medium {
-  background-color: #FFFBEB;
-}
+/* Round 5：移除 has-high/has-medium 背景色（避免视觉干扰，重要性由 dots 容器表达） */
+/* .vx-calendar-cell.has-high { background-color: #FEF2F2; } */
+/* .vx-calendar-cell.has-medium { background-color: #FFFBEB; } */
 
 /* Round 4：移除旧的 .has-records::after 单点机制
    改用 .vx-calendar-dots 容器，每条记录一个点，按 importance 着色 */
@@ -368,9 +364,22 @@ body {
   border-radius: 999px;
   border: 2px solid var(--color-border);
   background-color: var(--color-bg);
-  cursor: help;
+  cursor: pointer;          /* Round 5：指示可点击（刷新云端） */
   user-select: none;
-  transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+  padding: 0;               /* Round 5：重置 button 默认 padding */
+  outline: none;            /* Round 5：focus 由 :focus-visible 处理 */
+  transition: background-color 0.2s, color 0.2s, border-color 0.2s, transform 0.2s;
+}
+.vx-cloud-status:hover {
+  transform: scale(1.05);
+  border-color: var(--color-primary);
+}
+.vx-cloud-status:active {
+  transform: scale(0.95);
+}
+.vx-cloud-status:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
 }
 
 .vx-cloud-status .vx-cloud-icon { display: inline-flex; }
