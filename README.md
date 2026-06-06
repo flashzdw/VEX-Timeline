@@ -131,6 +131,14 @@ SUPABASE_ANON_KEY:(set, length=210)
 
 RLS 策略：成员可读/创建；创建者可编辑/删除自己的记录；时间轴所有者可删除任意记录。
 
+### 重要：跨版本升级需补跑迁移
+
+按版本顺序执行 `supabase/migrations/` 下的 SQL 文件。**如果你的 Supabase 项目已经跑过 001/002，请额外补跑** `003_users_select_team_members.sql`：
+
+- 修复"管理赛队"成员列表只显示自己、其他人显示「未知」的问题。
+- 原因：`users` 表的 RLS 策略过严，限制了 PostgREST 关系 join 只能取到当前用户。
+- 新部署的用户（依次跑 001/002/003）无需额外操作。
+
 ## 技术栈
 
 - 纯前端 SPA（无构建框架），Vanilla JS
