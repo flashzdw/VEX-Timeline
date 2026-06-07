@@ -960,7 +960,13 @@ class App {
       if (!members || members.length === 0) {
         membersList.innerHTML = '<div class="px-4 py-3 text-sm text-fg/60">暂无成员</div>';
       } else {
-        membersList.innerHTML = members.map(member => `
+        // 拥有者置顶，其余按 username 升序保持稳定
+        const sortedMembers = [...members].sort((a, b) => {
+          if (a.role === 'owner' && b.role !== 'owner') return -1;
+          if (a.role !== 'owner' && b.role === 'owner') return 1;
+          return (a.users?.username || '').localeCompare(b.users?.username || '');
+        });
+        membersList.innerHTML = sortedMembers.map(member => `
           <div class="flex justify-between items-center px-4 py-3 border-b-2 border-border last:border-b-0">
             <div class="flex flex-col gap-0.5">
               <span class="font-semibold text-sm">${this._escapeHtml(member.users?.username || '未知')}</span>
