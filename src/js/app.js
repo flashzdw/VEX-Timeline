@@ -104,7 +104,8 @@ class App {
   // ============================================================
   async onLoginSuccess() {
     this.hideAuthPage();
-    document.getElementById('user-info').classList.remove('hidden');
+    // Round X: 保留 #user-info 上的 `hidden lg:flex` 类。`lg:flex` 会在 ≥lg 视口下自动覆盖 `hidden`，
+    // 因此在 mobile (<lg) 上始终隐藏，在 desktop (≥lg) 上正常显示，无需 JS 干预。
     const username = authManager.getUsername() || 'User';
     document.getElementById('user-name').textContent = username;
     document.getElementById('user-menu-name').textContent = username;
