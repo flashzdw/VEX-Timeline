@@ -151,7 +151,7 @@
              顶部菜单（单行高级感）  Logo | View | Timeline | Cloud | User | +
              ============================================================ -->
         <header class="sticky top-0 z-40 bg-white border-b-2 md:border-b-4 border-border">
-            <div class="max-w-7xl mx-auto px-3 sm:px-6 h-14 md:h-20 flex items-center justify-between gap-2 sm:gap-4">
+            <div class="max-w-7xl mx-auto px-2 sm:px-6 h-14 md:h-20 flex items-center justify-between gap-1.5 sm:gap-4">
 
                 <!-- Logo（仅桌面端显示，手机端通过 FAB 节省空间） -->
                 <a href="#" class="hidden lg:flex items-center gap-2 shrink-0">
@@ -159,25 +159,25 @@
                     <span class="hidden sm:inline font-extrabold text-xl tracking-[-0.02em] text-fg">VEX-Timeline</span>
                 </a>
 
-                <!-- 视图切换（桌面） -->
-                <div class="hidden md:flex bg-muted rounded-md p-1 gap-1">
+                <!-- 视图切换（桌面 + 移动） -->
+                <div class="flex bg-muted rounded-md p-1 gap-1">
                     <button data-view-toggle="timeline"
-                            class="h-10 px-4 rounded-md text-sm font-semibold tracking-wider uppercase bg-white text-fg transition-all duration-200">
-                        <i data-lucide="list" class="w-4 h-4 inline-block -mt-0.5 mr-1"></i>时间轴
+                            class="h-10 px-2 sm:px-4 inline-flex items-center justify-center rounded-md text-sm font-semibold tracking-wider uppercase bg-white text-fg transition-all duration-200">
+                        <i data-lucide="list" class="w-4 h-4 sm:mr-1"></i><span class="hidden sm:inline">时间轴</span>
                     </button>
                     <button data-view-toggle="month"
-                            class="h-10 px-4 rounded-md text-sm font-semibold tracking-wider uppercase text-fg/60 hover:text-fg transition-all duration-200">
-                        <i data-lucide="calendar" class="w-4 h-4 inline-block -mt-0.5 mr-1"></i>月历
+                            class="h-10 px-2 sm:px-4 inline-flex items-center justify-center rounded-md text-sm font-semibold tracking-wider uppercase text-fg/60 hover:text-fg transition-all duration-200">
+                        <i data-lucide="calendar" class="w-4 h-4 sm:mr-1"></i><span class="hidden sm:inline">月历</span>
                     </button>
                 </div>
 
                 <!-- 时间轴选择器（自定义下拉） -->
-                <div id="timeline-selector" class="hidden lg:block relative shrink-0">
+                <div id="timeline-selector" class="block relative shrink-0 max-w-[160px] sm:max-w-none">
                     <button id="timeline-select-btn" type="button"
-                            class="h-10 px-4 bg-white border-2 border-border rounded-md font-semibold text-sm flex items-center gap-2 hover:border-primary transition-all duration-200">
-                        <i data-lucide="layers" class="w-4 h-4 text-primary"></i>
-                        <span id="timeline-select-label">未选择</span>
-                        <i data-lucide="chevron-down" class="w-4 h-4 text-fg/60"></i>
+                            class="h-10 px-2 sm:px-4 bg-white border-2 border-border rounded-md font-semibold text-sm flex items-center gap-1 sm:gap-2 hover:border-primary transition-all duration-200">
+                        <i data-lucide="layers" class="w-4 h-4 text-primary shrink-0"></i>
+                        <span id="timeline-select-label" class="truncate">未选择</span>
+                        <i data-lucide="chevron-down" class="w-4 h-4 text-fg/60 shrink-0"></i>
                     </button>
                     <div id="timeline-menu" class="vx-timeline-menu">
                         <!-- 时间轴选项由 app.js 动态插入（云端时间轴） -->
@@ -220,9 +220,9 @@
                         </div>
                     </div>
 
-                    <!-- 移动端汉堡 -->
+                    <!-- 移动端汉堡（< lg 视口可见，覆盖 md-lg 之间的间隙） -->
                     <button id="mobile-menu-btn" type="button"
-                            class="md:hidden h-10 w-10 flex items-center justify-center bg-muted rounded-md hover:bg-gray-200 transition-all duration-200">
+                            class="lg:hidden h-10 w-10 flex items-center justify-center bg-muted rounded-md hover:bg-gray-200 transition-all duration-200">
                         <i data-lucide="menu" class="w-5 h-5"></i>
                     </button>
                 </div>
@@ -474,21 +474,6 @@
                     class="h-10 w-10 flex items-center justify-center bg-muted rounded-md hover:bg-gray-200 transition-all duration-200">
                 <i data-lucide="x" class="w-5 h-5"></i>
             </button>
-        </div>
-
-        <!-- 移动端视图切换 -->
-        <div class="mb-6">
-            <div class="text-xs font-semibold uppercase tracking-wider text-fg/60 mb-2">视图</div>
-            <div class="grid grid-cols-2 gap-2">
-                <button data-view-toggle="timeline"
-                        class="h-12 rounded-md text-sm font-semibold tracking-wider uppercase bg-fg text-white transition-all duration-200">
-                    <i data-lucide="list" class="w-4 h-4 inline-block -mt-0.5 mr-1"></i>时间轴
-                </button>
-                <button data-view-toggle="month"
-                        class="h-12 rounded-md text-sm font-semibold tracking-wider uppercase bg-muted text-fg/60 transition-all duration-200">
-                    <i data-lucide="calendar" class="w-4 h-4 inline-block -mt-0.5 mr-1"></i>月历
-                </button>
-            </div>
         </div>
 
         <!-- 移动端快捷操作（云状态 + 添加记录） -->

@@ -152,6 +152,20 @@ body {
   #invite-code-display { font-size: 1.5rem !important; letter-spacing: 0.1em !important; }
   /* 模态框关闭按钮最小触摸目标 44px */
   .vx-modal .h-10.w-10 { min-width: 44px; min-height: 44px; }
+  /* 移动端团队模态框（创建/管理/加入赛队）底部按钮：全宽 + 垂直堆叠（拇指可达） */
+  .vx-modal > .bg-muted {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;            /* 12px */
+  }
+  .vx-modal > .bg-muted button {
+    width: 100%;
+    min-height: 3rem;        /* 48px（Apple HIG 触摸目标） */
+    justify-content: center;
+  }
+  .vx-modal > .bg-muted button > i {
+    margin: 0;               /* 图标与文字水平排列更整齐 */
+  }
 }
 
 /* ============================================================
