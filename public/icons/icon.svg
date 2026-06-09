@@ -1,73 +1,71 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="VEX-Timeline">
   <defs>
-    <radialGradient id="clockGrad" cx="0.4" cy="0.35" r="0.7">
-      <stop offset="0"   stop-color="#7DB9FA"/>
-      <stop offset="0.5" stop-color="#3B82F6"/>
-      <stop offset="1"   stop-color="#1D4ED8"/>
-    </radialGradient>
-    <linearGradient id="cardGrad" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#1E293B"/>
-      <stop offset="1" stop-color="#0F172A"/>
+    <pattern id="dotGrid" x="0" y="0" width="28" height="28" patternUnits="userSpaceOnUse">
+      <circle cx="14" cy="14" r="1.2" fill="#D1D5DB" fill-opacity="0.4"/>
+    </pattern>
+    <linearGradient id="midCardGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#3B82F6"/>
+      <stop offset="1" stop-color="#1D4ED8"/>
     </linearGradient>
   </defs>
 
-  <!-- 深色 squircle 底 + 白色边框 -->
+  <!-- 白色 squircle 底 + 浅边框 -->
   <rect x="2" y="2" width="508" height="508" rx="96" ry="96"
-        fill="#0F172A" stroke="#FFFFFF" stroke-width="8"/>
+        fill="#FFFFFF" stroke="#E5E7EB" stroke-width="2"/>
 
-  <!-- 文档/卡片：深色渐变 + 圆角 -->
-  <rect x="100" y="92" width="270" height="328" rx="22" ry="22"
-        fill="url(#cardGrad)" stroke="#334155" stroke-width="2"/>
+  <!-- 点阵背景（微弱） -->
+  <rect x="18" y="18" width="476" height="476" rx="82" ry="82"
+        fill="url(#dotGrid)"/>
 
-  <!-- 文档顶部小标题条 -->
-  <rect x="124" y="118" width="120" height="14" rx="7"
-        fill="#94A3B8" fill-opacity="0.85"/>
+  <!-- 顶部"窗口"标题条：3 个圆点（窗口控件）+ 中间标题占位 -->
+  <rect x="80" y="48" width="352" height="20" rx="6" fill="#F1F5F9"/>
+  <circle cx="100" cy="58" r="4" fill="#94A3B8"/>
+  <circle cx="118" cy="58" r="4" fill="#94A3B8"/>
+  <circle cx="136" cy="58" r="4" fill="#94A3B8"/>
+  <rect x="160" y="52" width="180" height="12" rx="6" fill="#CBD5E1"/>
 
-  <!-- 时间轴事件行：左侧圆点 + 右侧横线 -->
-  <circle cx="136" cy="180" r="8" fill="#3B82F6"/>
-  <rect x="156" y="172" width="180" height="16" rx="8" fill="#475569"/>
-  <rect x="156" y="194" width="120" height="10" rx="5" fill="#334155"/>
+  <!-- 时间轴主线（粗黑，贯穿 3 张卡片） -->
+  <line x1="80" y1="100" x2="80" y2="464"
+        stroke="#0F172A" stroke-width="12" stroke-linecap="round"/>
 
-  <circle cx="136" cy="244" r="8" fill="#60A5FA"/>
-  <rect x="156" y="236" width="150" height="16" rx="8" fill="#475569"/>
-  <rect x="156" y="258" width="100" height="10" rx="5" fill="#334155"/>
+  <!-- 时间轴上 3 个事件标记点（与卡片水平居中） -->
+  <circle cx="80" cy="160" r="13" fill="#FFFFFF" stroke="#0F172A" stroke-width="6"/>
+  <circle cx="80" cy="280" r="16" fill="#3B82F6" stroke="#FFFFFF" stroke-width="5"/>
+  <circle cx="80" cy="400" r="13" fill="#FFFFFF" stroke="#0F172A" stroke-width="6"/>
 
-  <circle cx="136" cy="308" r="8" fill="#60A5FA"/>
-  <rect x="156" y="300" width="190" height="16" rx="8" fill="#475569"/>
-  <rect x="156" y="322" width="140" height="10" rx="5" fill="#334155"/>
+  <!-- 卡片 1（顶部，普通事件，白底） -->
+  <rect x="116" y="116" width="340" height="88" rx="18" ry="18"
+        fill="#FFFFFF" stroke="#E5E7EB" stroke-width="2"/>
+  <!-- 标题条 -->
+  <rect x="138" y="132" width="100" height="11" rx="5" fill="#0F172A"/>
+  <!-- 内容 3 行 -->
+  <rect x="138" y="154" width="200" height="7" rx="3" fill="#CBD5E1"/>
+  <rect x="138" y="170" width="160" height="7" rx="3" fill="#CBD5E1"/>
+  <rect x="138" y="186" width="120" height="7" rx="3" fill="#CBD5E1"/>
+  <!-- 右上角状态点 -->
+  <circle cx="436" cy="138" r="8" fill="#3B82F6"/>
 
-  <circle cx="136" cy="372" r="8" fill="#60A5FA"/>
-  <rect x="156" y="364" width="130" height="16" rx="8" fill="#475569"/>
-  <rect x="156" y="386" width="90" height="10" rx="5" fill="#334155"/>
+  <!-- 卡片 2（中部，当前/重要事件，蓝底高亮） -->
+  <rect x="112" y="232" width="348" height="96" rx="22" ry="22"
+        fill="url(#midCardGrad)"/>
+  <!-- 标题条（白） -->
+  <rect x="134" y="252" width="120" height="13" rx="6" fill="#FFFFFF"/>
+  <!-- 内容 3 行（半透明白） -->
+  <rect x="134" y="278" width="220" height="8" rx="4" fill="#FFFFFF" fill-opacity="0.55"/>
+  <rect x="134" y="294" width="180" height="8" rx="4" fill="#FFFFFF" fill-opacity="0.55"/>
+  <rect x="134" y="310" width="140" height="8" rx="4" fill="#FFFFFF" fill-opacity="0.55"/>
+  <!-- 右上角状态点 -->
+  <circle cx="438" cy="258" r="9" fill="#FFFFFF"/>
 
-  <!-- 蓝色时钟圆盘（右下方焦点） -->
-  <circle cx="380" cy="380" r="92" fill="url(#clockGrad)"/>
-
-  <!-- 齿轮边缘（8 齿） -->
-  <g fill="url(#clockGrad)">
-    <rect x="372" y="270" width="16" height="24" rx="4"/>
-    <rect x="372" y="466" width="16" height="24" rx="4"/>
-    <rect x="270" y="372" width="24" height="16" rx="4"/>
-    <rect x="466" y="372" width="24" height="16" rx="4"/>
-    <rect x="298" y="298" width="16" height="16" rx="3" transform="rotate(45 306 306)"/>
-    <rect x="438" y="298" width="16" height="16" rx="3" transform="rotate(45 446 306)"/>
-    <rect x="298" y="446" width="16" height="16" rx="3" transform="rotate(45 306 454)"/>
-    <rect x="438" y="446" width="16" height="16" rx="3" transform="rotate(45 446 454)"/>
-  </g>
-
-  <!-- 时钟面（深色内圆） -->
-  <circle cx="380" cy="380" r="68" fill="#0F172A"/>
-
-  <!-- 时钟刻度（4 个方位） -->
-  <circle cx="380" cy="324" r="5" fill="#3B82F6"/>
-  <circle cx="436" cy="380" r="5" fill="#3B82F6"/>
-  <circle cx="380" cy="436" r="5" fill="#3B82F6"/>
-  <circle cx="324" cy="380" r="5" fill="#3B82F6"/>
-
-  <!-- 时钟指针（时针 + 分针，指向约 10:10） -->
-  <line x1="380" y1="380" x2="380" y2="338" stroke="#3B82F6" stroke-width="8" stroke-linecap="round"/>
-  <line x1="380" y1="380" x2="416" y2="380" stroke="#60A5FA" stroke-width="6" stroke-linecap="round"/>
-
-  <!-- 时钟中心点 -->
-  <circle cx="380" cy="380" r="6" fill="#FFFFFF"/>
+  <!-- 卡片 3（底部，普通事件，白底） -->
+  <rect x="116" y="356" width="340" height="88" rx="18" ry="18"
+        fill="#FFFFFF" stroke="#E5E7EB" stroke-width="2"/>
+  <!-- 标题条 -->
+  <rect x="138" y="372" width="100" height="11" rx="5" fill="#0F172A"/>
+  <!-- 内容 3 行 -->
+  <rect x="138" y="394" width="200" height="7" rx="3" fill="#CBD5E1"/>
+  <rect x="138" y="410" width="160" height="7" rx="3" fill="#CBD5E1"/>
+  <rect x="138" y="426" width="120" height="7" rx="3" fill="#CBD5E1"/>
+  <!-- 右上角状态点 -->
+  <circle cx="436" cy="378" r="8" fill="#94A3B8"/>
 </svg>
