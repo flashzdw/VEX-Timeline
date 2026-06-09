@@ -1,7 +1,7 @@
 // Bump CACHE_NAME version whenever JS/CSS changes are deployed.
 // This forces the new service worker to skip the old cache and refetch everything.
 // v21: 重新生成 PWA 图标（Apple Liquid Glass 风格），刷新 SW 缓存以推送新图标
-const CACHE_NAME = 'vex-timeline-cache-v23';
+const CACHE_NAME = 'vex-timeline-cache-v24';
 
 // Only cache the static shell — NEVER cache JS files (auth.js, app.js, config.js, etc.)
 // because they change with each deploy and JS bugs in cached files can break the app.
