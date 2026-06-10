@@ -19,6 +19,7 @@
   --color-bg: #FFFFFF;
   --color-fg: #111827;
   --color-primary: #3B82F6;
+  --color-primary-hover: #2563EB;
   --color-secondary: #10B981;
   --color-accent: #F59E0B;
   --color-muted: #F3F4F6;
@@ -27,6 +28,49 @@
 
   --radius-md: 6px;
   --radius-lg: 8px;
+}
+
+/* ============================================================
+   派生色：原代码中散落的硬编码 hex / rgba，统一为变量以便深色模式整体切换
+   ============================================================ */
+:root {
+  --color-fg-muted: rgba(17, 24, 39, 0.6);          /* 次级文字（时间戳/正文弱化） */
+  --color-modal-overlay: rgba(17, 24, 39, 0.80);     /* 模态框遮罩 */
+  --color-tl-high-bg: #FEF2F2;                       /* timeline card importance=high 背景 */
+  --color-tl-high-bg-hover: #FEE2E2;
+  --color-tl-medium-bg-hover: #FFFBEB;
+  --color-tl-low-bg-hover: #E5E7EB;
+  --color-cloud-ok: #059669;                         /* 云状态 OK 绿 */
+  --color-menu-hover: #EFF6FF;                       /* 时间轴下拉菜单 hover/active */
+  --color-shadow-footer: rgba(17, 24, 39, 0.04);     /* 移动端模态框 footer 顶阴影（DESIGN.md §五禁止使用，本变量保留但仅 light 下生效） */
+}
+
+/* ============================================================
+   深色模式：自动跟随浏览器 prefers-color-scheme
+   色板基于 slate，与现有 flat 设计调性契合；primary/secondary/accent 在深色下提亮一档以保对比度
+   ============================================================ */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg: #0F172A;              /* slate-900 */
+    --color-fg: #F1F5F9;              /* slate-100 */
+    --color-primary: #60A5FA;         /* blue-400 */
+    --color-primary-hover: #3B82F6;   /* blue-500 */
+    --color-secondary: #34D399;       /* emerald-400 */
+    --color-accent: #FBBF24;          /* amber-400 */
+    --color-muted: #1E293B;           /* slate-800 */
+    --color-border: #334155;          /* slate-700 */
+    --color-danger: #F87171;          /* red-400 */
+
+    --color-fg-muted: rgba(241, 245, 249, 0.6);
+    --color-modal-overlay: rgba(0, 0, 0, 0.75);
+    --color-tl-high-bg: rgba(248, 113, 113, 0.10);
+    --color-tl-high-bg-hover: rgba(248, 113, 113, 0.18);
+    --color-tl-medium-bg-hover: rgba(251, 191, 36, 0.10);
+    --color-tl-low-bg-hover: #334155;
+    --color-cloud-ok: #10B981;
+    --color-menu-hover: rgba(96, 165, 250, 0.15);
+    --color-shadow-footer: transparent;
+  }
 }
 
 * {
@@ -95,7 +139,7 @@ body {
 .vx-modal-overlay {
   position: fixed;
   inset: 0;
-  background-color: rgba(17, 24, 39, 0.80); /* fg/80 */
+  background-color: var(--color-modal-overlay); /* fg/80 (light) / 纯黑 0.75 (dark) */
   display: none;
   align-items: center;
   justify-content: center;
@@ -168,7 +212,7 @@ body {
     flex-direction: column;
     gap: 0.75rem;            /* 12px */
     border-top: 1px solid var(--color-border);
-    box-shadow: 0 -2px 8px rgba(17, 24, 39, 0.04);
+    /* DESIGN.md §五禁止 box-shadow；改用 border-top 即可与 body 视觉分隔 */
     padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
   }
   .vx-modal > .bg-muted button {
@@ -198,15 +242,15 @@ body {
   animation: vx-card-in 0.3s ease-out forwards;
 }
 
-.vx-timeline-item[data-importance="high"]   { border-left-color: var(--color-primary);   background-color: #FEF2F2; }
+.vx-timeline-item[data-importance="high"]   { border-left-color: var(--color-primary);   background-color: var(--color-tl-high-bg); }
 .vx-timeline-item[data-importance="medium"] { border-left-color: var(--color-accent);    background-color: var(--color-bg); }
 .vx-timeline-item[data-importance="low"]    { border-left-color: var(--color-secondary); background-color: var(--color-muted); }
 
 .vx-timeline-item:hover { transform: scale(1.02); }
 
-.vx-timeline-item[data-importance="high"]:hover   { background-color: #FEE2E2; }
-.vx-timeline-item[data-importance="medium"]:hover { background-color: #FFFBEB; }
-.vx-timeline-item[data-importance="low"]:hover    { background-color: #E5E7EB; }
+.vx-timeline-item[data-importance="high"]:hover   { background-color: var(--color-tl-high-bg-hover); }
+.vx-timeline-item[data-importance="medium"]:hover { background-color: var(--color-tl-medium-bg-hover); }
+.vx-timeline-item[data-importance="low"]:hover    { background-color: var(--color-tl-low-bg-hover); }
 
 /* ============================================================
    月历单元
@@ -411,11 +455,11 @@ body {
 }
 
 .vx-timeline-menu-item:hover {
-  background-color: #EFF6FF; /* blue-50 */
+  background-color: var(--color-menu-hover); /* blue-50 (light) / primary 15% (dark) */
 }
 
 .vx-timeline-menu-item.active {
-  background-color: #EFF6FF;
+  background-color: var(--color-menu-hover);
   border-left-color: var(--color-primary);
   font-weight: 700;
 }
@@ -452,7 +496,7 @@ body {
 
 .vx-cloud-status .vx-cloud-icon { display: inline-flex; }
 
-.vx-cloud-status.is-ok      { background-color: #059669; color: var(--color-bg); border-color: #059669; }
+.vx-cloud-status.is-ok      { background-color: var(--color-cloud-ok); color: var(--color-bg); border-color: var(--color-cloud-ok); }
 .vx-cloud-status.is-error   { background-color: var(--color-primary);   color: var(--color-bg); border-color: var(--color-primary); }
 .vx-cloud-status.is-offline { background-color: var(--color-accent);    color: var(--color-bg); border-color: var(--color-accent); }
 .vx-cloud-status.is-syncing .vx-cloud-icon { animation: vx-spin 1.2s linear infinite; }
@@ -580,7 +624,7 @@ body {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: rgba(17, 24, 39, 0.6);
+  color: var(--color-fg-muted);
   line-height: 1;             /* Round 8：压缩行高（默认 1.5=15px → 10px）让 14:30 紧贴边框 */
   margin: 0 0 4px 0;          /* Round 8：显式 margin: 0 去掉浏览器默认 margin */
   display: block;             /* Round 9：显式 block 确保 margin 生效 */
@@ -600,7 +644,7 @@ body {
 }
 .vx-item-content {
   font-size: 0.875rem;
-  color: rgba(17, 24, 39, 0.6);
+  color: var(--color-fg-muted);
   margin-top: 4px;
   margin-bottom: 8px;
 }

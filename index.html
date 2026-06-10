@@ -4,7 +4,30 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>VEX-Timeline</title>
-    <meta name="theme-color" content="#3B82F6">
+    <!-- 状态栏颜色：原生媒体查询支持，浅/深色模式自动切换（无需 JS） -->
+    <meta name="theme-color" content="#3B82F6" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#0F172A" media="(prefers-color-scheme: dark)">
+
+    <!-- 早期主题检测：先于样式表给 <html> 设置 data-theme，避免 FOUC；同时持续监听浏览器颜色模式变化 -->
+    <script>
+      (function () {
+        try {
+          var m = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)');
+          var apply = function (dark) {
+            document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+          };
+          if (m) {
+            apply(m.matches);
+            if (m.addEventListener) {
+              m.addEventListener('change', function (e) { apply(e.matches); });
+            } else if (m.addListener) {
+              // 兼容旧版 Safari
+              m.addListener(function (e) { apply(e.matches); });
+            }
+          }
+        } catch (e) {}
+      })();
+    </script>
 
     <!-- Favicon & PWA 图标（带版本号 bust 浏览器缓存，确保新图标立即生效） -->
     <link rel="icon" type="image/png" sizes="32x32" href="./public/icons/favicon-32.png?v=29">
@@ -35,15 +58,15 @@
         theme: {
           extend: {
             colors: {
-              bg:       '#FFFFFF',
-              fg:       '#111827',
-              primary:  '#3B82F6',
-              'primary-hover': '#2563EB',
-              secondary:'#10B981',
-              accent:   '#F59E0B',
-              muted:    '#F3F4F6',
-              border:   '#E5E7EB',
-              danger:   '#EF4444',
+              bg:       'var(--color-bg)',
+              fg:       'var(--color-fg)',
+              primary:  'var(--color-primary)',
+              'primary-hover': 'var(--color-primary-hover)',
+              secondary:'var(--color-secondary)',
+              accent:   'var(--color-accent)',
+              muted:    'var(--color-muted)',
+              border:   'var(--color-border)',
+              danger:   'var(--color-danger)',
             },
             fontFamily: {
               sans: ['Outfit', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
