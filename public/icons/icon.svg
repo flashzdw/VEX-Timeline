@@ -11,36 +11,36 @@ xmlns="http://www.w3.org/2000/svg">
 <!-- 外层黑色厚边框 -->
 <rect x="0" y="0" width="1024" height="1024" rx="200" ry="200" fill="#000000"/>
 
-<!-- 白色中间层（与外黑边形成"加厚白底"效果） -->
+<!-- 白色中间层 -->
 <rect x="100" y="100" width="824" height="824" rx="160" ry="160" fill="#FFFFFF"/>
 
-<!-- 内部深色卡片（带轻微渐变） -->
+<!-- 内部深色卡片 -->
 <rect x="180" y="180" width="664" height="664" rx="130" ry="130" fill="url(#inner)"/>
 
 
-<!-- 水平内容条 -->
-<rect x="475" y="335" width="320" height="32" rx="16" ry="16" fill="#2F76FF"/>
-<rect x="475" y="540" width="270" height="20" rx="10" ry="10" fill="#9AA4B5"/>
-<rect x="475" y="710" width="270" height="20" rx="10" ry="10" fill="#9AA4B5"/>
+<!-- 水平内容条：3 条同样粗细、同样长度的胶囊条（灰 / 蓝 / 灰） -->
+<rect x="475" y="327" width="320" height="38" rx="19" ry="19" fill="#9AA4B5"/>
+<rect x="475" y="531" width="320" height="38" rx="19" ry="19" fill="#2F76FF"/>
+<rect x="475" y="701" width="320" height="38" rx="19" ry="19" fill="#9AA4B5"/>
 
 
 <!-- 时间轴竖线 -->
 <rect x="343" y="370" width="6" height="380" rx="3" ry="3" fill="#C9D2E0"/>
 
 
-<!-- 顶部节点：已完成（蓝底白勾 + 外层浅蓝光环） -->
-<circle cx="346" cy="346" r="78" fill="#9CC2FF"/>
-<circle cx="346" cy="346" r="58" fill="#2F76FF"/>
-<path d="M312 348 L337 372 L380 326"
+<!-- 顶部节点：已完成（蓝实心圆 + 白勾；尺寸 = 白色节点大小 r=50） -->
+<circle cx="346" cy="346" r="62" fill="#9CC2FF"/>
+<circle cx="346" cy="346" r="50" fill="#2F76FF"/>
+<path d="M318 348 L339 370 L376 326"
 fill="none" stroke="#FFFFFF" stroke-width="14"
 stroke-linecap="round" stroke-linejoin="round"/>
 
 
-<!-- 中间节点：未完成（白实心圆） -->
-<circle cx="346" cy="550" r="40" fill="#FFFFFF"/>
+<!-- 中间节点：未完成（白实心圆，r=50 比之前 40 稍大） -->
+<circle cx="346" cy="550" r="50" fill="#FFFFFF"/>
 
 
-<!-- 底部节点：未完成（白实心圆） -->
-<circle cx="346" cy="720" r="40" fill="#FFFFFF"/>
+<!-- 底部节点：未完成（白实心圆，r=50） -->
+<circle cx="346" cy="720" r="50" fill="#FFFFFF"/>
 
 </svg>
