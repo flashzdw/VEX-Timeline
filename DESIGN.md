@@ -23,7 +23,7 @@
 
 | Token | Tailwind class | 色值 | 用途 |
 |---|---|---|---|
-| `background` | `bg-bg` | `#FFFFFF` | 画布 |
+| `background` | `bg-canvas` | `#FFFFFF` | 画布 |
 | `foreground` | `text-fg` / `bg-fg` | `#111827`（Gray 900） | 高对比文本 |
 | `primary` | `bg-primary` / `text-primary` | `#3B82F6`（Blue 500） | 行动色（Action） |
 | `secondary` | `bg-secondary` / `text-secondary` | `#10B981`（Emerald 500） | 辅助强调 |
@@ -35,7 +35,7 @@
 
 ### 二.五、Dark Mode Palette（深色模式色板）
 
-> **自动跟随浏览器** [`prefers-color-scheme`](https://developer.mozilla.org/docs/Web/CSS/@media/prefers-color-scheme)，无手动开关。所有 token 通过 CSS 变量在 `@media (prefers-color-scheme: dark)` 中整体覆盖，Tailwind 工具类（`bg-bg / text-fg` 等）天然响应。
+> **自动跟随浏览器** [`prefers-color-scheme`](https://developer.mozilla.org/docs/Web/CSS/@media/prefers-color-scheme)，无手动开关。所有 token 通过 CSS 变量在 `@media (prefers-color-scheme: dark)` 中整体覆盖，Tailwind 工具类（`bg-canvas / text-fg` 等）天然响应。
 
 | Token | Light 值 | Dark 值（slate 基底） | 用途 |
 |---|---|---|---|

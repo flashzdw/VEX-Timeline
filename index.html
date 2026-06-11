@@ -58,7 +58,7 @@
         theme: {
           extend: {
             colors: {
-              bg:       'var(--color-bg)',
+              canvas:    'var(--color-bg)',
               fg:       'var(--color-fg)',
               primary:  'var(--color-primary)',
               'primary-hover': 'var(--color-primary-hover)',
@@ -87,7 +87,7 @@
     <link rel="stylesheet" href="./src/css/styles.css">
     <link rel="manifest" href="./manifest.json">
 </head>
-<body class="bg-bg text-fg font-sans">
+<body class="bg-canvas text-fg font-sans">
 
     <!-- ============================================================
          AUTH PAGE  海报式 左右分栏
@@ -120,7 +120,7 @@
         </div>
 
         <!-- 右侧登录表单  fixed + overflow-hidden 彻底锁死，禁止任何滚动（包括 iOS 橡皮筋） -->
-        <div class="flex-1 flex items-center justify-center p-6 sm:p-8 lg:p-12 bg-bg relative overflow-hidden">
+        <div class="flex-1 flex items-center justify-center p-6 sm:p-8 lg:p-12 bg-canvas relative overflow-hidden">
             <div class="hidden md:block absolute -bottom-24 -right-24 h-64 w-64 rounded-full bg-primary/5 pointer-events-none"></div>
 
             <div class="relative z-10 w-full max-w-md py-6 sm:py-0">
@@ -139,12 +139,12 @@
                     <div class="flex flex-col gap-2">
                         <label class="text-xs font-semibold uppercase tracking-wider text-fg/60" for="auth-username">用户名</label>
                         <input id="auth-username" type="text" placeholder="输入用户名" maxlength="20" autocomplete="off"
-                               class="h-14 px-4 bg-muted text-fg text-base rounded-md border-0 outline-none font-medium focus:bg-bg focus:border-2 focus:border-primary transition-all duration-200">
+                               class="h-14 px-4 bg-muted text-fg text-base rounded-md border-0 outline-none font-medium focus:bg-canvas focus:border-2 focus:border-primary transition-all duration-200">
                     </div>
                     <div class="flex flex-col gap-2">
                         <label class="text-xs font-semibold uppercase tracking-wider text-fg/60" for="auth-password">密码</label>
                         <input id="auth-password" type="password" placeholder="输入密码" autocomplete="off"
-                               class="h-14 px-4 bg-muted text-fg text-base rounded-md border-0 outline-none font-medium focus:bg-bg focus:border-2 focus:border-primary transition-all duration-200">
+                               class="h-14 px-4 bg-muted text-fg text-base rounded-md border-0 outline-none font-medium focus:bg-canvas focus:border-2 focus:border-primary transition-all duration-200">
                     </div>
                     <div id="auth-error" class="min-h-[1.25rem] text-sm font-medium text-primary"></div>
 
@@ -155,7 +155,7 @@
                             登录
                         </button>
                         <button id="auth-register-btn" type="button"
-                                class="h-14 border-4 border-fg text-fg bg-transparent rounded-md font-semibold tracking-wider uppercase text-sm flex items-center justify-center gap-2 hover:bg-fg hover:text-bg hover:scale-[1.02] transition-all duration-200">
+                                class="h-14 border-4 border-fg text-fg bg-transparent rounded-md font-semibold tracking-wider uppercase text-sm flex items-center justify-center gap-2 hover:bg-fg hover:text-canvas hover:scale-[1.02] transition-all duration-200">
                             <i data-lucide="user-plus" class="w-5 h-5"></i>
                             注册
                         </button>
@@ -173,7 +173,7 @@
         <!-- ============================================================
              顶部菜单（单行高级感）  Logo | View | Timeline | Cloud | User | +
              ============================================================ -->
-        <header class="sticky top-0 z-40 bg-bg border-b-2 md:border-b-4 border-border">
+        <header class="sticky top-0 z-40 bg-canvas border-b-2 md:border-b-4 border-border">
             <div class="max-w-7xl mx-auto px-3 sm:px-6 h-16 md:h-20 flex items-center justify-between gap-2 sm:gap-4">
 
                 <!-- Logo（仅桌面端显示，手机端通过 FAB 节省空间） -->
@@ -185,7 +185,7 @@
                 <!-- 视图切换（桌面 + 移动） -->
                 <div class="flex bg-muted rounded-md p-1 gap-1">
                     <button data-view-toggle="timeline"
-                            class="h-10 px-2 sm:px-4 inline-flex items-center justify-center rounded-md text-sm font-semibold tracking-wider uppercase bg-bg text-fg transition-all duration-200">
+                            class="h-10 px-2 sm:px-4 inline-flex items-center justify-center rounded-md text-sm font-semibold tracking-wider uppercase bg-canvas text-fg transition-all duration-200">
                         <i data-lucide="list" class="w-4 h-4 sm:mr-1"></i><span class="hidden sm:inline">时间轴</span>
                     </button>
                     <button data-view-toggle="month"
@@ -197,7 +197,7 @@
                 <!-- 时间轴选择器（自定义下拉） -->
                 <div id="timeline-selector" class="block relative shrink-0 max-w-[160px] sm:max-w-none">
                     <button id="timeline-select-btn" type="button"
-                            class="h-10 px-2 sm:px-4 bg-bg border-2 border-border rounded-md font-semibold text-sm flex items-center gap-1 sm:gap-2 hover:border-primary transition-all duration-200">
+                            class="h-10 px-2 sm:px-4 bg-canvas border-2 border-border rounded-md font-semibold text-sm flex items-center gap-1 sm:gap-2 hover:border-primary transition-all duration-200">
                         <i data-lucide="layers" class="w-4 h-4 text-primary shrink-0"></i>
                         <span id="timeline-select-label" class="truncate">未选择</span>
                         <i data-lucide="chevron-down" class="w-4 h-4 text-fg/60 shrink-0"></i>
@@ -275,10 +275,10 @@
                     <div class="flex items-center gap-4 flex-wrap">
                         <span class="text-sm sm:text-xs font-semibold uppercase tracking-wider text-fg/60">重要性</span>
                         <div class="flex gap-2 flex-wrap">
-                            <button data-filter="all"    class="h-9 sm:h-10 px-4 rounded-md text-sm font-semibold tracking-wider uppercase bg-fg text-bg transition-all duration-200">全部</button>
-                            <button data-filter="high"   class="h-9 sm:h-10 px-4 rounded-md text-sm font-semibold tracking-wider uppercase bg-bg text-fg transition-all duration-200">高</button>
-                            <button data-filter="medium" class="h-9 sm:h-10 px-4 rounded-md text-sm font-semibold tracking-wider uppercase bg-bg text-fg transition-all duration-200">中</button>
-                            <button data-filter="low"    class="h-9 sm:h-10 px-4 rounded-md text-sm font-semibold tracking-wider uppercase bg-bg text-fg transition-all duration-200">低</button>
+                            <button data-filter="all"    class="h-9 sm:h-10 px-4 rounded-md text-sm font-semibold tracking-wider uppercase bg-fg text-canvas transition-all duration-200">全部</button>
+                            <button data-filter="high"   class="h-9 sm:h-10 px-4 rounded-md text-sm font-semibold tracking-wider uppercase bg-canvas text-fg transition-all duration-200">高</button>
+                            <button data-filter="medium" class="h-9 sm:h-10 px-4 rounded-md text-sm font-semibold tracking-wider uppercase bg-canvas text-fg transition-all duration-200">中</button>
+                            <button data-filter="low"    class="h-9 sm:h-10 px-4 rounded-md text-sm font-semibold tracking-wider uppercase bg-canvas text-fg transition-all duration-200">低</button>
                         </div>
                     </div>
                 </div>
@@ -305,7 +305,7 @@
             <section id="calendar-container" class="relative z-10 hidden">
                 <div class="flex items-center justify-between mb-8 gap-4">
                     <button id="prev-month" type="button"
-                            class="h-14 w-14 bg-bg border-2 border-border rounded-md flex items-center justify-center hover:bg-fg hover:text-bg hover:border-fg transition-all duration-200">
+                            class="h-14 w-14 bg-canvas border-2 border-border rounded-md flex items-center justify-center hover:bg-fg hover:text-canvas hover:border-fg transition-all duration-200">
                         <i data-lucide="chevron-left" class="w-5 h-5"></i>
                     </button>
                     <div class="text-center">
@@ -313,7 +313,7 @@
                         <div id="date-label" class="font-extrabold text-3xl tracking-[-0.02em] uppercase"></div>
                     </div>
                     <button id="next-month" type="button"
-                            class="h-14 w-14 bg-bg border-2 border-border rounded-md flex items-center justify-center hover:bg-fg hover:text-bg hover:border-fg transition-all duration-200">
+                            class="h-14 w-14 bg-canvas border-2 border-border rounded-md flex items-center justify-center hover:bg-fg hover:text-canvas hover:border-fg transition-all duration-200">
                         <i data-lucide="chevron-right" class="w-5 h-5"></i>
                     </button>
                 </div>
@@ -324,7 +324,7 @@
         <!-- ============= DAY RECORDS OVERLAY ============= -->
         <div id="day-records-overlay" class="vx-modal-overlay">
             <div class="vx-modal max-w-2xl">
-                <div class="bg-fg text-bg px-8 py-6 flex items-center justify-between">
+                <div class="bg-fg text-canvas px-8 py-6 flex items-center justify-between">
                     <h3 id="day-records-title" class="font-extrabold text-2xl tracking-[-0.02em] uppercase">—</h3>
                     <button id="close-day-records" type="button"
                             class="h-10 w-10 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded-md transition-all duration-200">
@@ -352,31 +352,31 @@
                     <div class="flex flex-col gap-2">
                         <label class="text-xs font-semibold uppercase tracking-wider text-fg/60" for="record-date">日期</label>
                         <input id="record-date" type="date"
-                               class="h-12 px-4 bg-muted text-fg rounded-md border-0 outline-none font-medium focus:bg-bg focus:border-2 focus:border-primary transition-all duration-200">
+                               class="h-12 px-4 bg-muted text-fg rounded-md border-0 outline-none font-medium focus:bg-canvas focus:border-2 focus:border-primary transition-all duration-200">
                     </div>
                     <div class="flex flex-col gap-2">
                         <label class="text-xs font-semibold uppercase tracking-wider text-fg/60" for="record-time">时间</label>
                         <input id="record-time" type="time"
-                               class="h-12 px-4 bg-muted text-fg rounded-md border-0 outline-none font-medium focus:bg-bg focus:border-2 focus:border-primary transition-all duration-200">
+                               class="h-12 px-4 bg-muted text-fg rounded-md border-0 outline-none font-medium focus:bg-canvas focus:border-2 focus:border-primary transition-all duration-200">
                     </div>
                 </div>
                 <div class="flex flex-col gap-2">
                     <label class="text-xs font-semibold uppercase tracking-wider text-fg/60">重要性</label>
                     <div id="importance-selector" class="grid grid-cols-3 gap-2">
                         <button type="button" data-importance="high"   class="h-12 rounded-md text-sm font-semibold tracking-wider uppercase bg-muted text-fg/60 hover:bg-red-50 transition-all duration-200">高</button>
-                        <button type="button" data-importance="medium" class="h-12 rounded-md text-sm font-semibold tracking-wider uppercase bg-fg text-bg transition-all duration-200">中</button>
+                        <button type="button" data-importance="medium" class="h-12 rounded-md text-sm font-semibold tracking-wider uppercase bg-fg text-canvas transition-all duration-200">中</button>
                         <button type="button" data-importance="low"    class="h-12 rounded-md text-sm font-semibold tracking-wider uppercase bg-muted text-fg/60 hover:bg-emerald-50 transition-all duration-200">低</button>
                     </div>
                 </div>
                 <div class="flex flex-col gap-2">
                     <label class="text-xs font-semibold uppercase tracking-wider text-fg/60" for="record-title">标题</label>
                     <input id="record-title" type="text" placeholder="请输入标题"
-                           class="h-12 px-4 bg-muted text-fg rounded-md border-0 outline-none font-medium focus:bg-bg focus:border-2 focus:border-primary transition-all duration-200">
+                           class="h-12 px-4 bg-muted text-fg rounded-md border-0 outline-none font-medium focus:bg-canvas focus:border-2 focus:border-primary transition-all duration-200">
                 </div>
                 <div class="flex flex-col gap-2">
                     <label class="text-xs font-semibold uppercase tracking-wider text-fg/60" for="record-content">内容</label>
                     <textarea id="record-content" placeholder="请输入内容" rows="4"
-                              class="p-4 bg-muted text-fg rounded-md border-0 outline-none font-medium resize-none focus:bg-bg focus:border-2 focus:border-primary transition-all duration-200"></textarea>
+                              class="p-4 bg-muted text-fg rounded-md border-0 outline-none font-medium resize-none focus:bg-canvas focus:border-2 focus:border-primary transition-all duration-200"></textarea>
                 </div>
                 <div class="flex flex-col gap-2">
                     <label class="text-xs font-semibold uppercase tracking-wider text-fg/60" for="record-image">图片</label>
@@ -385,7 +385,7 @@
                     <div id="image-preview" class="hidden mt-2 relative inline-block">
                         <img id="preview-img" src="" alt="预览" class="max-w-[200px] max-h-[200px] object-cover rounded-md border-2 border-border">
                         <button type="button" id="remove-image-btn"
-                                class="absolute -top-3 -right-3 h-8 w-8 bg-bg border-2 border-border rounded-md flex items-center justify-center hover:bg-red-50 hover:border-primary transition-all duration-200">
+                                class="absolute -top-3 -right-3 h-8 w-8 bg-canvas border-2 border-border rounded-md flex items-center justify-center hover:bg-red-50 hover:border-primary transition-all duration-200">
                             <i data-lucide="x" class="w-4 h-4"></i>
                         </button>
                     </div>
@@ -393,7 +393,7 @@
             </form>
             <div class="bg-muted px-8 py-6 flex justify-end gap-3">
                 <button id="cancel-btn" type="button"
-                        class="h-12 px-6 bg-bg border-2 border-border text-fg rounded-md font-semibold tracking-wider uppercase text-sm hover:bg-muted transition-all duration-200">
+                        class="h-12 px-6 bg-canvas border-2 border-border text-fg rounded-md font-semibold tracking-wider uppercase text-sm hover:bg-muted transition-all duration-200">
                     取消
                 </button>
                 <button id="save-btn" type="button"
@@ -415,12 +415,12 @@
                 <div class="flex flex-col gap-2">
                     <label class="text-xs font-semibold uppercase tracking-wider text-fg/60" for="team-name">时间轴名称</label>
                     <input id="team-name" type="text" placeholder="输入赛队时间轴名称"
-                           class="h-12 px-4 bg-muted text-fg rounded-md border-0 outline-none font-medium focus:bg-bg focus:border-2 focus:border-primary transition-all duration-200">
+                           class="h-12 px-4 bg-muted text-fg rounded-md border-0 outline-none font-medium focus:bg-canvas focus:border-2 focus:border-primary transition-all duration-200">
                 </div>
             </form>
             <div class="bg-muted px-8 py-6 flex justify-end gap-3">
                 <button id="cancel-team-btn" type="button"
-                        class="h-12 px-6 bg-bg border-2 border-border text-fg rounded-md font-semibold tracking-wider uppercase text-sm hover:bg-muted transition-all duration-200">取消</button>
+                        class="h-12 px-6 bg-canvas border-2 border-border text-fg rounded-md font-semibold tracking-wider uppercase text-sm hover:bg-muted transition-all duration-200">取消</button>
                 <button id="save-team-btn" type="button"
                         class="h-12 px-6 bg-secondary text-white rounded-md font-semibold tracking-wider uppercase text-sm flex items-center gap-2 hover:scale-105 transition-all duration-200">
                     <i data-lucide="plus" class="w-4 h-4"></i>创建
@@ -454,7 +454,7 @@
             </div>
             <div class="bg-muted px-8 py-6 flex justify-end">
                 <button id="close-invite-btn" type="button"
-                        class="h-12 px-6 bg-bg border-2 border-border text-fg rounded-md font-semibold tracking-wider uppercase text-sm hover:bg-muted transition-all duration-200">关闭</button>
+                        class="h-12 px-6 bg-canvas border-2 border-border text-fg rounded-md font-semibold tracking-wider uppercase text-sm hover:bg-muted transition-all duration-200">关闭</button>
             </div>
         </div>
     </div>
@@ -470,12 +470,12 @@
                 <div class="flex flex-col gap-2">
                     <label class="text-xs font-semibold uppercase tracking-wider text-fg/60" for="invite-code-input">邀请码</label>
                     <input id="invite-code-input" type="text" placeholder="输入 6 位邀请码" maxlength="6"
-                           class="h-14 px-4 bg-muted text-fg vx-mono font-extrabold text-2xl text-center rounded-md border-0 outline-none focus:bg-bg focus:border-2 focus:border-primary transition-all duration-200">
+                           class="h-14 px-4 bg-muted text-fg vx-mono font-extrabold text-2xl text-center rounded-md border-0 outline-none focus:bg-canvas focus:border-2 focus:border-primary transition-all duration-200">
                 </div>
             </form>
             <div class="bg-muted px-8 py-6 flex justify-end gap-3">
                 <button id="cancel-join-btn" type="button"
-                        class="h-12 px-6 bg-bg border-2 border-border text-fg rounded-md font-semibold tracking-wider uppercase text-sm hover:bg-muted transition-all duration-200">取消</button>
+                        class="h-12 px-6 bg-canvas border-2 border-border text-fg rounded-md font-semibold tracking-wider uppercase text-sm hover:bg-muted transition-all duration-200">取消</button>
                 <button id="confirm-join-btn" type="button"
                         class="h-12 px-6 bg-primary text-white rounded-md font-semibold tracking-wider uppercase text-sm flex items-center gap-2 hover:bg-primary-hover hover:scale-105 transition-all duration-200">
                     <i data-lucide="log-in" class="w-4 h-4"></i>加入
@@ -508,7 +508,7 @@
                     <i data-lucide="plus" class="w-4 h-4"></i>添加记录
                 </button>
                 <button id="mobile-cloud-refresh-btn" type="button"
-                        class="h-12 border-2 border-border bg-bg text-fg rounded-md font-semibold tracking-wider uppercase text-sm flex items-center justify-center gap-2 hover:border-primary hover:text-primary transition-all duration-200">
+                        class="h-12 border-2 border-border bg-canvas text-fg rounded-md font-semibold tracking-wider uppercase text-sm flex items-center justify-center gap-2 hover:border-primary hover:text-primary transition-all duration-200">
                     <i data-lucide="cloud" class="w-4 h-4"></i>刷新云端
                 </button>
             </div>
@@ -533,7 +533,7 @@
                     <i data-lucide="user-plus" class="w-4 h-4"></i>加入赛队
                 </button>
                 <button data-team-action="manage" id="mobile-manage-team-btn" type="button"
-                        class="hidden h-12 border-4 border-fg text-fg rounded-md font-semibold tracking-wider uppercase text-sm flex items-center justify-center gap-2 hover:bg-fg hover:text-bg transition-all duration-200">
+                        class="hidden h-12 border-4 border-fg text-fg rounded-md font-semibold tracking-wider uppercase text-sm flex items-center justify-center gap-2 hover:bg-fg hover:text-canvas transition-all duration-200">
                     <i data-lucide="settings" class="w-4 h-4"></i>管理赛队
                 </button>
             </div>
