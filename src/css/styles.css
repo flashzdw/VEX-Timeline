@@ -41,6 +41,7 @@
   --color-tl-medium-bg-hover: #FFFBEB;
   --color-tl-low-bg-hover: #E5E7EB;
   --color-tl-low-bg: #ECFDF5;                        /* timeline card importance=low 背景（emerald-50） */
+  --color-hero-bg: #3B82F6;                          /* 登录页左侧 Hero：浅色 = 主色蓝；深色 = 极深藏青（不刺眼但保留品牌色感） */
   --color-cloud-ok: #059669;                         /* 云状态 OK 绿 */
   --color-menu-hover: #EFF6FF;                       /* 时间轴下拉菜单 hover/active */
   --color-shadow-footer: rgba(17, 24, 39, 0.04);     /* 移动端模态框 footer 顶阴影（DESIGN.md §五禁止使用，本变量保留但仅 light 下生效） */
@@ -69,6 +70,7 @@
     --color-tl-medium-bg-hover: rgba(251, 191, 36, 0.10);
     --color-tl-low-bg-hover: #334155;
     --color-tl-low-bg: rgba(52, 211, 153, 0.10);      /* emerald-400 10% 透明 */
+    --color-hero-bg: #0F1E3A;                         /* 极深藏青：深色模式下 Hero 的底色，比 slate-900 略带蓝调以保留品牌识别 */
     --color-cloud-ok: #10B981;
     --color-menu-hover: rgba(96, 165, 250, 0.15);
     --color-shadow-footer: transparent;
@@ -714,6 +716,7 @@ body {
    显式声明确保深色模式一定生效——比 body 元素的暗色背景更可靠）
    ============================================================ */
 .bg-canvas        { background-color: var(--color-bg); }
+.bg-hero          { background-color: var(--color-hero-bg); }  /* 登录页左半边 Hero（深色下用极深藏青） */
 .text-canvas      { color: var(--color-bg); }
 .bg-fg            { background-color: var(--color-fg); }
 .text-fg          { color: var(--color-fg); }

@@ -93,8 +93,8 @@
          AUTH PAGE  海报式 左右分栏
          ============================================================ -->
     <div id="auth-page" class="fixed inset-0 flex overflow-hidden">
-        <!-- 左侧 Hero（色块 + 装饰几何） -->
-        <div class="hidden lg:flex relative flex-1 bg-primary text-canvas p-12 flex-col justify-between overflow-hidden">
+        <!-- 左侧 Hero（色块 + 装饰几何）：深色模式下用极深藏青，避免大块刺眼蓝 -->
+        <div class="hidden lg:flex relative flex-1 bg-hero text-white p-12 flex-col justify-between overflow-hidden">
             <div class="absolute -top-32 -right-32 h-96 w-96 rounded-full bg-white/10 pointer-events-none"></div>
             <div class="absolute bottom-10 left-10 h-40 w-40 rotate-12 bg-accent/20 pointer-events-none"></div>
             <div class="absolute top-1/2 right-20 h-20 w-20 rotate-45 bg-secondary/30 pointer-events-none"></div>
@@ -488,13 +488,14 @@
          移动端抽屉
          ============================================================ -->
     <div id="mobile-drawer" class="vx-mobile-drawer">
-        <div class="flex items-center justify-between mb-6">
+        <!-- 抽屉首行：固定 h-16（= header 高度），让关闭按钮和头部开启按钮垂直位置一致 -->
+        <div class="flex items-center justify-between mb-6 h-16">
             <div class="flex items-center gap-2">
                 <div class="h-10 w-10 bg-primary text-canvas rounded-md flex items-center justify-center font-extrabold">V</div>
                 <span class="font-extrabold text-xl tracking-[-0.02em]">VEX-Timeline</span>
             </div>
             <button id="mobile-drawer-close" type="button"
-                    class="h-10 w-10 flex items-center justify-center bg-muted rounded-md hover:bg-gray-200 transition-all duration-200">
+                    class="h-10 w-10 flex items-center justify-center bg-muted rounded-md hover:bg-border transition-all duration-200">
                 <i data-lucide="x" class="w-5 h-5"></i>
             </button>
         </div>
