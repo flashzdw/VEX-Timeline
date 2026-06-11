@@ -40,6 +40,7 @@
   --color-tl-high-bg-hover: #FEE2E2;
   --color-tl-medium-bg-hover: #FFFBEB;
   --color-tl-low-bg-hover: #E5E7EB;
+  --color-tl-low-bg: #ECFDF5;                        /* timeline card importance=low 背景（emerald-50） */
   --color-cloud-ok: #059669;                         /* 云状态 OK 绿 */
   --color-menu-hover: #EFF6FF;                       /* 时间轴下拉菜单 hover/active */
   --color-shadow-footer: rgba(17, 24, 39, 0.04);     /* 移动端模态框 footer 顶阴影（DESIGN.md §五禁止使用，本变量保留但仅 light 下生效） */
@@ -67,6 +68,7 @@
     --color-tl-high-bg-hover: rgba(248, 113, 113, 0.18);
     --color-tl-medium-bg-hover: rgba(251, 191, 36, 0.10);
     --color-tl-low-bg-hover: #334155;
+    --color-tl-low-bg: rgba(52, 211, 153, 0.10);      /* emerald-400 10% 透明 */
     --color-cloud-ok: #10B981;
     --color-menu-hover: rgba(96, 165, 250, 0.15);
     --color-shadow-footer: transparent;
@@ -706,3 +708,48 @@ body {
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.15em;
 }
+
+/* ============================================================
+   主题色工具类的安全网（Tailwind Play CDN 在某些场景下可能漏生成，
+   显式声明确保深色模式一定生效——比 body 元素的暗色背景更可靠）
+   ============================================================ */
+.bg-canvas        { background-color: var(--color-bg); }
+.text-canvas      { color: var(--color-bg); }
+.bg-fg            { background-color: var(--color-fg); }
+.text-fg          { color: var(--color-fg); }
+.bg-muted         { background-color: var(--color-muted); }
+.bg-primary       { background-color: var(--color-primary); }
+.bg-secondary     { background-color: var(--color-secondary); }
+.bg-accent        { background-color: var(--color-accent); }
+.bg-danger        { background-color: var(--color-danger); }
+.bg-border        { background-color: var(--color-border); }
+.border-canvas    { border-color: var(--color-bg); }
+.border-fg        { border-color: var(--color-fg); }
+.border-border    { border-color: var(--color-border); }
+.border-primary   { border-color: var(--color-primary); }
+.border-danger    { border-color: var(--color-danger); }
+.border-secondary { border-color: var(--color-secondary); }
+.border-accent    { border-color: var(--color-accent); }
+.text-primary     { color: var(--color-primary); }
+.text-secondary   { color: var(--color-secondary); }
+.text-accent      { color: var(--color-accent); }
+.text-danger      { color: var(--color-danger); }
+.text-fg\/60      { color: var(--color-fg-muted); }
+.focus\:bg-canvas:focus    { background-color: var(--color-bg); }
+.hover\:bg-muted:hover     { background-color: var(--color-muted); }
+.hover\:bg-fg:hover        { background-color: var(--color-fg); }
+.hover\:bg-canvas:hover    { background-color: var(--color-bg); }
+.hover\:bg-primary:hover   { background-color: var(--color-primary); }
+.hover\:bg-primary-hover:hover { background-color: var(--color-primary-hover); }
+.hover\:bg-danger:hover    { background-color: var(--color-danger); }
+.hover\:bg-secondary:hover { background-color: var(--color-secondary); }
+.hover\:text-fg:hover      { color: var(--color-fg); }
+.hover\:text-canvas:hover  { color: var(--color-bg); }
+.hover\:text-danger:hover  { color: var(--color-danger); }
+.hover\:text-primary:hover { color: var(--color-primary); }
+.hover\:text-secondary:hover { color: var(--color-secondary); }
+.hover\:border-primary:hover  { border-color: var(--color-primary); }
+.hover\:border-danger:hover   { border-color: var(--color-danger); }
+.file\:bg-fg::file-selector-button   { background-color: var(--color-fg); }
+.file\:text-canvas::file-selector-button { color: var(--color-bg); }
+.hover\:file\:bg-primary:hover::file-selector-button { background-color: var(--color-primary); }

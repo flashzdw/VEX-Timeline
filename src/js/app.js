@@ -707,13 +707,13 @@ class App {
     document.querySelectorAll('[data-view-toggle]').forEach(btn => {
       const isActive = btn.dataset.viewToggle === this.currentView;
       btn.classList.remove(
-        'bg-fg', 'text-white',
+        'bg-fg', 'text-canvas',
         'bg-muted', 'text-fg/60',
-        'bg-white', 'text-fg',
+        'bg-canvas', 'text-fg',
         'hover:text-fg'
       );
       if (isActive) {
-        btn.classList.add('bg-fg', 'text-white');
+        btn.classList.add('bg-fg', 'text-canvas');
       } else {
         btn.classList.add('text-fg/60', 'hover:text-fg');
       }
@@ -723,28 +723,28 @@ class App {
   syncFilterState() {
     // Round 4：选中态用对应语义色（红/黄/绿），而非统一黑色
     const filterClasses = {
-      all:    ['bg-fg',        'text-white'],
-      high:   ['bg-danger',    'text-white'],
-      medium: ['bg-accent',    'text-white'],
-      low:    ['bg-secondary', 'text-white']
+      all:    ['bg-fg',        'text-canvas'],
+      high:   ['bg-danger',    'text-canvas'],
+      medium: ['bg-accent',    'text-canvas'],
+      low:    ['bg-secondary', 'text-canvas']
     };
     document.querySelectorAll('#filter-bar [data-filter]').forEach(btn => {
       const f = btn.dataset.filter;
       const isActive = f === this.currentFilter;
-      btn.classList.remove('bg-fg', 'bg-danger', 'bg-accent', 'bg-secondary', 'text-white', 'bg-white', 'text-fg');
+      btn.classList.remove('bg-fg', 'bg-danger', 'bg-accent', 'bg-secondary', 'text-canvas', 'bg-canvas', 'text-fg');
       if (isActive) {
         filterClasses[f].forEach(c => btn.classList.add(c));
       } else {
-        btn.classList.add('bg-white', 'text-fg');
+        btn.classList.add('bg-canvas', 'text-fg');
       }
     });
   }
 
   // 语义化颜色：选中态 = 红/黄/绿；未选中态 = 灰
   importanceSelectedClasses = {
-    high:   ['bg-danger',     'text-white', 'border-danger'],
-    medium: ['bg-accent',     'text-white', 'border-accent'],
-    low:    ['bg-secondary',  'text-white', 'border-secondary']
+    high:   ['bg-danger',     'text-canvas', 'border-danger'],
+    medium: ['bg-accent',     'text-canvas', 'border-accent'],
+    low:    ['bg-secondary',  'text-canvas', 'border-secondary']
   };
 
   // Round 5：dataURL（base64）转 File 对象（用于上传到 Supabase Storage）
@@ -769,7 +769,7 @@ class App {
       const isSelected = v === val;
       // 清除所有相关类
       btn.classList.remove(
-        'bg-fg', 'text-white', 'bg-muted', 'text-fg/60',
+        'bg-fg', 'text-canvas', 'bg-muted', 'text-fg/60',
         'bg-danger', 'bg-accent', 'bg-secondary',
         'border-danger', 'border-accent', 'border-secondary'
       );
@@ -974,7 +974,7 @@ class App {
               <span class="text-xs font-semibold uppercase tracking-wider text-fg/60">${member.role === 'owner' ? '所有者' : '成员'}</span>
             </div>
             ${isOwner && member.role !== 'owner' ? `
-              <button class="vx-member-remove-btn h-8 px-3 bg-white border-2 border-border rounded-md text-xs font-semibold uppercase tracking-wider hover:border-danger hover:text-danger transition-all duration-200" data-user-id="${member.user_id}">移除</button>
+              <button class="vx-member-remove-btn h-8 px-3 bg-canvas border-2 border-border rounded-md text-xs font-semibold uppercase tracking-wider text-fg hover:border-danger hover:text-danger transition-all duration-200" data-user-id="${member.user_id}">移除</button>
             ` : ''}
           </div>
         `).join('');
@@ -1011,10 +1011,10 @@ class App {
     const t = document.getElementById('vx-toast');
     if (!t) return;
     const colors = {
-      info:    'bg-fg text-white',
-      success: 'bg-secondary text-white',
-      warning: 'bg-accent text-white',
-      error:   'bg-danger text-white'
+      info:    'bg-fg text-canvas',
+      success: 'bg-secondary text-canvas',
+      warning: 'bg-accent text-canvas',
+      error:   'bg-danger text-canvas'
     };
     t.className = `fixed bottom-6 left-1/2 -translate-x-1/2 px-5 py-3 rounded-md text-sm font-semibold z-[200] shadow-none ${colors[type] || colors.info}`;
     t.textContent = message;
@@ -1416,9 +1416,9 @@ class App {
           low:    'bg-secondary'     // 绿
         };
         const importanceBg = {
-          high:   'bg-red-50',
-          medium: 'bg-white',
-          low:    'bg-emerald-50'
+          high:   'bg-[var(--color-tl-high-bg)]',
+          medium: 'bg-canvas',
+          low:    'bg-[var(--color-tl-low-bg)]'
         };
         html += `
           <div class="vx-day-record vx-timeline-item p-6 ${importanceBg[importance]}" data-importance="${importance}">
@@ -1465,9 +1465,9 @@ class App {
 
     // 语义化颜色（红/黄/绿）—— 高=红 / 中=黄 / 低=绿
     const importanceBadgeColors = {
-      high:   'bg-danger text-white',       // 红 #EF4444
-      medium: 'bg-accent text-white',       // 黄 #F59E0B
-      low:    'bg-secondary text-white'     // 绿 #10B981
+      high:   'bg-danger text-canvas',       // 红 #EF4444
+      medium: 'bg-accent text-canvas',       // 黄 #F59E0B
+      low:    'bg-secondary text-canvas'     // 绿 #10B981
     };
     const importanceIcons = {
       high:   'alert-circle',
@@ -1520,10 +1520,10 @@ class App {
             </div>
             ${canEdit ? `
               <div class="vx-timeline-actions">
-                <button class="vx-action-btn h-7 w-7 bg-muted text-fg rounded-md flex items-center justify-center hover:bg-primary hover:text-white transition-all duration-200 vx-edit-btn" data-id="${recordIdStr}" title="编辑">
+                <button class="vx-action-btn h-7 w-7 bg-muted text-fg rounded-md flex items-center justify-center hover:bg-primary hover:text-canvas transition-all duration-200 vx-edit-btn" data-id="${recordIdStr}" title="编辑">
                   <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
                 </button>
-                <button class="vx-action-btn h-7 w-7 bg-muted text-fg rounded-md flex items-center justify-center hover:bg-danger hover:text-white transition-all duration-200 vx-delete-btn" data-id="${recordIdStr}" title="删除">
+                <button class="vx-action-btn h-7 w-7 bg-muted text-fg rounded-md flex items-center justify-center hover:bg-danger hover:text-canvas transition-all duration-200 vx-delete-btn" data-id="${recordIdStr}" title="删除">
                   <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
                 </button>
               </div>
