@@ -534,7 +534,9 @@ body {
   z-index: 100;
   display: none;
   flex-direction: column;
-  padding: 0.75rem 0.75rem calc(0.75rem + env(safe-area-inset-bottom, 0px));   /* 移动端 12px 内边距，对齐顶部 header */
+  /* 顶部 0 内边距，让首行 h-16 与 header 的 h-16 完全对齐（开启/关闭按钮垂直位置一致）；
+     底部保留 12px + 安全区；左右 12px 与 header 的 px-3 对齐 */
+  padding: 0 0.75rem calc(0.75rem + env(safe-area-inset-bottom, 0px));
   overflow-y: auto;             /* 长内容可滚动（多赛队 + 4 按钮） */
   -webkit-overflow-scrolling: touch;  /* iOS 顺滑滚动 */
   animation: vx-fade-in 0.2s ease-out forwards;
