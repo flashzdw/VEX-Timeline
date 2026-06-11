@@ -534,8 +534,7 @@ body {
   z-index: 100;
   display: none;
   flex-direction: column;
-  /* 顶部 0 内边距，让首行 h-16 与 header 的 h-16 完全对齐（开启/关闭按钮垂直位置一致）；
-     底部保留 12px + 安全区；左右 12px 与 header 的 px-3 对齐 */
+  /* 顶部 0 内边距；左右 12px；底部 12px + 安全区 */
   padding: 0 0.75rem calc(0.75rem + env(safe-area-inset-bottom, 0px));
   overflow-y: auto;             /* 长内容可滚动（多赛队 + 4 按钮） */
   -webkit-overflow-scrolling: touch;  /* iOS 顺滑滚动 */
@@ -544,7 +543,30 @@ body {
 
 @media (min-width: 640px) {
   .vx-mobile-drawer {
-    padding: 1.5rem;           /* sm 及以上：恢复 24px 内边距（虽然抽屉实际只在 < lg 触发） */
+    /* sm 及以上：只增加左右内边距到 24px（与 header 的 sm:px-6 对齐），顶部依然 0 让绝对定位的 X 按钮和 header 的汉堡按钮位置一致 */
+    padding: 0 1.5rem calc(1.5rem + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* 关闭按钮：绝对定位，位置完全镜像 header 的开启按钮
+   - 水平：right 距离与 header 的 px-3/sm:px-6 一致
+   - 垂直：与 header 高度 h-16 md:h-20 居中（top = (header_h - 40) / 2） */
+.vx-mobile-drawer-close {
+  position: absolute;
+  top: 12px;            /* (64 - 40) / 2 = 12，header h-16 时按钮居中 */
+  right: 0.75rem;       /* 12px，与 header px-3 一致 */
+  z-index: 1;           /* 高于首行内容 */
+}
+
+@media (min-width: 768px) {
+  .vx-mobile-drawer-close {
+    top: 20px;          /* (80 - 40) / 2 = 20，header md:h-20 时按钮居中 */
+  }
+}
+
+@media (min-width: 640px) {
+  .vx-mobile-drawer-close {
+    right: 1.5rem;      /* 24px，与 header sm:px-6 一致 */
   }
 }
 
