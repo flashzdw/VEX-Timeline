@@ -2,99 +2,45 @@
 xmlns="http://www.w3.org/2000/svg">
 
 <defs>
-
-<linearGradient id="bg2" x1="0" y1="0" x2="1" y2="1">
-<stop offset="0%" stop-color="#192438"/>
-<stop offset="100%" stop-color="#08101C"/>
+<linearGradient id="inner" x1="0" y1="0" x2="1" y2="1">
+<stop offset="0%" stop-color="#1B2433"/>
+<stop offset="100%" stop-color="#0B1220"/>
 </linearGradient>
-
-<linearGradient id="blue2" x1="0" y1="0" x2="1" y2="1">
-<stop offset="0%" stop-color="#5BB2FF"/>
-<stop offset="100%" stop-color="#005BFF"/>
-</linearGradient>
-
-<filter id="s">
-<feDropShadow dx="0" dy="15"
-stdDeviation="18"
-flood-opacity="0.5"/>
-</filter>
-
 </defs>
 
+<!-- 外层黑色厚边框 -->
+<rect x="0" y="0" width="1024" height="1024" rx="200" ry="200" fill="#000000"/>
 
-<rect x="120" y="120"
-width="784"
-height="784"
-rx="150"
-fill="url(#bg2)"
-filter="url(#s)"/>
+<!-- 白色中间层（与外黑边形成"加厚白底"效果） -->
+<rect x="100" y="100" width="824" height="824" rx="160" ry="160" fill="#FFFFFF"/>
 
-
-<!-- timeline -->
-<rect x="280" y="250"
-width="16"
-height="520"
-rx="8"
-fill="#C9D5E5"/>
+<!-- 内部深色卡片（带轻微渐变） -->
+<rect x="180" y="180" width="664" height="664" rx="130" ry="130" fill="url(#inner)"/>
 
 
-<!-- checked node -->
-<circle cx="288" cy="300"
-r="85"
-fill="url(#blue2)"/>
-
-<circle cx="288" cy="300"
-r="55"
-fill="#0E1728"/>
+<!-- 水平内容条 -->
+<rect x="475" y="335" width="320" height="32" rx="16" ry="16" fill="#2F76FF"/>
+<rect x="475" y="540" width="270" height="20" rx="10" ry="10" fill="#9AA4B5"/>
+<rect x="475" y="710" width="270" height="20" rx="10" ry="10" fill="#9AA4B5"/>
 
 
-<path d="
-M250 300
-L280 335
-L340 260"
-fill="none"
-stroke="#F4FAFF"
-stroke-width="22"
-stroke-linecap="round"
-stroke-linejoin="round"/>
+<!-- 时间轴竖线 -->
+<rect x="343" y="370" width="6" height="380" rx="3" ry="3" fill="#C9D2E0"/>
 
 
-<!-- other nodes -->
-
-<circle cx="288" cy="520"
-r="52"
-fill="#DCE5F2"/>
-
-<circle cx="288" cy="720"
-r="52"
-fill="#DCE5F2"/>
+<!-- 顶部节点：已完成（蓝底白勾 + 外层浅蓝光环） -->
+<circle cx="346" cy="346" r="78" fill="#9CC2FF"/>
+<circle cx="346" cy="346" r="58" fill="#2F76FF"/>
+<path d="M312 348 L337 372 L380 326"
+fill="none" stroke="#FFFFFF" stroke-width="14"
+stroke-linecap="round" stroke-linejoin="round"/>
 
 
-
-<!-- cards -->
-
-<rect x="430"
-y="260"
-width="330"
-height="70"
-rx="35"
-fill="url(#blue2)"/>
+<!-- 中间节点：未完成（白实心圆） -->
+<circle cx="346" cy="550" r="40" fill="#FFFFFF"/>
 
 
-<rect x="430"
-y="430"
-width="280"
-height="50"
-rx="25"
-fill="#B6C1D1"/>
-
-
-<rect x="430"
-y="570"
-width="250"
-height="50"
-rx="25"
-fill="#7C899D"/>
-
+<!-- 底部节点：未完成（白实心圆） -->
+<circle cx="346" cy="720" r="40" fill="#FFFFFF"/>
 
 </svg>
