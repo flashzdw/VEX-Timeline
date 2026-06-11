@@ -18,10 +18,13 @@ xmlns="http://www.w3.org/2000/svg">
 <rect x="180" y="180" width="664" height="664" rx="130" ry="130" fill="url(#inner)"/>
 
 
-<!-- 水平内容条：3 条同样粗细、同样长度的胶囊条（灰 / 蓝 / 灰） -->
-<rect x="475" y="327" width="320" height="38" rx="19" ry="19" fill="#9AA4B5"/>
-<rect x="475" y="531" width="320" height="38" rx="19" ry="19" fill="#2F76FF"/>
-<rect x="475" y="701" width="320" height="38" rx="19" ry="19" fill="#9AA4B5"/>
+<!-- 水平内容条：宽度 = 圆圈直径 (100)；左端圆头，右端稍微短一截（path 而非 rect） -->
+<path d="M486 333 H566 A19 19 0 0 1 566 371 H486 A19 19 0 0 1 486 333 Z"
+      fill="#9AA4B5"/>
+<path d="M486 537 H566 A19 19 0 0 1 566 575 H486 A19 19 0 0 1 486 537 Z"
+      fill="#2F76FF"/>
+<path d="M486 707 H566 A19 19 0 0 1 566 745 H486 A19 19 0 0 1 486 707 Z"
+      fill="#9AA4B5"/>
 
 
 <!-- 时间轴竖线 -->
@@ -36,7 +39,7 @@ fill="none" stroke="#FFFFFF" stroke-width="14"
 stroke-linecap="round" stroke-linejoin="round"/>
 
 
-<!-- 中间节点：未完成（白实心圆，r=50 比之前 40 稍大） -->
+<!-- 中间节点：未完成（白实心圆，r=50） -->
 <circle cx="346" cy="550" r="50" fill="#FFFFFF"/>
 
 
