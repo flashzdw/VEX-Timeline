@@ -62,7 +62,7 @@
     --color-border: #334155;          /* slate-700 */
     --color-danger: #F87171;          /* red-400 */
 
-    --color-fg-muted: rgba(241, 245, 249, 0.6);
+    --color-fg-muted: rgba(241, 245, 249, 0.78);  /* 0.6 → 0.78：提升深色下时间戳/正文次级文字的对比度（时间轴时间已多次反馈看不清） */
     --color-modal-overlay: rgba(0, 0, 0, 0.75);
     --color-tl-high-bg: rgba(248, 113, 113, 0.10);
     --color-tl-high-bg-hover: rgba(248, 113, 113, 0.18);
@@ -750,6 +750,14 @@ body {
 .hover\:text-secondary:hover { color: var(--color-secondary); }
 .hover\:border-primary:hover  { border-color: var(--color-primary); }
 .hover\:border-danger:hover   { border-color: var(--color-danger); }
+.bg-canvas\/20  { background-color: rgba(255, 255, 255, 0.20); }   /* 关闭按钮等：浅色模式下是白 20% 透在 muted 上 */
+.bg-canvas\/40  { background-color: rgba(255, 255, 255, 0.40); }
+.hover\:bg-canvas\/40:hover { background-color: rgba(255, 255, 255, 0.40); }
+@media (prefers-color-scheme: dark) {
+  .bg-canvas\/20  { background-color: rgba(241, 245, 249, 0.18); } /* 深色模式下用浅色 18% 透（确保在 slate-800 muted 上可见） */
+  .bg-canvas\/40  { background-color: rgba(241, 245, 249, 0.32); }
+  .hover\:bg-canvas\/40:hover { background-color: rgba(241, 245, 249, 0.32); }
+}
 .file\:bg-fg::file-selector-button   { background-color: var(--color-fg); }
 .file\:text-canvas::file-selector-button { color: var(--color-bg); }
 .hover\:file\:bg-primary:hover::file-selector-button { background-color: var(--color-primary); }
