@@ -1,7 +1,7 @@
 // Bump CACHE_NAME version whenever JS/CSS changes are deployed.
 // This forces the new service worker to skip the old cache and refetch everything.
-// v33: 调整图标内部元素尺寸：3 条内容条等粗等长（38px 高 / 320px 宽），3 个节点圆等大（r=50）
-const CACHE_NAME = 'vex-timeline-cache-v33';
+// v34: 调整图标布局：右侧线条往左移 15px，整组（线+圆）统一上移 40px
+const CACHE_NAME = 'vex-timeline-cache-v34';
 
 // Only cache the static shell — NEVER cache JS files (auth.js, app.js, config.js, etc.)
 // because they change with each deploy and JS bugs in cached files can break the app.
