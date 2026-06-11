@@ -14,33 +14,33 @@ xmlns="http://www.w3.org/2000/svg">
 <!-- 白色中间层 -->
 <rect x="100" y="100" width="824" height="824" rx="160" ry="160" fill="#FFFFFF"/>
 
-<!-- 内部深色卡片 -->
+<!-- 内部深色卡片（中心 512,512） -->
 <rect x="180" y="180" width="664" height="664" rx="130" ry="130" fill="url(#inner)"/>
 
 
-<!-- 水平内容条：3 条同样粗细、同样长度（往左移 15px，整体上移 40px） -->
-<rect x="460" y="287" width="320" height="38" rx="19" ry="19" fill="#9AA4B5"/>
-<rect x="460" y="491" width="320" height="38" rx="19" ry="19" fill="#2F76FF"/>
-<rect x="460" y="661" width="320" height="38" rx="19" ry="19" fill="#9AA4B5"/>
+<!-- 水平内容条：3 条等粗等长，向左再移 35px（460→425），整体下移 25px 居中 -->
+<rect x="425" y="312" width="320" height="38" rx="19" ry="19" fill="#9AA4B5"/>
+<rect x="425" y="516" width="320" height="38" rx="19" ry="19" fill="#2F76FF"/>
+<rect x="425" y="686" width="320" height="38" rx="19" ry="19" fill="#9AA4B5"/>
 
 
-<!-- 时间轴竖线（上移 40px） -->
-<rect x="343" y="330" width="6" height="380" rx="3" ry="3" fill="#C9D2E0"/>
+<!-- 时间轴竖线（下移 25px：y 330→355，高 380，底 735 在底圆 r=50 内） -->
+<rect x="343" y="355" width="6" height="380" rx="3" ry="3" fill="#C9D2E0"/>
 
 
-<!-- 顶部节点（上移 40px：cy 346 → 306） -->
-<circle cx="346" cy="306" r="62" fill="#9CC2FF"/>
-<circle cx="346" cy="306" r="50" fill="#2F76FF"/>
-<path d="M318 308 L339 330 L376 286"
+<!-- 顶部节点（下移 25px：cy 306→331） -->
+<circle cx="346" cy="331" r="62" fill="#9CC2FF"/>
+<circle cx="346" cy="331" r="50" fill="#2F76FF"/>
+<path d="M318 333 L339 355 L376 311"
 fill="none" stroke="#FFFFFF" stroke-width="14"
 stroke-linecap="round" stroke-linejoin="round"/>
 
 
-<!-- 中间节点（上移 40px：cy 550 → 510） -->
-<circle cx="346" cy="510" r="50" fill="#FFFFFF"/>
+<!-- 中间节点（下移 25px：cy 510→535） -->
+<circle cx="346" cy="535" r="50" fill="#FFFFFF"/>
 
 
-<!-- 底部节点（上移 40px：cy 720 → 680） -->
-<circle cx="346" cy="680" r="50" fill="#FFFFFF"/>
+<!-- 底部节点（下移 25px：cy 680→705） -->
+<circle cx="346" cy="705" r="50" fill="#FFFFFF"/>
 
 </svg>
