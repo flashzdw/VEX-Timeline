@@ -18,17 +18,17 @@ xmlns="http://www.w3.org/2000/svg">
 <rect x="180" y="180" width="664" height="664" rx="130" ry="130" fill="url(#inner)"/>
 
 
-<!-- 水平内容条：3 条等粗等长，向左再移 35px（460→425），整体下移 25px 居中 -->
+<!-- 水平内容条：3 条等粗等长，间距 187px 等距（与 3 个节点圆同步） -->
 <rect x="425" y="312" width="320" height="38" rx="19" ry="19" fill="#9AA4B5"/>
-<rect x="425" y="516" width="320" height="38" rx="19" ry="19" fill="#2F76FF"/>
+<rect x="425" y="499" width="320" height="38" rx="19" ry="19" fill="#2F76FF"/>
 <rect x="425" y="686" width="320" height="38" rx="19" ry="19" fill="#9AA4B5"/>
 
 
-<!-- 时间轴竖线（下移 25px：y 330→355，高 380，底 735 在底圆 r=50 内） -->
+<!-- 时间轴竖线：穿过 3 个节点圆（圆心 y=331/518/705，r=50；线两端在圆内） -->
 <rect x="343" y="355" width="6" height="380" rx="3" ry="3" fill="#C9D2E0"/>
 
 
-<!-- 顶部节点（下移 25px：cy 306→331） -->
+<!-- 顶部节点：cy=331（顶圆位置不变；总跨度 269-755，垂直居中 512） -->
 <circle cx="346" cy="331" r="62" fill="#9CC2FF"/>
 <circle cx="346" cy="331" r="50" fill="#2F76FF"/>
 <path d="M318 333 L339 355 L376 311"
@@ -36,11 +36,11 @@ fill="none" stroke="#FFFFFF" stroke-width="14"
 stroke-linecap="round" stroke-linejoin="round"/>
 
 
-<!-- 中间节点（下移 25px：cy 510→535） -->
-<circle cx="346" cy="535" r="50" fill="#FFFFFF"/>
+<!-- 中间节点：cy=535→518（上移 17px，使 3 圆间距等距 187px） -->
+<circle cx="346" cy="518" r="50" fill="#FFFFFF"/>
 
 
-<!-- 底部节点（下移 25px：cy 680→705） -->
+<!-- 底部节点：cy=705（与顶圆对称 331↔705，中点 518） -->
 <circle cx="346" cy="705" r="50" fill="#FFFFFF"/>
 
 </svg>
