@@ -257,6 +257,30 @@ body {
 .vx-timeline-item[data-importance="low"]:hover    { background-color: var(--color-tl-low-bg-hover); }
 
 /* ============================================================
+   重要性按钮（添加/编辑记录模态框）选中态兜底
+   问题：HTML 里残留了 hover:bg-red-50 / hover:bg-emerald-50（硬编码浅色），
+   移动端 tap 后 :hover 状态短暂残留，会盖过 JS 加的 bg-danger 等选中态类，导致按钮泛白。
+   解决：用 [data-selected="true"] + !important 写一组兜底规则，确保选中色稳定生效。
+   ============================================================ */
+#importance-selector [data-importance][data-selected="true"] {
+  color: var(--color-bg) !important;
+  border-width: 1px !important;
+  border-style: solid !important;
+}
+#importance-selector [data-importance][data-selected="true"][data-importance="high"] {
+  background-color: var(--color-danger) !important;
+  border-color: var(--color-danger) !important;
+}
+#importance-selector [data-importance][data-selected="true"][data-importance="medium"] {
+  background-color: var(--color-accent) !important;
+  border-color: var(--color-accent) !important;
+}
+#importance-selector [data-importance][data-selected="true"][data-importance="low"] {
+  background-color: var(--color-secondary) !important;
+  border-color: var(--color-secondary) !important;
+}
+
+/* ============================================================
    月历单元
    使用单边边框（仅 right + bottom），避免相邻 cell 边框叠加为 4px。
    最右一列与最后一行由 :nth-child / .vx-calendar-row-last 处理。
