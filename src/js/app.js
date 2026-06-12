@@ -165,13 +165,17 @@ class App {
   hideAuthPage() { /* no-op: 主应用通过 showMainApp() 切换；保留以兼容旧代码 */ }
 
   /**
-   * 同步语言切换器按钮 UI（单按钮：根据当前语言显示"中文" / "EN"）
+   * 同步语言切换器按钮 UI（单按钮：根据当前语言显示"中" / "EN"）
+   * 同时更新首页 (#site-lang-label) 和主应用 (#app-lang-label) 两个按钮
    */
   _updateLangToggle() {
-    const label = document.getElementById('site-lang-label');
-    if (!label || !window.i18n) return;
+    if (!window.i18n) return;
     const current = window.i18n.getLanguage();
-    label.textContent = current === 'zh-CN' ? '中文' : 'EN';
+    const text = current === 'zh-CN' ? '中' : 'EN';
+    const siteLabel = document.getElementById('site-lang-label');
+    const appLabel = document.getElementById('app-lang-label');
+    if (siteLabel) siteLabel.textContent = text;
+    if (appLabel) appLabel.textContent = text;
   }
 
   /**
@@ -652,19 +656,20 @@ class App {
       });
     }
 
-    // 语言切换：单按钮
+    // 语言切换：单按钮（首页 + 主应用共用）
+    const toggleLang = () => {
+      if (!window.i18n) return;
+      const current = window.i18n.getLanguage();
+      const next = current === 'zh-CN' ? 'en' : 'zh-CN';
+      window.i18n.setLanguage(next);
+      this._updateLangToggle();
+      // 触发主应用重渲染（若已登录）
+      this._refreshAppOnLangChange();
+    };
     const langBtn = document.getElementById('site-lang-toggle');
-    if (langBtn) {
-      langBtn.addEventListener('click', () => {
-        if (!window.i18n) return;
-        const current = window.i18n.getLanguage();
-        const next = current === 'zh-CN' ? 'en' : 'zh-CN';
-        window.i18n.setLanguage(next);
-        this._updateLangToggle();
-        // 触发主应用重渲染（若已登录）
-        this._refreshAppOnLangChange();
-      });
-    }
+    if (langBtn) langBtn.addEventListener('click', toggleLang);
+    const appLangBtn = document.getElementById('app-lang-toggle');
+    if (appLangBtn) appLangBtn.addEventListener('click', toggleLang);
     this._updateLangToggle();
 
     // 记录模态框

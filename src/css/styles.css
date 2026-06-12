@@ -890,34 +890,30 @@ body[data-scene="app"] .vx-site-header { display: none !important; }
 .vx-lang-toggle {
   display: inline-flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  height: 2.5rem;          /* 40px 触摸目标 */
-  min-width: 96px;         /* "中文" / "EN" 都能装下，且切换不抖 */
-  padding: 0 0.75rem;
+  justify-content: center;
+  height: 40px;
+  width: 40px;
+  padding: 0;
   background-color: var(--color-muted);
   border: 2px solid var(--color-border);
   border-radius: 6px;
   color: var(--color-fg);
-  font-weight: 600;
-  font-size: 0.75rem;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+  font-weight: 800;
+  font-size: 0.8125rem;
+  letter-spacing: 0.02em;
   cursor: pointer;
   transition: background-color 0.2s, border-color 0.2s, color 0.2s;
+  flex-shrink: 0;
 }
 .vx-lang-toggle:hover {
+  background-color: var(--color-canvas);
   border-color: var(--color-primary);
   color: var(--color-primary);
 }
-.vx-lang-toggle:active {
-  transform: scale(0.97);
-}
-.vx-lang-toggle #site-lang-label {
-  flex: 1;
-  text-align: left;
-  min-width: 1.5rem;       /* 给中/英文字最小宽度，避免 <span> 内容变化时按钮轻微变形 */
-}
+.vx-lang-toggle:active { transform: scale(0.97); }
+.vx-lang-toggle:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+/* 主应用顶栏复用同款 */
+.vx-lang-toggle--app { background-color: var(--color-canvas); }
 
 /* ============================================================
    首页功能卡
@@ -943,6 +939,9 @@ body[data-scene="app"] .vx-site-header { display: none !important; }
 /* ============================================================
    FAQ 折叠项
    - border-2 分隔（DESIGN.md §六例外）
+   - 用 grid-template-rows: 0fr → 1fr 实现高度过渡
+     比 max-height: 0 → 500px 更平滑（避免瞬时 snap 抽搐）
+   - Chrome/Safari/Firefox 122+ 全部支持，旧浏览器降级到无动画
    ============================================================ */
 .vx-faq-item { border-bottom: 2px solid var(--color-border); }
 .vx-faq-item:last-child { border-bottom: 0; }
@@ -955,23 +954,27 @@ body[data-scene="app"] .vx-site-header { display: none !important; }
   gap: 1rem;
   padding: 1rem 1.25rem;
   cursor: pointer;
-  transition: background-color 0.25s, padding 0.2s;
+  /* 防止文字变化时 summary 高度跳动（不同语言字符宽度不同） */
+  min-height: 64px;
+  transition: background-color 0.25s;
 }
 .vx-faq-summary:hover { background-color: var(--color-muted); }
 
-/* FAQ 答案容器：max-height 过渡（DESIGN.md §六 — 不允许 transition-all） */
-.vx-faq-item > .vx-faq-answer {
-  max-height: 0;
-  overflow: hidden;
-  opacity: 0;
-  padding-top: 0;
-  padding-bottom: 0;
-  transition: max-height 0.4s ease, opacity 0.3s ease, padding 0.3s ease;
+/* 答案外层 grid 容器：从 0fr 平滑过渡到 1fr */
+.vx-faq-grid-wrap {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.35s cubic-bezier(0.4, 0.0, 0.2, 1);
 }
-.vx-faq-item[open] > .vx-faq-answer {
-  max-height: 500px;
-  opacity: 1;
-  padding-top: 0;
+.vx-faq-item[open] > .vx-faq-grid-wrap {
+  grid-template-rows: 1fr;
+}
+
+/* 答案内层：必须 min-height: 0 + overflow: hidden，
+   否则 grid item 高度会被内容撑开，0fr → 1fr 过渡失效，Chrome 会出现"底部抽搐" */
+.vx-faq-grid-wrap > .vx-faq-answer {
+  overflow: hidden;
+  min-height: 0;
   padding-bottom: 1.25rem;
 }
 
