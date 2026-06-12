@@ -109,7 +109,33 @@ class App {
     const el = document.getElementById('app-loading');
     if (!el || el.classList.contains('is-hiding') || el.style.display === 'none') return;
     el.classList.add('is-hiding');
-    setTimeout(() => { el.style.display = 'none'; }, 220);
+    if (this._appLoadingHideTimer) clearTimeout(this._appLoadingHideTimer);
+    this._appLoadingHideTimer = setTimeout(() => {
+      el.style.display = 'none';
+      this._appLoadingHideTimer = null;
+    }, 220);
+  }
+
+  /**
+   * 显示全屏加载遮罩（#app-loading），可自定义 label 文本。
+   * 与 _hideAppLoading 配对，用于手动登录/注册按钮点击时的等待提示。
+   * 注意：会取消正在进行的 _hideAppLoading 淡出 timer，避免显示-隐藏-显示闪烁。
+   */
+  _showAppLoading(label) {
+    const el = document.getElementById('app-loading');
+    if (!el) return;
+    if (this._appLoadingHideTimer) {
+      clearTimeout(this._appLoadingHideTimer);
+      this._appLoadingHideTimer = null;
+    }
+    if (label) {
+      const labelEl = el.querySelector('.vx-app-loading-label');
+      if (labelEl) labelEl.textContent = label;
+    }
+    el.style.display = 'flex';
+    // 双保险：强制 reflow 确保 transition 从 0 opacity 走到 1
+    void el.offsetWidth;
+    el.classList.remove('is-hiding');
   }
 
   // ============================================================
@@ -820,7 +846,7 @@ class App {
     if (!password) { errorEl.textContent = '请输入密码'; return; }
 
     const btn = document.getElementById('auth-login-btn');
-    await this._withAuthButtonLoading(btn, '登录', async () => {
+    await this._withAuthLoading('登录中…', async () => {
       try {
         await authManager.login(username, password);
         await this.onLoginSuccess();
@@ -848,7 +874,7 @@ class App {
     if (!password || password.length < 6) { errorEl.textContent = '密码长度至少 6 位'; return; }
 
     const btn = document.getElementById('auth-register-btn');
-    await this._withAuthButtonLoading(btn, '注册', async () => {
+    await this._withAuthLoading('注册中…', async () => {
       try {
         await authManager.register(username, password);
         await this.onLoginSuccess();
@@ -860,23 +886,27 @@ class App {
   }
 
   /**
-   * 包装登录/注册按钮的 loading 态：
-   * 1. 禁用按钮（避免重复点击 + 触发 hover 缩放）
-   * 2. 替换内容为 spinner + "登录中…" / "注册中…"
-   * 3. 无论成功失败都 finally 还原（保证异常路径下按钮不卡死）
+   * 包装登录/注册按钮的 loading 态（v2：全屏遮罩版）：
+   * 用户反馈"按钮上 spinner 不够明显"，所以改为显示 #app-loading 全屏遮罩。
+   * 1. 调用 _showAppLoading 显示全屏 spinner + label
+   * 2. 禁用所有 auth 按钮（避免重复点击）
+   * 3. 无论成功失败都 finally 还原（保证异常路径下 UI 不卡死）
    * 用箭头函数保留 this。
    */
-  async _withAuthButtonLoading(btn, label, fn) {
-    if (!btn) return fn();
-    if (btn.disabled) return;            // 防止双击
-    const original = btn.innerHTML;
-    btn.disabled = true;
-    btn.innerHTML = `<span class="vx-spinner vx-spinner-sm" aria-hidden="true"></span><span>${label}中…</span>`;
+  async _withAuthLoading(label, fn) {
+    const loginBtn = document.getElementById('auth-login-btn');
+    const registerBtn = document.getElementById('auth-register-btn');
+    if (loginBtn && loginBtn.disabled) return;          // 防止双击
+    if (registerBtn && registerBtn.disabled) return;
+    if (loginBtn) loginBtn.disabled = true;
+    if (registerBtn) registerBtn.disabled = true;
+    this._showAppLoading(label);
     try {
       await fn();
     } finally {
-      btn.disabled = false;
-      btn.innerHTML = original;
+      this._hideAppLoading();
+      if (loginBtn) loginBtn.disabled = false;
+      if (registerBtn) registerBtn.disabled = false;
     }
   }
 
@@ -1571,7 +1601,7 @@ class App {
                 </button>
               </div>
             ` : ''}
-            <div class="vx-item-time" style="display:block !important;font-size:10px !important;line-height:1 !important;margin:0 0 4px 0 !important;padding:0 !important;color:rgba(17,24,39,0.6) !important;font-weight:600 !important;text-transform:uppercase !important;letter-spacing:0.05em !important;">${this._escapeHtml(time)}</div>
+            <div class="vx-item-time" style="display:block !important;font-size:10px !important;line-height:1 !important;margin:0 0 4px 0 !important;padding:0 !important;font-weight:600 !important;text-transform:uppercase !important;letter-spacing:0.05em !important;">${this._escapeHtml(time)}</div>
             <div class="vx-item-title-row">
               <span class="inline-flex items-center justify-center text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded ${importanceBadgeColors[importance]}">${importanceLabel[importance]}</span>
               <h4 class="vx-item-title">${this._escapeHtml(record.title)}</h4>

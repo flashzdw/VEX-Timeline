@@ -860,5 +860,5 @@ button:disabled.hover\:scale-105:hover { transform: none; }
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  color: var(--color-fg-muted);
+  color: var(--color-fg);          /* 必须用 fg 不能用 fg-muted：muted 在深色下 0.78 不透字 + 小字号视觉上糊掉 */
 }
