@@ -91,6 +91,16 @@
 <body class="bg-canvas text-fg font-sans">
 
     <!-- ============================================================
+         全屏加载中遮罩
+         - 页面冷启动 + 自动登录时默认显示（init() 中 hideAppLoading 关闭）
+         - 必须放在 #auth-page / .container 之前，靠 z-index: 300 覆盖一切
+         ============================================================ -->
+    <div id="app-loading" class="vx-app-loading" role="status" aria-live="polite" aria-label="加载中">
+        <div class="vx-spinner vx-spinner-lg" aria-hidden="true"></div>
+        <div class="vx-app-loading-label">加载中…</div>
+    </div>
+
+    <!-- ============================================================
          AUTH PAGE  海报式 左右分栏
          ============================================================ -->
     <div id="auth-page" class="fixed inset-0 flex overflow-hidden">

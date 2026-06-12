@@ -88,6 +88,7 @@ class App {
   }
 
   showAuthPage() {
+    this._hideAppLoading();
     document.getElementById('auth-page').classList.remove('hidden');
     const container = document.querySelector('.container');
     if (container) container.classList.add('hidden');
@@ -97,6 +98,18 @@ class App {
     document.getElementById('auth-page').classList.add('hidden');
     const container = document.querySelector('.container');
     if (container) container.classList.remove('hidden');
+  }
+
+  /**
+   * 关闭冷启动遮罩（#app-loading）
+   * 流程：先 200ms 淡出再 display:none，避免视觉跳变
+   * 必须在 showAuthPage（未登录）和 onLoginSuccess 完成后（已登录）各调一次
+   */
+  _hideAppLoading() {
+    const el = document.getElementById('app-loading');
+    if (!el || el.classList.contains('is-hiding') || el.style.display === 'none') return;
+    el.classList.add('is-hiding');
+    setTimeout(() => { el.style.display = 'none'; }, 220);
   }
 
   // ============================================================
@@ -142,6 +155,9 @@ class App {
 
     this.renderDate();
     await this.renderView();
+
+    // 冷启动遮罩收尾：等首屏渲染完再关，让用户感觉不到遮罩和内容之间的切换
+    this._hideAppLoading();
   }
 
   // ============================================================
@@ -803,13 +819,16 @@ class App {
     if (!username) { errorEl.textContent = '请输入用户名'; return; }
     if (!password) { errorEl.textContent = '请输入密码'; return; }
 
-    try {
-      await authManager.login(username, password);
-      await this.onLoginSuccess();
-      this.renderDiagnosticBar();
-    } catch (e) {
-      errorEl.textContent = e.message || e;
-    }
+    const btn = document.getElementById('auth-login-btn');
+    await this._withAuthButtonLoading(btn, '登录', async () => {
+      try {
+        await authManager.login(username, password);
+        await this.onLoginSuccess();
+        this.renderDiagnosticBar();
+      } catch (e) {
+        errorEl.textContent = e.message || e;
+      }
+    });
   }
 
   async handleRegister() {
@@ -828,12 +847,36 @@ class App {
     if (!username) { errorEl.textContent = '请输入用户名'; return; }
     if (!password || password.length < 6) { errorEl.textContent = '密码长度至少 6 位'; return; }
 
+    const btn = document.getElementById('auth-register-btn');
+    await this._withAuthButtonLoading(btn, '注册', async () => {
+      try {
+        await authManager.register(username, password);
+        await this.onLoginSuccess();
+        this.renderDiagnosticBar();
+      } catch (e) {
+        errorEl.textContent = e.message || e;
+      }
+    });
+  }
+
+  /**
+   * 包装登录/注册按钮的 loading 态：
+   * 1. 禁用按钮（避免重复点击 + 触发 hover 缩放）
+   * 2. 替换内容为 spinner + "登录中…" / "注册中…"
+   * 3. 无论成功失败都 finally 还原（保证异常路径下按钮不卡死）
+   * 用箭头函数保留 this。
+   */
+  async _withAuthButtonLoading(btn, label, fn) {
+    if (!btn) return fn();
+    if (btn.disabled) return;            // 防止双击
+    const original = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = `<span class="vx-spinner vx-spinner-sm" aria-hidden="true"></span><span>${label}中…</span>`;
     try {
-      await authManager.register(username, password);
-      await this.onLoginSuccess();
-      this.renderDiagnosticBar();
-    } catch (e) {
-      errorEl.textContent = e.message || e;
+      await fn();
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = original;
     }
   }
 
