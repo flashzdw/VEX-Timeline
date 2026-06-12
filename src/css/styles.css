@@ -943,9 +943,12 @@ body[data-scene="app"] .vx-site-header { display: none !important; }
 /* ============================================================
    FAQ 折叠项
    - border-2 分隔（DESIGN.md §六例外）
-   - 用 grid-template-rows: 0fr → 1fr 实现高度过渡
-     比 max-height: 0 → 500px 更平滑（避免瞬时 snap 抽搐）
-   - Chrome/Safari/Firefox 122+ 全部支持，旧浏览器降级到无动画
+   - 用 grid-template-rows: 0fr → 1fr 实现高度过渡（现代 CSS 方案）
+   - 缓动采用 easeOutExpo 变种 cubic-bezier(0.16, 1, 0.3, 1)：
+     起步快、收尾慢，模拟「被轻轻拉出 / 推回」的手感，
+     避免默认 ease-in-out 的「先停顿 → 冲一下 → 再停顿」机械感
+   - 加号旋转用 0.3s、内容用 0.4s，制造「图标先到位 → 内容再展开」的时间层次
+   - 高度 + opacity 双属性同步动画，避免内容"突然可见"
    ============================================================ */
 .vx-faq-item {
   border-bottom: 2px solid var(--color-border);
@@ -964,37 +967,50 @@ body[data-scene="app"] .vx-site-header { display: none !important; }
   cursor: pointer;
   /* 防止文字变化时 summary 高度跳动（不同语言字符宽度不同） */
   min-height: 64px;
-  transition: background-color 0.25s;
+  transition: background-color 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .vx-faq-summary:hover { background-color: var(--color-muted); }
 
-/* + → × 图标旋转：与下方内容展开的 0.35s 同步，避免「图标转完还在展开」的违和感 */
+/* + → × 图标旋转：略快于内容（0.3s vs 0.4s），制造层次 */
 .vx-faq-item .vx-faq-summary > i {
-  transition: transform 0.35s cubic-bezier(0.4, 0.0, 0.2, 1) !important;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
 /* 答案外层 grid 容器：从 0fr 平滑过渡到 1fr */
 .vx-faq-grid-wrap {
   display: grid;
   grid-template-rows: 0fr;
-  transition: grid-template-rows 0.35s cubic-bezier(0.4, 0.0, 0.2, 1);
+  transition: grid-template-rows 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .vx-faq-item[open] > .vx-faq-grid-wrap {
   grid-template-rows: 1fr;
 }
 
-/* 答案内层：必须 min-height: 0 + overflow: hidden，
-   否则 grid item 高度会被内容撑开，0fr → 1fr 过渡失效，Chrome 会出现"底部抽搐" */
+/* 答案内层：min-height: 0 + overflow: hidden 是 grid 0fr → 1fr 过渡生效的前提 */
 .vx-faq-grid-wrap > .vx-faq-answer {
   overflow: hidden;
   min-height: 0;
-  /* 关键：padding-bottom 也参与过渡，与 grid-template-rows 同步
-     否则高度 0 → 内容高度时，padding 突然出现 1.25rem 造成底部 pop */
   padding-bottom: 0;
-  transition: padding-bottom 0.35s cubic-bezier(0.4, 0.0, 0.2, 1);
+  opacity: 0;
+  /* height + opacity 双属性同步，让内容"渐渐出现"而非"突然可见" */
+  transition: padding-bottom 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+              opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .vx-faq-item[open] > .vx-faq-grid-wrap > .vx-faq-answer {
   padding-bottom: 1.25rem;
+  opacity: 1;
+}
+
+/* ============================================================
+   暗黑模式：How-to / Footer 不要变成"白色孤岛"
+   - 原因：bg-fg / text-canvas 用了语义 token，dark mode 下 var(--color-fg) 翻转为浅色
+     导致这两个原本"深色 section"在暗色模式里变成大块白色
+   - 解法：在 @media (prefers-color-scheme: dark) 下强制使用 slate-800（比页面 bg 略亮一档）
+     既保留"反色 section"的视觉分隔感，又避免大面积白
+   ============================================================ */
+@media (prefers-color-scheme: dark) {
+  #home-howto { background-color: #1E293B !important; color: #F1F5F9 !important; }
+  footer      { background-color: #1E293B !important; color: #F1F5F9 !important; }
 }
 
 /* ============================================================
