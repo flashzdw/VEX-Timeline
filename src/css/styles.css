@@ -257,6 +257,30 @@ body {
 .vx-timeline-item[data-importance="low"]:hover    { background-color: var(--color-tl-low-bg-hover); }
 
 /* ============================================================
+   重要性按钮（添加/编辑记录模态框）选中态兜底
+   问题：HTML 里残留了 hover:bg-red-50 / hover:bg-emerald-50（硬编码浅色），
+   移动端 tap 后 :hover 状态短暂残留，会盖过 JS 加的 bg-danger 等选中态类，导致按钮泛白。
+   解决：用 [data-selected="true"] + !important 写一组兜底规则，确保选中色稳定生效。
+   ============================================================ */
+#importance-selector [data-importance][data-selected="true"] {
+  color: var(--color-bg) !important;
+  border-width: 1px !important;
+  border-style: solid !important;
+}
+#importance-selector [data-importance][data-selected="true"][data-importance="high"] {
+  background-color: var(--color-danger) !important;
+  border-color: var(--color-danger) !important;
+}
+#importance-selector [data-importance][data-selected="true"][data-importance="medium"] {
+  background-color: var(--color-accent) !important;
+  border-color: var(--color-accent) !important;
+}
+#importance-selector [data-importance][data-selected="true"][data-importance="low"] {
+  background-color: var(--color-secondary) !important;
+  border-color: var(--color-secondary) !important;
+}
+
+/* ============================================================
    月历单元
    使用单边边框（仅 right + bottom），避免相邻 cell 边框叠加为 4px。
    最右一列与最后一行由 :nth-child / .vx-calendar-row-last 处理。
@@ -657,6 +681,11 @@ body {
   margin: 0 0 4px 0;          /* Round 8：显式 margin: 0 去掉浏览器默认 margin */
   display: block;             /* Round 9：显式 block 确保 margin 生效 */
 }
+/* 时间戳在深色模式下用全亮色：fg-muted 0.78 在 10px 小字 + 大写 + tracking 渲染下视觉上仍然偏暗，
+   用户多次反馈看不清。直接用 --color-fg（slate-100）确保 WCAG AA 对比度。 */
+@media (prefers-color-scheme: dark) {
+  .vx-item-time { color: var(--color-fg); }
+}
 .vx-item-title-row {
   display: flex;
   align-items: center;
@@ -788,3 +817,48 @@ body {
 .file\:bg-fg::file-selector-button   { background-color: var(--color-fg); }
 .file\:text-canvas::file-selector-button { color: var(--color-bg); }
 .hover\:file\:bg-primary:hover::file-selector-button { background-color: var(--color-primary); }
+
+/* ============================================================
+   加载中（spinner + 全屏遮罩）
+   - 登录按钮按下时：按钮内 inline spinner（紧凑）
+   - 刷新页面自动登录时：全屏 #app-loading 遮罩（覆盖整个 viewport）
+   ============================================================ */
+.vx-spinner {
+  display: inline-block;
+  width: 1.25rem;       /* 20px：与 lucide 图标同尺寸，按钮内不显突兀 */
+  height: 1.25rem;
+  border: 3px solid var(--color-muted);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: vx-spin 0.8s linear infinite;
+  box-sizing: border-box;
+  vertical-align: middle;
+}
+.vx-spinner.vx-spinner-sm { width: 1rem; height: 1rem; border-width: 2px; }
+.vx-spinner.vx-spinner-lg { width: 3rem;  height: 3rem;  border-width: 4px; }
+
+/* 按钮禁用态：去掉 hover 缩放/变色的副作用，避免 spinner 跳动 */
+button:disabled { cursor: not-allowed; opacity: 0.85; }
+button:disabled.hover\:scale-\[1\.02\]:hover { transform: none; }
+button:disabled.hover\:scale-105:hover { transform: none; }
+
+.vx-app-loading {
+  position: fixed;
+  inset: 0;
+  z-index: 300;         /* 高于 modal(100)/drawer(100)/FAB(30)，确保覆盖一切 */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.25rem;
+  background-color: var(--color-bg);
+  transition: opacity 0.2s ease-out;
+}
+.vx-app-loading.is-hiding { opacity: 0; pointer-events: none; }
+.vx-app-loading-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--color-fg);          /* 必须用 fg 不能用 fg-muted：muted 在深色下 0.78 不透字 + 小字号视觉上糊掉 */
+}

@@ -91,6 +91,16 @@
 <body class="bg-canvas text-fg font-sans">
 
     <!-- ============================================================
+         全屏加载中遮罩
+         - 页面冷启动 + 自动登录时默认显示（init() 中 hideAppLoading 关闭）
+         - 必须放在 #auth-page / .container 之前，靠 z-index: 300 覆盖一切
+         ============================================================ -->
+    <div id="app-loading" class="vx-app-loading" role="status" aria-live="polite" aria-label="加载中">
+        <div class="vx-spinner vx-spinner-lg" aria-hidden="true"></div>
+        <div class="vx-app-loading-label">加载中…</div>
+    </div>
+
+    <!-- ============================================================
          AUTH PAGE  海报式 左右分栏
          ============================================================ -->
     <div id="auth-page" class="fixed inset-0 flex overflow-hidden">
@@ -489,8 +499,9 @@
          移动端抽屉
          ============================================================ -->
     <div id="mobile-drawer" class="vx-mobile-drawer">
-        <!-- 抽屉首行：高度由内容决定（不强制 h-16/h-20），关闭按钮用绝对定位独立放置 -->
-        <div class="flex items-center justify-between mb-6 pr-14">
+        <!-- 抽屉首行：高度由内容决定（不强制 h-16/h-20），关闭按钮用绝对定位独立放置
+             pt-3 / md:pt-5 与 .vx-mobile-drawer-close 的 top: 12px / 20px 一一对应，让 logo 与 X 按钮垂直居中对齐 -->
+        <div class="flex items-center justify-between mb-6 pr-14 pt-3 md:pt-5">
             <div class="flex items-center gap-2">
                 <div class="h-10 w-10 bg-primary text-canvas rounded-md flex items-center justify-center font-extrabold">V</div>
                 <span class="font-extrabold text-xl tracking-[-0.02em]">VEX-Timeline</span>
