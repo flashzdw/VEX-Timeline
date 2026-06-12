@@ -59,14 +59,16 @@ class App {
 
     if (authManager.isLoggedIn()) {
       if (supabaseManager.isConfigured()) {
-        await this.onLoginSuccess();
+        // 冷启动且已登录 → 直接进入主应用（保留既有用户习惯）
+        await this.onLoginSuccess({ directToApp: true });
       } else {
         console.warn('[VEX-Timeline] Session exists but Supabase not configured. Clearing session.');
         await authManager.logout();
-        this.showAuthPage();
+        this.showHomePage();
       }
     } else {
-      this.showAuthPage();
+      // 未登录 → 显示首页（首屏）
+      this.showHomePage();
     }
   }
 
@@ -87,17 +89,113 @@ class App {
     return false;
   }
 
-  showAuthPage() {
+  // ============================================================
+  // 页面切换：首页 / 登录页 / 主应用
+  // ============================================================
+  /**
+   * 显示官网首页（首屏）
+   * - 隐藏登录页与主应用容器
+   * - 顶栏：显示锚点导航 + "开始使用"，隐藏"返回首页"
+   * - 隐藏冷启动遮罩
+   */
+  showHomePage() {
     this._hideAppLoading();
-    document.getElementById('auth-page').classList.remove('hidden');
+    const home = document.getElementById('home-page');
+    const auth = document.getElementById('auth-page');
     const container = document.querySelector('.container');
+    if (home) home.classList.remove('hidden');
+    if (auth) auth.classList.add('hidden');
     if (container) container.classList.add('hidden');
+    this._syncSiteHeader('home');
+    // 每次切到首页都滚到顶部
+    try { window.scrollTo({ top: 0, behavior: 'instant' in window ? 'instant' : 'auto' }); } catch (e) { window.scrollTo(0, 0); }
   }
 
-  hideAuthPage() {
-    document.getElementById('auth-page').classList.add('hidden');
+  /** 隐藏首页（用于登录成功或登出时短暂停留后离开） */
+  hideHomePage() {
+    const home = document.getElementById('home-page');
+    if (home) home.classList.add('hidden');
+  }
+
+  /**
+   * 显示登录页（第二屏）
+   * - 从首页 / 登出后进入
+   * - 顶栏：隐藏锚点导航与"开始使用"，显示"返回首页"
+   */
+  goToAuth() {
+    const home = document.getElementById('home-page');
+    const auth = document.getElementById('auth-page');
     const container = document.querySelector('.container');
+    if (home) home.classList.add('hidden');
+    if (auth) auth.classList.remove('hidden');
+    if (container) container.classList.add('hidden');
+    this._syncSiteHeader('auth');
+    try { window.scrollTo({ top: 0, behavior: 'instant' in window ? 'instant' : 'auto' }); } catch (e) { window.scrollTo(0, 0); }
+  }
+
+  /**
+   * 进入主应用（`.container`）
+   * - 隐藏首页 + 登录页
+   * - 顶栏：完全隐藏（主应用内部有自己的 header）
+   */
+  showMainApp() {
+    const home = document.getElementById('home-page');
+    const auth = document.getElementById('auth-page');
+    const container = document.querySelector('.container');
+    if (home) home.classList.add('hidden');
+    if (auth) auth.classList.add('hidden');
     if (container) container.classList.remove('hidden');
+    this._syncSiteHeader('app');
+    try { window.scrollTo({ top: 0, behavior: 'instant' in window ? 'instant' : 'auto' }); } catch (e) { window.scrollTo(0, 0); }
+  }
+
+  /**
+   * 同步共用顶栏在不同场景下的可见性
+   * - 'home'：锚点导航 + "开始使用"；无"返回首页"
+   * - 'auth'：仅"返回首页" + 语言切换
+   * - 'app'：完全隐藏（主应用使用内部 header）
+   */
+  _syncSiteHeader(scene) {
+    const header = document.getElementById('site-header');
+    if (!header) return;
+    const nav = document.getElementById('site-header-nav');
+    const ctaStart = document.getElementById('site-cta-start');
+    const backHome = document.getElementById('site-back-home');
+    const langSwitch = document.getElementById('site-lang-switch');
+
+    if (scene === 'home') {
+      header.classList.remove('hidden');
+      if (nav) nav.classList.remove('hidden');
+      if (ctaStart) ctaStart.classList.remove('hidden');
+      if (backHome) backHome.classList.add('hidden');
+      if (langSwitch) langSwitch.classList.remove('hidden');
+    } else if (scene === 'auth') {
+      header.classList.remove('hidden');
+      if (nav) nav.classList.add('hidden');
+      if (ctaStart) ctaStart.classList.add('hidden');
+      if (backHome) backHome.classList.remove('hidden');
+      if (langSwitch) langSwitch.classList.remove('hidden');
+    } else {
+      header.classList.add('hidden');
+    }
+  }
+
+  // 兼容旧调用名（部分旧代码可能仍引用 showAuthPage / hideAuthPage）
+  showAuthPage() { this.goToAuth(); }
+  hideAuthPage() { /* no-op: 主应用通过 showMainApp() 切换；保留以兼容旧代码 */ }
+
+  /**
+   * 同步语言切换器 UI 高亮（active chip）
+   */
+  _syncLangSwitchUI() {
+    const langSwitch = document.getElementById('site-lang-switch');
+    if (!langSwitch || !window.i18n) return;
+    const current = window.i18n.getLanguage();
+    langSwitch.querySelectorAll('[data-lang]').forEach(btn => {
+      const isActive = btn.getAttribute('data-lang') === current;
+      btn.classList.toggle('is-active', isActive);
+      btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+    });
   }
 
   /**
@@ -115,8 +213,24 @@ class App {
   // ============================================================
   // 登录成功/失败
   // ============================================================
-  async onLoginSuccess() {
-    this.hideAuthPage();
+  /**
+   * 登录成功入口
+   * 流程：
+   *  1) 拉取 timelines 与云端记录
+   *  2) 先切到首页（避免直接进入主应用突兀）
+   *  3) 在首页显示 toast 提示"登录成功，正在进入应用…"
+   *  4) 3 秒后自动（或点击"立即进入"立即）切到主应用
+   *  5) 隐藏冷启动遮罩
+   */
+  /**
+   * 登录成功入口
+   * @param {object} [opts]
+   * @param {boolean} [opts.directToApp=false]  为 true 时跳过"首页 + toast"过渡，
+   *        直接进入主应用（用于冷启动时已登录场景，保持原行为）
+   */
+  async onLoginSuccess(opts = {}) {
+    const directToApp = !!opts.directToApp;
+
     // 保留 #user-info 上的 `hidden lg:flex` 类。`lg:flex` 会在 ≥lg 视口下自动覆盖 `hidden`，
     // 因此在 mobile (<lg) 上始终隐藏，在 desktop (≥lg) 上正常显示，无需 JS 干预。
     const username = authManager.getUsername() || 'User';
@@ -156,8 +270,25 @@ class App {
     this.renderDate();
     await this.renderView();
 
-    // 冷启动遮罩收尾：等首屏渲染完再关，让用户感觉不到遮罩和内容之间的切换
+    // 冷启动遮罩：进入首页或主应用后即可关闭
     this._hideAppLoading();
+
+    if (directToApp) {
+      // 冷启动且已登录：直接进入主应用（保留既有用户习惯）
+      this.showMainApp();
+      return;
+    }
+
+    // 主动登录 / 注册：先到首页，3 秒 toast 后切到主应用
+    this.showHomePage();
+    const enterApp = () => {
+      if (this._loginRedirectTimer) { clearTimeout(this._loginRedirectTimer); this._loginRedirectTimer = null; }
+      this.showMainApp();
+    };
+    const message = (window.i18n && window.i18n.t) ? window.i18n.t('home.toast.loginSuccess') : '登录成功，正在进入应用…';
+    const actionLabel = (window.i18n && window.i18n.t) ? window.i18n.t('home.toast.enterNow') : '立即进入';
+    this.showToast(message, { duration: 3000, actionLabel: actionLabel, action: enterApp });
+    this._loginRedirectTimer = setTimeout(enterApp, 3000);
   }
 
   // ============================================================
@@ -496,6 +627,43 @@ class App {
     const mobileFab = document.getElementById('mobile-fab');
     if (mobileFab) mobileFab.addEventListener('click', () => this.openModal());
 
+    // ============ 首页 / 登录页 / 顶栏 事件 ============
+    // 首页 → 登录页
+    const goToAuthHandler = (e) => { if (e) e.preventDefault(); this.goToAuth(); };
+    const ctaStart = document.getElementById('site-cta-start');
+    if (ctaStart) ctaStart.addEventListener('click', goToAuthHandler);
+    const heroCtaPrimary = document.getElementById('home-hero-cta-primary');
+    if (heroCtaPrimary) heroCtaPrimary.addEventListener('click', goToAuthHandler);
+    const ctaButton = document.getElementById('home-cta-button');
+    if (ctaButton) ctaButton.addEventListener('click', goToAuthHandler);
+
+    // 登录页 → 首页
+    const backHome = document.getElementById('site-back-home');
+    if (backHome) backHome.addEventListener('click', (e) => { e.preventDefault(); this.showHomePage(); });
+
+    // Logo（首页 / 登录页）→ 滚到 Hero 顶部（首页有效）
+    const headerLogo = document.getElementById('site-header-logo');
+    if (headerLogo) {
+      headerLogo.addEventListener('click', (e) => {
+        e.preventDefault();
+        this.showHomePage();
+        try { document.getElementById('home-hero').scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (err) { /* ignore */ }
+      });
+    }
+
+    // 语言切换
+    const langSwitch = document.getElementById('site-lang-switch');
+    if (langSwitch) {
+      langSwitch.querySelectorAll('[data-lang]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const lang = btn.getAttribute('data-lang');
+          if (window.i18n && window.i18n.setLanguage) window.i18n.setLanguage(lang);
+          this._syncLangSwitchUI();
+        });
+      });
+      this._syncLangSwitchUI();
+    }
+
     // 记录模态框
     document.getElementById('cancel-btn').addEventListener('click', () => this.closeModal());
     document.getElementById('save-btn').addEventListener('click', () => this.saveRecord());
@@ -803,6 +971,10 @@ class App {
   // ============================================================
   // 登录/注册/登出
   // ============================================================
+  _i18n(key, fallback) {
+    return (window.i18n && window.i18n.t) ? window.i18n.t(key) : fallback;
+  }
+
   async handleLogin() {
     const usernameInput = document.getElementById('auth-username');
     const passwordInput = document.getElementById('auth-password');
@@ -812,15 +984,16 @@ class App {
     errorEl.textContent = '';
 
     if (!supabaseManager.isConfigured()) {
-      errorEl.textContent = 'Supabase 未配置。请检查 Vercel 环境变量并重新部署。';
+      errorEl.textContent = this._i18n('auth.error.notConfigured', '云端未配置，请联系管理员');
       this.renderDiagnosticBar();
       return;
     }
-    if (!username) { errorEl.textContent = '请输入用户名'; return; }
-    if (!password) { errorEl.textContent = '请输入密码'; return; }
+    if (!username) { errorEl.textContent = this._i18n('auth.error.usernameRequired', '请输入用户名'); return; }
+    if (!password) { errorEl.textContent = this._i18n('auth.error.passwordRequired', '请输入密码'); return; }
 
     const btn = document.getElementById('auth-login-btn');
-    await this._withAuthButtonLoading(btn, '登录', async () => {
+    const label = this._i18n('auth.login', '登录');
+    await this._withAuthButtonLoading(btn, label, async () => {
       try {
         await authManager.login(username, password);
         await this.onLoginSuccess();
@@ -840,15 +1013,16 @@ class App {
     errorEl.textContent = '';
 
     if (!supabaseManager.isConfigured()) {
-      errorEl.textContent = 'Supabase 未配置。请检查 Vercel 环境变量并重新部署。';
+      errorEl.textContent = this._i18n('auth.error.notConfigured', '云端未配置，请联系管理员');
       this.renderDiagnosticBar();
       return;
     }
-    if (!username) { errorEl.textContent = '请输入用户名'; return; }
-    if (!password || password.length < 6) { errorEl.textContent = '密码长度至少 6 位'; return; }
+    if (!username) { errorEl.textContent = this._i18n('auth.error.usernameRequired', '请输入用户名'); return; }
+    if (!password || password.length < 6) { errorEl.textContent = this._i18n('auth.error.shortPassword', '密码长度至少 6 位'); return; }
 
     const btn = document.getElementById('auth-register-btn');
-    await this._withAuthButtonLoading(btn, '注册', async () => {
+    const label = this._i18n('auth.register', '注册');
+    await this._withAuthButtonLoading(btn, label, async () => {
       try {
         await authManager.register(username, password);
         await this.onLoginSuccess();
@@ -871,7 +1045,7 @@ class App {
     if (btn.disabled) return;            // 防止双击
     const original = btn.innerHTML;
     btn.disabled = true;
-    btn.innerHTML = `<span class="vx-spinner vx-spinner-sm" aria-hidden="true"></span><span>${label}中…</span>`;
+    btn.innerHTML = `<span class="vx-spinner vx-spinner-sm" aria-hidden="true"></span><span>${label}…</span>`;
     try {
       await fn();
     } finally {
@@ -887,7 +1061,8 @@ class App {
     this.currentTimelineId = null;
     this._saveStoredTimelineId(null);
     this.timelines = [];
-    this.showAuthPage();
+    // 登出 → 回到首页（不直接回登录页，用户需主动点击首页 CTA）
+    this.showHomePage();
     document.getElementById('auth-username').value = '';
     document.getElementById('auth-password').value = '';
     document.getElementById('auth-error').textContent = '';
@@ -1050,20 +1225,53 @@ class App {
   // ============================================================
   // Toast 提示（替代 alert / 静默 return）
   // ============================================================
-  showToast(message, type = 'info') {
+  /**
+   * 顶部 / 底部 toast
+   * @param {string} message  文案
+   * @param {string|object} [typeOrOptions]  'info' | 'success' | 'warning' | 'error'，或
+   *                                         { type, duration, actionLabel, action }
+   * @param {object} [legacyOpts] 兼容旧调用：{ duration, actionLabel, action }
+   */
+  showToast(message, typeOrOptions = 'info', legacyOpts) {
     const t = document.getElementById('vx-toast');
     if (!t) return;
+    let type = 'info';
+    let duration = 3000;
+    let actionLabel = null;
+    let action = null;
+    if (typeof typeOrOptions === 'string') {
+      type = typeOrOptions;
+      if (legacyOpts && typeof legacyOpts === 'object') {
+        duration = legacyOpts.duration || duration;
+        actionLabel = legacyOpts.actionLabel || actionLabel;
+        action = legacyOpts.action || action;
+      }
+    } else if (typeOrOptions && typeof typeOrOptions === 'object') {
+      type = typeOrOptions.type || type;
+      duration = typeOrOptions.duration || duration;
+      actionLabel = typeOrOptions.actionLabel || actionLabel;
+      action = typeOrOptions.action || action;
+    }
     const colors = {
       info:    'bg-fg text-canvas',
       success: 'bg-secondary text-canvas',
       warning: 'bg-accent text-canvas',
       error:   'bg-danger text-canvas'
     };
-    t.className = `fixed bottom-6 left-1/2 -translate-x-1/2 px-5 py-3 rounded-md text-sm font-semibold z-[200] shadow-none ${colors[type] || colors.info}`;
-    t.textContent = message;
+    t.className = `fixed bottom-6 left-1/2 -translate-x-1/2 px-5 py-3 rounded-md text-sm font-semibold z-[200] shadow-none flex items-center gap-3 ${colors[type] || colors.info}`;
+    if (actionLabel && typeof action === 'function') {
+      t.innerHTML = `<span></span><button type="button" class="vx-toast-action"></button>`;
+      t.querySelector('span').textContent = message;
+      const btn = t.querySelector('button.vx-toast-action');
+      btn.textContent = actionLabel;
+      btn.style.cssText = 'background:rgba(255,255,255,0.18);padding:0.25rem 0.625rem;border-radius:4px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;font-size:0.6875rem;cursor:pointer;border:0;color:inherit;';
+      btn.addEventListener('click', () => { try { action(); } catch (e) { console.warn('[VEX-Timeline] toast action failed:', e); } });
+    } else {
+      t.textContent = message;
+    }
     t.classList.remove('hidden');
     clearTimeout(this._toastTimer);
-    this._toastTimer = setTimeout(() => t.classList.add('hidden'), 3000);
+    this._toastTimer = setTimeout(() => t.classList.add('hidden'), duration);
   }
 
   copyInviteCode() {

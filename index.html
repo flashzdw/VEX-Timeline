@@ -29,6 +29,25 @@
       })();
     </script>
 
+    <!-- 早期语言检测：先于样式表与 i18n.js 给 <html> 设置 lang / dir，并预设 document.title，避免首屏闪烁 -->
+    <script>
+      (function () {
+        try {
+          var SUPPORTED = ['zh-CN', 'en'];
+          var lang = null;
+          try {
+            lang = window.localStorage && window.localStorage.getItem('vex.lang');
+          } catch (e) { /* ignore privacy mode */ }
+          if (SUPPORTED.indexOf(lang) === -1) lang = 'zh-CN';
+          document.documentElement.setAttribute('lang', lang);
+          document.documentElement.setAttribute('dir', 'ltr');
+          document.title = (lang === 'en')
+            ? 'VEX-Timeline — Build Season Timeline'
+            : 'VEX-Timeline';
+        } catch (e) {}
+      })();
+    </script>
+
     <!-- Favicon & PWA 图标（带版本号 bust 浏览器缓存，确保新图标立即生效） -->
     <link rel="icon" type="image/png" sizes="32x32" href="./public/icons/favicon-32.png?v=35">
     <link rel="icon" type="image/svg+xml" href="./public/icons/icon.svg?v=35">
@@ -93,11 +112,255 @@
     <!-- ============================================================
          全屏加载中遮罩
          - 页面冷启动 + 自动登录时默认显示（init() 中 hideAppLoading 关闭）
-         - 必须放在 #auth-page / .container 之前，靠 z-index: 300 覆盖一切
+         - 必须放在 #home-page / #auth-page / .container 之前，靠 z-index: 300 覆盖一切
          ============================================================ -->
     <div id="app-loading" class="vx-app-loading" role="status" aria-live="polite" aria-label="加载中">
         <div class="vx-spinner vx-spinner-lg" aria-hidden="true"></div>
-        <div class="vx-app-loading-label">加载中…</div>
+        <div class="vx-app-loading-label" data-i18n="common.loading">加载中…</div>
+    </div>
+
+    <!-- ============================================================
+         SITE HEADER  共用顶栏（仅在首页 / 登录页可见，主应用内部有自己的 header）
+         - Logo · 锚点导航（仅首页） · 语言切换 · 开始使用 / 返回首页
+         ============================================================ -->
+    <header id="site-header" class="vx-site-header">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 md:h-20 flex items-center justify-between gap-3 sm:gap-6">
+            <a href="#" id="site-header-logo" class="flex items-center gap-2 shrink-0">
+                <div class="h-9 w-9 md:h-10 md:w-10 bg-primary text-canvas rounded-md flex items-center justify-center font-extrabold text-base md:text-lg">V</div>
+                <span class="hidden sm:inline font-extrabold text-lg md:text-xl tracking-[-0.02em] text-fg" data-i18n="site.name">VEX-Timeline</span>
+            </a>
+
+            <!-- 锚点导航：仅在首页显示 -->
+            <nav id="site-header-nav" class="hidden lg:flex items-center gap-1">
+                <a href="#home-features" class="vx-site-nav-link" data-i18n="nav.features">功能</a>
+                <a href="#home-howto" class="vx-site-nav-link" data-i18n="nav.howto">使用说明</a>
+                <a href="#home-faq" class="vx-site-nav-link" data-i18n="nav.faq">常见问题</a>
+            </nav>
+
+            <div class="flex items-center gap-2 sm:gap-3">
+                <!-- 语言切换器：两个 chip -->
+                <div id="site-lang-switch" class="vx-lang-switch" role="group" aria-label="Language">
+                    <button type="button" data-lang="zh-CN" class="vx-lang-chip">
+                        <span class="vx-lang-chip-dot" aria-hidden="true"></span><span data-i18n="nav.lang.zh">中文</span>
+                    </button>
+                    <button type="button" data-lang="en" class="vx-lang-chip">
+                        <span class="vx-lang-chip-dot" aria-hidden="true"></span><span data-i18n="nav.lang.en">English</span>
+                    </button>
+                </div>
+
+                <!-- 登录页：返回首页链接（默认隐藏） -->
+                <a href="#" id="site-back-home" class="hidden h-10 px-3 sm:px-4 inline-flex items-center gap-2 bg-canvas border-2 border-border text-fg rounded-md font-semibold tracking-wider uppercase text-xs hover:border-primary transition-all duration-200" data-i18n="nav.back">返回首页</a>
+
+                <!-- 首页：开始使用 CTA -->
+                <a href="#" id="site-cta-start" class="h-10 px-3 sm:px-5 inline-flex items-center gap-2 bg-primary text-canvas rounded-md font-semibold tracking-wider uppercase text-xs hover:bg-primary-hover hover:scale-105 transition-all duration-200">
+                    <i data-lucide="arrow-right" class="w-4 h-4"></i><span data-i18n="nav.start">开始使用</span>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- ============================================================
+         HOME PAGE  官网首页（首屏）
+         - 海报式多分区：Hero / Features / How-to / FAQ / CTA / Footer
+         - 严格遵循 DESIGN.md：零阴影 / 零渐变 / 零 backdrop-blur
+         ============================================================ -->
+    <div id="home-page" class="hidden">
+
+        <!-- ===== HERO ===== -->
+        <section id="home-hero" class="relative min-h-screen flex flex-col overflow-hidden bg-primary text-canvas">
+            <!-- 几何装饰（pointer-events-none） -->
+            <div class="absolute -top-40 -right-40 h-[28rem] w-[28rem] rounded-full bg-white/10 pointer-events-none"></div>
+            <div class="absolute bottom-12 left-8 sm:left-16 h-44 w-44 rotate-12 bg-accent/25 pointer-events-none"></div>
+            <div class="hidden md:block absolute top-1/3 right-1/4 h-24 w-24 rotate-45 bg-secondary/30 pointer-events-none"></div>
+            <div class="hidden md:block absolute bottom-1/3 right-10 h-16 w-16 rounded-md bg-canvas/15 pointer-events-none"></div>
+            <div class="hidden lg:block absolute top-1/2 left-1/3 h-3 w-32 bg-canvas/20 pointer-events-none"></div>
+
+            <div class="relative z-10 flex-1 max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 pt-28 sm:pt-32 lg:pt-40 pb-16 flex flex-col">
+                <div class="max-w-3xl">
+                    <div class="inline-flex items-center gap-2 px-3 py-1.5 bg-canvas/15 rounded-md mb-6 sm:mb-8">
+                        <span class="h-2 w-2 rounded-md bg-accent"></span>
+                        <span class="text-xs font-semibold uppercase tracking-wider" data-i18n="home.hero.eyebrow">VEX ROBOTICS · 备赛时间轴</span>
+                    </div>
+
+                    <h1 class="font-extrabold tracking-[-0.02em] leading-[0.95] text-5xl sm:text-6xl md:text-7xl lg:text-[5.5rem] mb-6 sm:mb-8" data-i18n="home.hero.title">记录备赛<br/>每一天。</h1>
+
+                    <p class="text-lg sm:text-xl font-medium max-w-xl mb-10 sm:mb-12 opacity-90" data-i18n="home.hero.subtitle">为 VEX 战队打造的时间轴工具。</p>
+
+                    <div class="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-12 sm:mb-16">
+                        <a href="#" id="home-hero-cta-primary" class="h-14 sm:h-16 px-6 sm:px-8 bg-canvas text-primary rounded-md font-extrabold tracking-wider uppercase text-sm sm:text-base flex items-center justify-center gap-2 hover:bg-canvas/90 hover:scale-105 transition-all duration-200">
+                            <span data-i18n="home.hero.cta.primary">开始使用</span>
+                            <i data-lucide="arrow-right" class="w-5 h-5"></i>
+                        </a>
+                        <a href="#home-features" class="h-14 sm:h-16 px-6 sm:px-8 border-4 border-canvas text-canvas bg-transparent rounded-md font-extrabold tracking-wider uppercase text-sm sm:text-base flex items-center justify-center gap-2 hover:bg-canvas hover:text-primary hover:scale-105 transition-all duration-200">
+                            <i data-lucide="chevron-down" class="w-5 h-5"></i>
+                            <span data-i18n="home.hero.cta.secondary">了解更多</span>
+                        </a>
+                    </div>
+
+                    <div class="flex flex-wrap items-center gap-x-6 gap-y-3 text-xs sm:text-sm font-semibold uppercase tracking-wider opacity-90">
+                        <span class="flex items-center gap-2"><i data-lucide="cloud" class="w-4 h-4"></i><span data-i18n="home.hero.feature.cloud">云端同步</span></span>
+                        <span class="flex items-center gap-2"><i data-lucide="users" class="w-4 h-4"></i><span data-i18n="home.hero.feature.team">赛队协作</span></span>
+                        <span class="flex items-center gap-2"><i data-lucide="image" class="w-4 h-4"></i><span data-i18n="home.hero.feature.media">图片记录</span></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 滚动指示 -->
+            <div class="relative z-10 pb-6 sm:pb-8 flex justify-center">
+                <a href="#home-features" class="h-12 w-12 rounded-full border-2 border-canvas/60 flex items-center justify-center text-canvas hover:bg-canvas hover:text-primary transition-all duration-200" data-i18n-aria-label="nav.features">
+                    <i data-lucide="chevron-down" class="w-5 h-5"></i>
+                </a>
+            </div>
+        </section>
+
+        <!-- ===== FEATURES ===== -->
+        <section id="home-features" class="bg-canvas py-20 sm:py-28 relative overflow-hidden">
+            <div class="absolute -top-12 -right-24 h-72 w-72 rounded-full bg-primary/5 pointer-events-none"></div>
+            <div class="absolute bottom-0 -left-20 h-64 w-64 rotate-12 bg-secondary/5 pointer-events-none"></div>
+
+            <div class="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 relative z-10">
+                <div class="max-w-2xl mb-12 sm:mb-16">
+                    <div class="text-xs font-semibold uppercase tracking-wider text-primary mb-3 sm:mb-4" data-i18n="home.features.eyebrow">核心功能</div>
+                    <h2 class="font-extrabold tracking-[-0.02em] text-3xl sm:text-4xl md:text-5xl text-fg" data-i18n="home.features.title">为备赛而生的四件套</h2>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+                    <!-- 卡片 1：时间轴记录（蓝） -->
+                    <div class="group vx-feature-card bg-blue-50">
+                        <div class="h-14 w-14 bg-primary text-canvas rounded-md flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-200">
+                            <i data-lucide="list" class="w-7 h-7"></i>
+                        </div>
+                        <h3 class="font-extrabold text-xl tracking-[-0.02em] text-fg mb-2" data-i18n="home.features.item1.title">时间轴记录</h3>
+                        <p class="text-sm font-medium text-fg/70 leading-relaxed" data-i18n="home.features.item1.desc">按天记录每一次调试、改车、讨论，回看完整备赛路径。</p>
+                    </div>
+                    <!-- 卡片 2：月历总览（绿） -->
+                    <div class="group vx-feature-card bg-emerald-50">
+                        <div class="h-14 w-14 bg-secondary text-canvas rounded-md flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-200">
+                            <i data-lucide="calendar" class="w-7 h-7"></i>
+                        </div>
+                        <h3 class="font-extrabold text-xl tracking-[-0.02em] text-fg mb-2" data-i18n="home.features.item2.title">月历总览</h3>
+                        <p class="text-sm font-medium text-fg/70 leading-relaxed" data-i18n="home.features.item2.desc">一眼看到哪天有记录、哪天缺席，整月节奏尽在掌握。</p>
+                    </div>
+                    <!-- 卡片 3：个人与赛队（琥珀） -->
+                    <div class="group vx-feature-card bg-amber-50">
+                        <div class="h-14 w-14 bg-accent text-canvas rounded-md flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-200">
+                            <i data-lucide="users" class="w-7 h-7"></i>
+                        </div>
+                        <h3 class="font-extrabold text-xl tracking-[-0.02em] text-fg mb-2" data-i18n="home.features.item3.title">个人与赛队</h3>
+                        <p class="text-sm font-medium text-fg/70 leading-relaxed" data-i18n="home.features.item3.desc">个人时间轴与赛队时间轴自由切换，邀请码即可加入协作。</p>
+                    </div>
+                    <!-- 卡片 4：云端同步（灰） -->
+                    <div class="group vx-feature-card bg-muted">
+                        <div class="h-14 w-14 bg-fg text-canvas rounded-md flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-200">
+                            <i data-lucide="cloud" class="w-7 h-7"></i>
+                        </div>
+                        <h3 class="font-extrabold text-xl tracking-[-0.02em] text-fg mb-2" data-i18n="home.features.item4.title">云端同步</h3>
+                        <p class="text-sm font-medium text-fg/70 leading-relaxed" data-i18n="home.features.item4.desc">基于 Supabase 的实时同步，换设备也不丢数据。</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===== HOW TO USE ===== -->
+        <section id="home-howto" class="bg-fg text-canvas py-20 sm:py-28 relative overflow-hidden">
+            <div class="absolute -top-20 -right-20 h-80 w-80 rounded-full bg-primary/15 pointer-events-none"></div>
+            <div class="absolute bottom-10 left-10 h-32 w-32 rotate-12 bg-accent/20 pointer-events-none"></div>
+
+            <div class="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 relative z-10">
+                <div class="max-w-2xl mb-12 sm:mb-16">
+                    <div class="text-xs font-semibold uppercase tracking-wider text-primary mb-3 sm:mb-4" data-i18n="home.howto.eyebrow">三步开始</div>
+                    <h2 class="font-extrabold tracking-[-0.02em] text-3xl sm:text-4xl md:text-5xl" data-i18n="home.howto.title">简单到不能再简单</h2>
+                </div>
+
+                <ol class="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
+                    <li class="relative bg-canvas/5 border-2 border-canvas/15 rounded-lg p-6 sm:p-8">
+                        <div class="h-16 w-16 bg-primary text-canvas rounded-md flex items-center justify-center font-extrabold text-3xl tracking-[-0.02em] mb-5">1</div>
+                        <h3 class="font-extrabold text-xl tracking-[-0.02em] mb-2" data-i18n="home.howto.step1.title">注册账号</h3>
+                        <p class="text-sm font-medium opacity-80 leading-relaxed" data-i18n="home.howto.step1.desc">一个用户名 + 密码，30 秒搞定。</p>
+                    </li>
+                    <li class="relative bg-canvas/5 border-2 border-canvas/15 rounded-lg p-6 sm:p-8">
+                        <div class="h-16 w-16 bg-primary text-canvas rounded-md flex items-center justify-center font-extrabold text-3xl tracking-[-0.02em] mb-5">2</div>
+                        <h3 class="font-extrabold text-xl tracking-[-0.02em] mb-2" data-i18n="home.howto.step2.title">创建时间轴</h3>
+                        <p class="text-sm font-medium opacity-80 leading-relaxed" data-i18n="home.howto.step2.desc">个人时间轴用于私人记录，赛队时间轴可邀请队友。</p>
+                    </li>
+                    <li class="relative bg-canvas/5 border-2 border-canvas/15 rounded-lg p-6 sm:p-8">
+                        <div class="h-16 w-16 bg-primary text-canvas rounded-md flex items-center justify-center font-extrabold text-3xl tracking-[-0.02em] mb-5">3</div>
+                        <h3 class="font-extrabold text-xl tracking-[-0.02em] mb-2" data-i18n="home.howto.step3.title">添加每日记录</h3>
+                        <p class="text-sm font-medium opacity-80 leading-relaxed" data-i18n="home.howto.step3.desc">标题 + 内容 + 重要性 + 图片（可选），随时回顾。</p>
+                    </li>
+                </ol>
+            </div>
+        </section>
+
+        <!-- ===== FAQ ===== -->
+        <section id="home-faq" class="bg-muted py-20 sm:py-28">
+            <div class="max-w-4xl mx-auto px-6 sm:px-8 lg:px-12">
+                <div class="mb-10 sm:mb-12">
+                    <div class="text-xs font-semibold uppercase tracking-wider text-primary mb-3 sm:mb-4" data-i18n="home.faq.eyebrow">常见问题</div>
+                    <h2 class="font-extrabold tracking-[-0.02em] text-3xl sm:text-4xl md:text-5xl text-fg" data-i18n="home.faq.title">你可能想知道</h2>
+                </div>
+
+                <div class="flex flex-col gap-0 border-2 border-border rounded-lg overflow-hidden bg-canvas">
+                    <details class="group vx-faq-item">
+                        <summary class="vx-faq-summary">
+                            <span class="font-extrabold text-base sm:text-lg text-fg" data-i18n="home.faq.q1">离线能用吗？</span>
+                            <i data-lucide="plus" class="w-5 h-5 text-fg/60 group-open:rotate-45 transition-transform duration-200"></i>
+                        </summary>
+                        <div class="px-5 sm:px-6 pb-5 text-sm sm:text-base font-medium text-fg/70 leading-relaxed" data-i18n="home.faq.a1">可以。数据会缓存到本地 IndexedDB，恢复网络后自动同步。</div>
+                    </details>
+                    <details class="group vx-faq-item">
+                        <summary class="vx-faq-summary">
+                            <span class="font-extrabold text-base sm:text-lg text-fg" data-i18n="home.faq.q2">数据安全吗？</span>
+                            <i data-lucide="plus" class="w-5 h-5 text-fg/60 group-open:rotate-45 transition-transform duration-200"></i>
+                        </summary>
+                        <div class="px-5 sm:px-6 pb-5 text-sm sm:text-base font-medium text-fg/70 leading-relaxed" data-i18n="home.faq.a2">所有数据通过 Supabase 加密传输与存储；RLS 策略保证只有队友能看到赛队内容。</div>
+                    </details>
+                    <details class="group vx-faq-item">
+                        <summary class="vx-faq-summary">
+                            <span class="font-extrabold text-base sm:text-lg text-fg" data-i18n="home.faq.q3">是否收费？</span>
+                            <i data-lucide="plus" class="w-5 h-5 text-fg/60 group-open:rotate-45 transition-transform duration-200"></i>
+                        </summary>
+                        <div class="px-5 sm:px-6 pb-5 text-sm sm:text-base font-medium text-fg/70 leading-relaxed" data-i18n="home.faq.a3">完全免费，源码 MIT 协议。</div>
+                    </details>
+                    <details class="group vx-faq-item">
+                        <summary class="vx-faq-summary">
+                            <span class="font-extrabold text-base sm:text-lg text-fg" data-i18n="home.faq.q4">怎么邀请队友？</span>
+                            <i data-lucide="plus" class="w-5 h-5 text-fg/60 group-open:rotate-45 transition-transform duration-200"></i>
+                        </summary>
+                        <div class="px-5 sm:px-6 pb-5 text-sm sm:text-base font-medium text-fg/70 leading-relaxed" data-i18n="home.faq.a4">创建赛队时间轴后会生成 6 位邀请码，队友输入即可加入。</div>
+                    </details>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===== CTA ===== -->
+        <section class="bg-accent py-20 sm:py-28 relative overflow-hidden">
+            <div class="absolute -top-20 -left-20 h-72 w-72 rounded-full bg-canvas/10 pointer-events-none"></div>
+            <div class="absolute bottom-0 right-10 h-44 w-44 rotate-12 bg-fg/10 pointer-events-none"></div>
+
+            <div class="max-w-4xl mx-auto px-6 sm:px-8 lg:px-12 text-center relative z-10">
+                <h2 class="font-extrabold tracking-[-0.02em] text-3xl sm:text-4xl md:text-5xl text-fg mb-4 sm:mb-6" data-i18n="home.cta.title">准备好开始记录了吗？</h2>
+                <p class="text-base sm:text-lg font-medium text-fg/80 mb-8 sm:mb-10" data-i18n="home.cta.subtitle">下一个赛季，从今天开始。</p>
+                <a href="#" id="home-cta-button" class="inline-flex h-14 sm:h-16 px-8 sm:px-10 bg-fg text-canvas rounded-md font-extrabold tracking-wider uppercase text-sm sm:text-base items-center justify-center gap-2 hover:scale-105 transition-all duration-200">
+                    <i data-lucide="zap" class="w-5 h-5"></i>
+                    <span data-i18n="home.cta.button">开始使用</span>
+                </a>
+            </div>
+        </section>
+
+        <!-- ===== FOOTER ===== -->
+        <footer class="bg-fg text-canvas py-12 sm:py-16">
+            <div class="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+                <div class="flex items-center gap-3">
+                    <div class="h-10 w-10 bg-canvas text-fg rounded-md flex items-center justify-center font-extrabold text-lg">V</div>
+                    <div class="flex flex-col">
+                        <span class="font-extrabold text-lg tracking-[-0.02em]" data-i18n="site.name">VEX-Timeline</span>
+                        <span class="text-xs font-semibold uppercase tracking-wider opacity-60" data-i18n="home.footer.built">Built with care for VEX teams.</span>
+                    </div>
+                </div>
+                <div class="text-xs sm:text-sm font-medium opacity-70" data-i18n="home.footer.copyright">© 2026 VEX-Timeline · MIT License</div>
+            </div>
+        </footer>
     </div>
 
     <!-- ============================================================
@@ -140,21 +403,25 @@
                     <span class="text-xl font-extrabold tracking-[-0.02em]">VEX-Timeline</span>
                 </div>
 
-                <h2 class="font-extrabold text-3xl sm:text-4xl tracking-[-0.02em] text-fg mb-2">欢迎回来</h2>
-                <p class="text-xs sm:text-sm font-semibold uppercase tracking-wider text-fg/60 mb-6 sm:mb-8">登录 · 注册</p>
+                <h2 class="font-extrabold text-3xl sm:text-4xl tracking-[-0.02em] text-fg mb-2" data-i18n="auth.welcome">欢迎回来</h2>
+                <p class="text-xs sm:text-sm font-semibold uppercase tracking-wider text-fg/60 mb-6 sm:mb-8" data-i18n="auth.subtitle">登录 · 注册</p>
 
                 <!-- 移动端友好提示：仅在 Supabase 未配置时显示 -->
-                <div id="diag-banner" class="hidden mb-6 p-3 bg-muted border-2 border-border rounded-md text-xs font-medium text-fg/60 text-center"></div>
+                <div id="diag-banner" class="hidden mb-6 p-3 bg-muted border-2 border-border rounded-md text-xs font-medium text-fg/60 text-center" data-i18n="auth.error.notConfigured">云端未配置，请联系管理员</div>
 
                 <form id="auth-form" class="flex flex-col gap-4" autocomplete="off">
                     <div class="flex flex-col gap-2">
-                        <label class="text-xs font-semibold uppercase tracking-wider text-fg/60" for="auth-username">用户名</label>
-                        <input id="auth-username" type="text" placeholder="输入用户名" maxlength="20" autocomplete="off"
+                        <label class="text-xs font-semibold uppercase tracking-wider text-fg/60" for="auth-username" data-i18n="auth.username">用户名</label>
+                        <input id="auth-username" type="text" maxlength="20" autocomplete="off"
+                               data-i18n-placeholder="auth.username.ph"
+                               placeholder="输入用户名"
                                class="h-14 px-4 bg-muted text-fg text-base rounded-md border-0 outline-none font-medium focus:bg-canvas focus:border-2 focus:border-primary transition-all duration-200">
                     </div>
                     <div class="flex flex-col gap-2">
-                        <label class="text-xs font-semibold uppercase tracking-wider text-fg/60" for="auth-password">密码</label>
-                        <input id="auth-password" type="password" placeholder="输入密码" autocomplete="off"
+                        <label class="text-xs font-semibold uppercase tracking-wider text-fg/60" for="auth-password" data-i18n="auth.password">密码</label>
+                        <input id="auth-password" type="password" autocomplete="off"
+                               data-i18n-placeholder="auth.password.ph"
+                               placeholder="输入密码"
                                class="h-14 px-4 bg-muted text-fg text-base rounded-md border-0 outline-none font-medium focus:bg-canvas focus:border-2 focus:border-primary transition-all duration-200">
                     </div>
                     <div id="auth-error" class="min-h-[1.25rem] text-sm font-medium text-primary"></div>
@@ -163,12 +430,12 @@
                         <button id="auth-login-btn" type="button"
                                 class="h-14 bg-primary text-canvas rounded-md font-semibold tracking-wider uppercase text-sm flex items-center justify-center gap-2 hover:bg-primary-hover hover:scale-[1.02] transition-all duration-200">
                             <i data-lucide="log-in" class="w-5 h-5"></i>
-                            登录
+                            <span data-i18n="auth.login">登录</span>
                         </button>
                         <button id="auth-register-btn" type="button"
                                 class="h-14 border-4 border-fg text-fg bg-transparent rounded-md font-semibold tracking-wider uppercase text-sm flex items-center justify-center gap-2 hover:bg-fg hover:text-canvas hover:scale-[1.02] transition-all duration-200">
                             <i data-lucide="user-plus" class="w-5 h-5"></i>
-                            注册
+                            <span data-i18n="auth.register">注册</span>
                         </button>
                     </div>
                 </form>
@@ -573,6 +840,7 @@
     <script src="./src/js/supabase.js"></script>
     <script src="./src/js/auth.js"></script>
     <script src="./src/js/cloud-db.js"></script>
+    <script src="./src/js/i18n.js"></script>
     <script src="./src/js/app.js"></script>
     <script>
       // lucide 图标全局渲染（双保险：轮询 + DOMContentLoaded）
@@ -593,6 +861,8 @@
       })();
       window.addEventListener('DOMContentLoaded', () => {
         if (window.lucide && lucide.createIcons) lucide.createIcons();
+        // 触发一次 i18n 应用（兜底：i18n.js 也可能在更早的 IIFE 里 apply 过）
+        if (window.i18n && window.i18n.applyI18n) window.i18n.applyI18n();
       });
 
       // Service Worker

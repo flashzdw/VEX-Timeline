@@ -842,6 +842,132 @@ button:disabled { cursor: not-allowed; opacity: 0.85; }
 button:disabled.hover\:scale-\[1\.02\]:hover { transform: none; }
 button:disabled.hover\:scale-105:hover { transform: none; }
 
+/* ============================================================
+   共用顶栏（首页 / 登录页）
+   - 浅色下白底 + border-b-2；深色下 slate-800 + slate-700 边
+   - sticky 顶置 + z-index 50（低于 #app-loading=300 与 modal=1000）
+   ============================================================ */
+.vx-site-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background-color: var(--color-bg);
+  border-bottom: 2px solid var(--color-border);
+  /* 防止内容透过 */
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+.vx-site-header a, .vx-site-header button { color: var(--color-fg); }
+
+.vx-site-nav-link {
+  display: inline-flex;
+  align-items: center;
+  height: 2.5rem;        /* 40px 触摸目标 */
+  padding: 0 0.75rem;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.875rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  transition: background-color 0.2s, color 0.2s;
+}
+.vx-site-nav-link:hover {
+  background-color: var(--color-muted);
+  color: var(--color-primary);
+}
+
+/* ============================================================
+   语言切换器（chip 风格）
+   ============================================================ */
+.vx-lang-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  background-color: var(--color-muted);
+  border-radius: 6px;
+}
+.vx-lang-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  height: 2rem;          /* 32px（chip 不是触摸目标，可小） */
+  padding: 0 0.5rem;
+  background-color: transparent;
+  border: 0;
+  border-radius: 4px;
+  font-weight: 600;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-fg);
+  cursor: pointer;
+  transition: background-color 0.2s, color 0.2s;
+}
+.vx-lang-chip:hover { color: var(--color-primary); }
+.vx-lang-chip.is-active {
+  background-color: var(--color-fg);
+  color: var(--color-bg);
+}
+.vx-lang-chip-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--color-border);
+  transition: background-color 0.2s;
+}
+.vx-lang-chip.is-active .vx-lang-chip-dot { background-color: var(--color-accent); }
+
+/* ============================================================
+   首页功能卡
+   - 色块化（无阴影、无边框），hover 缩放
+   ============================================================ */
+.vx-feature-card {
+  padding: 1.75rem;
+  border-radius: 8px;
+  transition: transform 0.2s;
+  cursor: default;
+}
+.vx-feature-card:hover { transform: scale(1.02); }
+
+/* ============================================================
+   FAQ 折叠项
+   - border-2 分隔（DESIGN.md §六例外）
+   ============================================================ */
+.vx-faq-item { border-bottom: 2px solid var(--color-border); }
+.vx-faq-item:last-child { border-bottom: 0; }
+.vx-faq-item summary::-webkit-details-marker { display: none; }
+.vx-faq-item summary { list-style: none; }
+.vx-faq-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+.vx-faq-summary:hover { background-color: var(--color-muted); }
+
+/* ============================================================
+   首页 / 登录页 顶栏之下：避免 sticky header 遮挡
+   ============================================================ */
+#home-page { padding-top: 0; }   /* 顶栏 sticky 自带占位 */
+
+/* ============================================================
+   登录页：在 #auth-page 已是 fixed inset-0 的前提下，sticky header 不可用
+   - 在 < lg 断点下隐藏（保留内部移动端 logo）
+   ============================================================ */
+@media (max-width: 1023px) {
+  #auth-page .vx-site-header { display: none !important; }
+}
+
+/* ============================================================
+   浅 / 深色：登录页左侧 hero 在深色下用极深藏青
+   ============================================================ */
+.bg-hero { background-color: var(--color-hero-bg); }
+
 .vx-app-loading {
   position: fixed;
   inset: 0;
