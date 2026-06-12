@@ -846,6 +846,10 @@ button:disabled.hover\:scale-105:hover { transform: none; }
    共用顶栏（首页 / 登录页）
    - 浅色下白底 + border-b-2；深色下 slate-800 + slate-700 边
    - sticky 顶置 + z-index 50（低于 #app-loading=300 与 modal=1000）
+   - 由 <body data-scene="home|auth|app"> 控制显隐：
+       home → 显示
+       auth → 隐藏
+       app  → 隐藏
    ============================================================ */
 .vx-site-header {
   position: sticky;
@@ -858,6 +862,8 @@ button:disabled.hover\:scale-105:hover { transform: none; }
   backdrop-filter: none;
 }
 .vx-site-header a, .vx-site-header button { color: var(--color-fg); }
+body[data-scene="auth"] .vx-site-header,
+body[data-scene="app"] .vx-site-header { display: none !important; }
 
 .vx-site-nav-link {
   display: inline-flex;
@@ -877,47 +883,41 @@ button:disabled.hover\:scale-105:hover { transform: none; }
 }
 
 /* ============================================================
-   语言切换器（chip 风格）
+   语言切换：单按钮（点击切换 zh-CN ⇄ en）
+   - min-width 96px 固定宽度，避免切语言时按钮位置变化
+   - 浅色下 bg-muted + hover 边框 / 加深
    ============================================================ */
-.vx-lang-switch {
+.vx-lang-toggle {
   display: inline-flex;
   align-items: center;
-  gap: 2px;
-  padding: 3px;
+  justify-content: space-between;
+  gap: 0.5rem;
+  height: 2.5rem;          /* 40px 触摸目标 */
+  min-width: 96px;         /* "中文" / "EN" 都能装下，且切换不抖 */
+  padding: 0 0.75rem;
   background-color: var(--color-muted);
+  border: 2px solid var(--color-border);
   border-radius: 6px;
-}
-.vx-lang-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  height: 2rem;          /* 32px（chip 不是触摸目标，可小） */
-  padding: 0 0.5rem;
-  background-color: transparent;
-  border: 0;
-  border-radius: 4px;
+  color: var(--color-fg);
   font-weight: 600;
   font-size: 0.75rem;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: var(--color-fg);
   cursor: pointer;
-  transition: background-color 0.2s, color 0.2s;
+  transition: background-color 0.2s, border-color 0.2s, color 0.2s;
 }
-.vx-lang-chip:hover { color: var(--color-primary); }
-.vx-lang-chip.is-active {
-  background-color: var(--color-fg);
-  color: var(--color-bg);
+.vx-lang-toggle:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
 }
-.vx-lang-chip-dot {
-  display: inline-block;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background-color: var(--color-border);
-  transition: background-color 0.2s;
+.vx-lang-toggle:active {
+  transform: scale(0.97);
 }
-.vx-lang-chip.is-active .vx-lang-chip-dot { background-color: var(--color-accent); }
+.vx-lang-toggle #site-lang-label {
+  flex: 1;
+  text-align: left;
+  min-width: 1.5rem;       /* 给中/英文字最小宽度，避免 <span> 内容变化时按钮轻微变形 */
+}
 
 /* ============================================================
    首页功能卡
@@ -926,10 +926,19 @@ button:disabled.hover\:scale-105:hover { transform: none; }
 .vx-feature-card {
   padding: 1.75rem;
   border-radius: 8px;
-  transition: transform 0.2s;
+  transition: transform 0.25s, background-color 0.25s;
   cursor: default;
 }
-.vx-feature-card:hover { transform: scale(1.02); }
+.vx-feature-card:hover { transform: scale(1.03); }
+
+/* How-to 步骤卡 hover 上移（保持暗色下不刺眼） */
+#home-howto li { transition: transform 0.2s ease, background-color 0.2s ease; }
+#home-howto li:hover { transform: translateY(-4px); background-color: rgba(255, 255, 255, 0.08); }
+
+/* ============================================================
+   装饰艺术带：vx-triangle（正三角 clip-path）
+   ============================================================ */
+.vx-triangle { clip-path: polygon(50% 0%, 0% 100%, 100% 100%); }
 
 /* ============================================================
    FAQ 折叠项
@@ -946,22 +955,30 @@ button:disabled.hover\:scale-105:hover { transform: none; }
   gap: 1rem;
   padding: 1rem 1.25rem;
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: background-color 0.25s, padding 0.2s;
 }
 .vx-faq-summary:hover { background-color: var(--color-muted); }
+
+/* FAQ 答案容器：max-height 过渡（DESIGN.md §六 — 不允许 transition-all） */
+.vx-faq-item > .vx-faq-answer {
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  transition: max-height 0.4s ease, opacity 0.3s ease, padding 0.3s ease;
+}
+.vx-faq-item[open] > .vx-faq-answer {
+  max-height: 500px;
+  opacity: 1;
+  padding-top: 0;
+  padding-bottom: 1.25rem;
+}
 
 /* ============================================================
    首页 / 登录页 顶栏之下：避免 sticky header 遮挡
    ============================================================ */
 #home-page { padding-top: 0; }   /* 顶栏 sticky 自带占位 */
-
-/* ============================================================
-   登录页：在 #auth-page 已是 fixed inset-0 的前提下，sticky header 不可用
-   - 在 < lg 断点下隐藏（保留内部移动端 logo）
-   ============================================================ */
-@media (max-width: 1023px) {
-  #auth-page .vx-site-header { display: none !important; }
-}
 
 /* ============================================================
    浅 / 深色：登录页左侧 hero 在深色下用极深藏青

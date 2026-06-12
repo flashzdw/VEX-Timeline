@@ -89,11 +89,167 @@
       'auth.error.passwordRequired': '请输入密码',
       'auth.error.usernameLength': '用户名长度需在 2-20 个字符之间',
 
+      // === 主应用（时间轴 / 月历 / 模态框 / FAB / 错误） ===
+      'app.view.timeline': '时间轴',
+      'app.view.month': '月历',
+      'app.timeline.unselected': '未选择',
+      'app.timeline.all': '所有时间轴',
+      'app.timeline.create': '创建时间轴',
+      'app.timeline.createTitle': '创建时间轴',
+      'app.timeline.name': '时间轴名称',
+      'app.timeline.namePh': '输入时间轴名称',
+      'app.timeline.type.personal': '个人',
+      'app.timeline.type.team': '赛队',
+      'app.timeline.created': '已创建时间轴',
+      'app.timeline.createFail': '创建失败: ',
+      'app.timeline.inviteCode': '邀请码',
+      'app.timeline.copy': '复制邀请码',
+      'app.timeline.copied': '已复制',
+      'app.timeline.refresh': '点击刷新云端',
+
+      'app.filter.label': '重要性',
+      'app.filter.all': '全部',
+      'app.filter.high': '高',
+      'app.filter.medium': '中',
+      'app.filter.low': '低',
+      'app.importance.high': '高',
+      'app.importance.medium': '中',
+      'app.importance.low': '低',
+
+      'app.fab.add': '添加记录',
+      'app.fab.cantAdd': '云端连接失败，无法添加记录',
+
+      'app.modal.addTitle': '添加记录',
+      'app.modal.editTitle': '编辑记录',
+      'app.modal.date': '日期',
+      'app.modal.time': '时间',
+      'app.modal.importance': '重要性',
+      'app.modal.title': '标题',
+      'app.modal.titlePh': '请输入标题',
+      'app.modal.content': '内容',
+      'app.modal.contentPh': '请输入内容',
+      'app.modal.image': '图片',
+      'app.modal.cancel': '取消',
+      'app.modal.save': '保存',
+      'app.modal.titleReq': '请输入标题',
+      'app.modal.dateReq': '请选择日期',
+      'app.modal.confirmDelete': '确定要删除这条记录吗？',
+      'app.modal.saved': '已保存',
+      'app.modal.deleted': '已删除',
+      'app.modal.unknownError': '未知错误',
+
+      'app.team.createTitle': '创建赛队时间轴',
+      'app.team.joinTitle': '加入赛队',
+      'app.team.manageTitle': '管理赛队',
+      'app.team.nameLabel': '时间轴名称',
+      'app.team.namePh': '输入赛队时间轴名称',
+      'app.team.inviteCode': '邀请码',
+      'app.team.members': '成员列表',
+      'app.team.roleOwner': '所有者',
+      'app.team.roleMember': '成员',
+      'app.team.noMembers': '暂无成员',
+      'app.team.membersFail': '加载成员失败: ',
+      'app.team.memberRemoved': '已移除成员',
+      'app.team.removeFail': '移除失败: ',
+      'app.team.selectTeam': '请先在时间轴下拉中选择一个赛队',
+      'app.team.create': '创建赛队',
+      'app.team.join': '加入赛队',
+      'app.team.manage': '管理赛队',
+      'app.team.joined': '已加入赛队',
+      'app.team.joinFail': '加入失败',
+
+      'app.user.logout': '登出',
+      'app.user.unlogged': '未登录',
+      'app.user.unknown': '未知',
+      'app.user.you': '你',
+      'app.user.account': '账号',
+
+      'app.day.sun': '日',
+      'app.day.mon': '一',
+      'app.day.tue': '二',
+      'app.day.wed': '三',
+      'app.day.thu': '四',
+      'app.day.fri': '五',
+      'app.day.sat': '六',
+      'app.day.full.sun': '周日',
+      'app.day.full.mon': '周一',
+      'app.day.full.tue': '周二',
+      'app.day.full.wed': '周三',
+      'app.day.full.thu': '周四',
+      'app.day.full.fri': '周五',
+      'app.day.full.sat': '周六',
+      'app.month.1': '1月',
+      'app.month.2': '2月',
+      'app.month.3': '3月',
+      'app.month.4': '4月',
+      'app.month.5': '5月',
+      'app.month.6': '6月',
+      'app.month.7': '7月',
+      'app.month.8': '8月',
+      'app.month.9': '9月',
+      'app.month.10': '10月',
+      'app.month.11': '11月',
+      'app.month.12': '12月',
+      'app.dateFormat': '{y}年{m}月{d}日 {wd}',
+      'app.dateFormat.short': '{y}年{m}月',
+
+      'app.empty.timeline': '请先选择时间轴',
+      'app.empty.records': '暂无记录',
+      'app.empty.loading': '加载中…',
+      'app.empty.fail': '加载失败: ',
+
+      'app.cloud.notConfigured': '云端未配置',
+      'app.cloud.connected': '云端已连接',
+      'app.cloud.syncing': '同步中',
+      'app.cloud.error': '云端错误: ',
+      'app.cloud.offline': '离线',
+      'app.cloud.unknown': '未知',
+      'app.cloud.refreshing': '正在从云端刷新…',
+      'app.cloud.refreshed': '云端数据已同步',
+      'app.cloud.refreshFailed': '刷新失败: ',
+      'app.cloud.retryFailed': '重试失败: ',
+      'app.cloud.broken': '云端服务暂不可用，请稍后再试或联系管理员',
+      'app.cloud.syncFail': '同步云端记录失败: ',
+      'app.cloud.unreachable': '无法连接到云端',
+      'app.cloud.retry': '重试',
+
+      'app.toast.loginFirst': '请先登录并选择时间轴',
+      'app.toast.syncing': '正在同步中，请稍候',
+      'app.toast.retrying': '正在重试…',
+      'app.toast.copied': '已复制',
+
+      'app.action.edit': '编辑',
+      'app.action.delete': '删除',
+      'app.action.copied': '已复制',
+
+      'app.diag.urlSet': '<span class="text-secondary font-bold">✓</span> 已设置',
+      'app.diag.urlUnset': '<span class="text-primary font-bold">✗ 未配置</span>',
+      'app.diag.keySet': '<span class="text-secondary font-bold">✓</span> 已设置',
+      'app.diag.keyUnset': '<span class="text-primary font-bold">✗ 未配置</span>',
+      'app.diag.sessionOut': '<span class="text-accent font-bold">⊘ 未登录</span>',
+      'app.diag.sessionIn': '<span class="text-secondary font-bold">✓ 已登录</span>',
+      'app.diag.timeline': '时间轴: ',
+      'app.diag.urlLabel': 'URL: ',
+      'app.diag.keyLabel': 'Key: ',
+      'app.diag.sessionLabel': 'Session: ',
+
       'common.loading': '加载中…',
       'common.backHome': '返回首页',
 
       'home.toast.loginSuccess': '登录成功，正在进入应用…',
-      'home.toast.enterNow': '立即进入'
+      'home.toast.enterNow': '立即进入',
+
+      'app.modal.preview': '预览',
+      'app.picker.currentMonth': '当前月份',
+      'app.team.invitePh': '输入 6 位邀请码',
+      'app.team.inviteTitle': '邀请成员',
+      'app.cloud.errorTitle': '云端连接失败',
+
+      'app.drawer.shortcut': '快捷操作',
+      'app.drawer.add': '添加记录',
+      'app.drawer.refreshCloud': '刷新云端',
+      'app.drawer.timelines': '时间轴',
+      'app.drawer.teams': '赛队'
     },
     'en': {
       'site.name': 'VEX-Timeline',
@@ -175,11 +331,167 @@
       'auth.error.passwordRequired': 'Please enter your password',
       'auth.error.usernameLength': 'Username must be 2-20 characters',
 
+      // === Main app (timeline / calendar / modal / FAB / errors) ===
+      'app.view.timeline': 'Timeline',
+      'app.view.month': 'Month',
+      'app.timeline.unselected': 'Unselected',
+      'app.timeline.all': 'All timelines',
+      'app.timeline.create': 'Create timeline',
+      'app.timeline.createTitle': 'Create timeline',
+      'app.timeline.name': 'Timeline name',
+      'app.timeline.namePh': 'Enter timeline name',
+      'app.timeline.type.personal': 'Personal',
+      'app.timeline.type.team': 'Team',
+      'app.timeline.created': 'Timeline created',
+      'app.timeline.createFail': 'Create failed: ',
+      'app.timeline.inviteCode': 'Invite code',
+      'app.timeline.copy': 'Copy invite code',
+      'app.timeline.copied': 'Copied',
+      'app.timeline.refresh': 'Click to refresh cloud',
+
+      'app.filter.label': 'Importance',
+      'app.filter.all': 'All',
+      'app.filter.high': 'High',
+      'app.filter.medium': 'Medium',
+      'app.filter.low': 'Low',
+      'app.importance.high': 'High',
+      'app.importance.medium': 'Medium',
+      'app.importance.low': 'Low',
+
+      'app.fab.add': 'Add record',
+      'app.fab.cantAdd': 'Cloud unavailable, can\'t add',
+
+      'app.modal.addTitle': 'Add record',
+      'app.modal.editTitle': 'Edit record',
+      'app.modal.date': 'Date',
+      'app.modal.time': 'Time',
+      'app.modal.importance': 'Importance',
+      'app.modal.title': 'Title',
+      'app.modal.titlePh': 'Enter title',
+      'app.modal.content': 'Content',
+      'app.modal.contentPh': 'Enter content',
+      'app.modal.image': 'Image',
+      'app.modal.cancel': 'Cancel',
+      'app.modal.save': 'Save',
+      'app.modal.titleReq': 'Title is required',
+      'app.modal.dateReq': 'Date is required',
+      'app.modal.confirmDelete': 'Delete this record?',
+      'app.modal.saved': 'Saved',
+      'app.modal.deleted': 'Deleted',
+      'app.modal.unknownError': 'Unknown error',
+
+      'app.team.createTitle': 'Create team timeline',
+      'app.team.joinTitle': 'Join team',
+      'app.team.manageTitle': 'Manage team',
+      'app.team.nameLabel': 'Timeline name',
+      'app.team.namePh': 'Enter team timeline name',
+      'app.team.inviteCode': 'Invite code',
+      'app.team.members': 'Members',
+      'app.team.roleOwner': 'Owner',
+      'app.team.roleMember': 'Member',
+      'app.team.noMembers': 'No members yet',
+      'app.team.membersFail': 'Load members failed: ',
+      'app.team.memberRemoved': 'Member removed',
+      'app.team.removeFail': 'Remove failed: ',
+      'app.team.selectTeam': 'Pick a team from the dropdown first',
+      'app.team.create': 'Create team',
+      'app.team.join': 'Join team',
+      'app.team.manage': 'Manage team',
+      'app.team.joined': 'Joined team',
+      'app.team.joinFail': 'Join failed',
+
+      'app.user.logout': 'Sign out',
+      'app.user.unlogged': 'Not signed in',
+      'app.user.unknown': 'Unknown',
+      'app.user.you': 'You',
+      'app.user.account': 'Account',
+
+      'app.day.sun': 'Sun',
+      'app.day.mon': 'Mon',
+      'app.day.tue': 'Tue',
+      'app.day.wed': 'Wed',
+      'app.day.thu': 'Thu',
+      'app.day.fri': 'Fri',
+      'app.day.sat': 'Sat',
+      'app.day.full.sun': 'Sunday',
+      'app.day.full.mon': 'Monday',
+      'app.day.full.tue': 'Tuesday',
+      'app.day.full.wed': 'Wednesday',
+      'app.day.full.thu': 'Thursday',
+      'app.day.full.fri': 'Friday',
+      'app.day.full.sat': 'Saturday',
+      'app.month.1': 'Jan',
+      'app.month.2': 'Feb',
+      'app.month.3': 'Mar',
+      'app.month.4': 'Apr',
+      'app.month.5': 'May',
+      'app.month.6': 'Jun',
+      'app.month.7': 'Jul',
+      'app.month.8': 'Aug',
+      'app.month.9': 'Sep',
+      'app.month.10': 'Oct',
+      'app.month.11': 'Nov',
+      'app.month.12': 'Dec',
+      'app.dateFormat': '{wd}, {m} {d}, {y}',
+      'app.dateFormat.short': '{m} {y}',
+
+      'app.empty.timeline': 'Pick a timeline first',
+      'app.empty.records': 'No records yet',
+      'app.empty.loading': 'Loading…',
+      'app.empty.fail': 'Load failed: ',
+
+      'app.cloud.notConfigured': 'Cloud not configured',
+      'app.cloud.connected': 'Cloud connected',
+      'app.cloud.syncing': 'Syncing',
+      'app.cloud.error': 'Cloud error: ',
+      'app.cloud.offline': 'Offline',
+      'app.cloud.unknown': 'Unknown',
+      'app.cloud.refreshing': 'Refreshing from cloud…',
+      'app.cloud.refreshed': 'Cloud data synced',
+      'app.cloud.refreshFailed': 'Refresh failed: ',
+      'app.cloud.retryFailed': 'Retry failed: ',
+      'app.cloud.broken': 'Cloud service unavailable. Retry later or contact admin.',
+      'app.cloud.syncFail': 'Cloud sync failed: ',
+      'app.cloud.unreachable': 'Could not connect to cloud',
+      'app.cloud.retry': 'Retry',
+
+      'app.toast.loginFirst': 'Sign in and pick a timeline first',
+      'app.toast.syncing': 'Syncing, please wait',
+      'app.toast.retrying': 'Retrying…',
+      'app.toast.copied': 'Copied',
+
+      'app.action.edit': 'Edit',
+      'app.action.delete': 'Delete',
+      'app.action.copied': 'Copied',
+
+      'app.diag.urlSet': '<span class="text-secondary font-bold">✓</span> set',
+      'app.diag.urlUnset': '<span class="text-primary font-bold">✗ missing</span>',
+      'app.diag.keySet': '<span class="text-secondary font-bold">✓</span> set',
+      'app.diag.keyUnset': '<span class="text-primary font-bold">✗ missing</span>',
+      'app.diag.sessionOut': '<span class="text-accent font-bold">⊘ signed out</span>',
+      'app.diag.sessionIn': '<span class="text-secondary font-bold">✓ signed in</span>',
+      'app.diag.timeline': 'Timeline: ',
+      'app.diag.urlLabel': 'URL: ',
+      'app.diag.keyLabel': 'Key: ',
+      'app.diag.sessionLabel': 'Session: ',
+
       'common.loading': 'Loading…',
       'common.backHome': 'Back to home',
 
       'home.toast.loginSuccess': 'Signed in, entering app…',
-      'home.toast.enterNow': 'Enter now'
+      'home.toast.enterNow': 'Enter now',
+
+      'app.modal.preview': 'Preview',
+      'app.picker.currentMonth': 'Current month',
+      'app.team.invitePh': 'Enter 6-digit invite code',
+      'app.team.inviteTitle': 'Invite members',
+      'app.cloud.errorTitle': 'Cloud connection failed',
+
+      'app.drawer.shortcut': 'Shortcuts',
+      'app.drawer.add': 'Add record',
+      'app.drawer.refreshCloud': 'Refresh cloud',
+      'app.drawer.timelines': 'Timelines',
+      'app.drawer.teams': 'Teams'
     }
   };
 
@@ -209,15 +521,19 @@
     return null;
   }
 
-  function t(key) {
+  function t(key, vars) {
     if (key == null) return '';
     var value = lookup(key, currentLang);
-    if (value != null) return value;
-    if (currentLang !== FALLBACK_LANG) {
+    if (value == null && currentLang !== FALLBACK_LANG) {
       value = lookup(key, FALLBACK_LANG);
-      if (value != null) return value;
     }
-    return key;
+    if (value == null) value = key;
+    if (vars && typeof value === 'string') {
+      value = value.replace(/\{(\w+)\}/g, function (_m, name) {
+        return (vars[name] != null) ? String(vars[name]) : _m;
+      });
+    }
+    return value;
   }
 
   function containsBr(s) {
@@ -254,6 +570,11 @@
     if (ariaKey) {
       node.setAttribute('aria-label', t(ariaKey));
     }
+
+    var altKey = node.getAttribute('data-i18n-alt');
+    if (altKey) {
+      node.setAttribute('alt', t(altKey));
+    }
   }
 
   function applyI18n() {
@@ -263,7 +584,7 @@
     root.setAttribute('dir', 'ltr');
 
     if (typeof document.body === 'undefined' || !document.body) return;
-    var nodes = document.querySelectorAll('[data-i18n],[data-i18n-placeholder],[data-i18n-title],[data-i18n-aria-label]');
+    var nodes = document.querySelectorAll('[data-i18n],[data-i18n-placeholder],[data-i18n-title],[data-i18n-aria-label],[data-i18n-alt]');
     if (!nodes || !nodes.length) return; // no nodes yet — do nothing silently
     for (var i = 0; i < nodes.length; i++) {
       applyToElement(nodes[i]);

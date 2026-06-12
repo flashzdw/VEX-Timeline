@@ -151,33 +151,13 @@ class App {
 
   /**
    * 同步共用顶栏在不同场景下的可见性
-   * - 'home'：锚点导航 + "开始使用"；无"返回首页"
-   * - 'auth'：仅"返回首页" + 语言切换
-   * - 'app'：完全隐藏（主应用使用内部 header）
+   * 使用 `<body data-scene="home|auth|app">` 作为唯一真相源，CSS 决定显隐
+   *  - 'home'：完整顶栏（logo + 锚点导航 + 语言 + 开始使用）
+   *  - 'auth'：完全隐藏顶栏（auth 页自带 "返回首页" 链接）
+   *  - 'app'：完全隐藏（主应用使用内部 header）
    */
   _syncSiteHeader(scene) {
-    const header = document.getElementById('site-header');
-    if (!header) return;
-    const nav = document.getElementById('site-header-nav');
-    const ctaStart = document.getElementById('site-cta-start');
-    const backHome = document.getElementById('site-back-home');
-    const langSwitch = document.getElementById('site-lang-switch');
-
-    if (scene === 'home') {
-      header.classList.remove('hidden');
-      if (nav) nav.classList.remove('hidden');
-      if (ctaStart) ctaStart.classList.remove('hidden');
-      if (backHome) backHome.classList.add('hidden');
-      if (langSwitch) langSwitch.classList.remove('hidden');
-    } else if (scene === 'auth') {
-      header.classList.remove('hidden');
-      if (nav) nav.classList.add('hidden');
-      if (ctaStart) ctaStart.classList.add('hidden');
-      if (backHome) backHome.classList.remove('hidden');
-      if (langSwitch) langSwitch.classList.remove('hidden');
-    } else {
-      header.classList.add('hidden');
-    }
+    document.body.setAttribute('data-scene', scene || 'home');
   }
 
   // 兼容旧调用名（部分旧代码可能仍引用 showAuthPage / hideAuthPage）
@@ -185,17 +165,34 @@ class App {
   hideAuthPage() { /* no-op: 主应用通过 showMainApp() 切换；保留以兼容旧代码 */ }
 
   /**
-   * 同步语言切换器 UI 高亮（active chip）
+   * 同步语言切换器按钮 UI（单按钮：根据当前语言显示"中文" / "EN"）
    */
-  _syncLangSwitchUI() {
-    const langSwitch = document.getElementById('site-lang-switch');
-    if (!langSwitch || !window.i18n) return;
+  _updateLangToggle() {
+    const label = document.getElementById('site-lang-label');
+    if (!label || !window.i18n) return;
     const current = window.i18n.getLanguage();
-    langSwitch.querySelectorAll('[data-lang]').forEach(btn => {
-      const isActive = btn.getAttribute('data-lang') === current;
-      btn.classList.toggle('is-active', isActive);
-      btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
-    });
+    label.textContent = current === 'zh-CN' ? '中文' : 'EN';
+  }
+
+  /**
+   * 切语言后重新渲染主应用（按需：仅在主应用已挂载时）
+   *  - 重新调用 applyI18n 扫描 data-i18n 节点
+   *  - 重渲染当前视图、时间标题、视图切换高亮、云状态图标、用户菜单
+   */
+  _refreshAppOnLangChange() {
+    if (!window.i18n || !window.i18n.applyI18n) return;
+    window.i18n.applyI18n();
+    this._updateLangToggle();
+    // 仅在主应用场景下重渲染数据视图
+    const scene = document.body.getAttribute('data-scene');
+    if (scene === 'app') {
+      try { this.renderDate(); } catch (e) { /* noop */ }
+      try { this.renderView(); } catch (e) { /* noop */ }
+      try { this.renderFilterChips(); } catch (e) { /* noop */ }
+      try { this.updateCloudStatusIcon(); } catch (e) { /* noop */ }
+      try { this.renderDiagnosticBar(); } catch (e) { /* noop */ }
+      try { this.renderUserMenu(); } catch (e) { /* noop */ }
+    }
   }
 
   /**
@@ -248,7 +245,7 @@ class App {
     if (!loadResult.success) {
       // 拉取失败 → 显示错误条 + 隐藏 add 按钮
       this.cloudSyncStatus = 'error';
-      this.cloudErrorMessage = loadResult.error || '无法连接到云端';
+      this.cloudErrorMessage = loadResult.error || this._i18n('app.cloud.unreachable', '无法连接到云端');
       this.updateCloudStatusIcon();
       this._setCloudError(this.cloudErrorMessage);
       this._setAddEnabled(false);
@@ -262,7 +259,7 @@ class App {
       try {
         await this.syncFromCloud();
       } catch (e) {
-        this._setCloudError('同步云端记录失败: ' + (e.message || e));
+        this._setCloudError(this._i18n('app.cloud.syncFail', '同步云端记录失败: ') + (e.message || e));
         // sync 失败不影响渲染本地已有数据
       }
     }
@@ -298,7 +295,7 @@ class App {
     const bar = document.getElementById('cloud-error-bar');
     const msgEl = document.getElementById('cloud-error-message');
     if (!bar) return;
-    if (msgEl) msgEl.textContent = msg || '未知错误';
+    if (msgEl) msgEl.textContent = msg || this._i18n('app.modal.unknownError', '未知错误');
     bar.classList.remove('hidden');
     // lucide 图标在 bar 内，确保渲染
     if (window.lucide && lucide.createIcons) lucide.createIcons();
@@ -319,7 +316,7 @@ class App {
     if (fab) {
       fab.style.display = enabled ? 'flex' : 'none';
       fab.disabled = !enabled;
-      fab.title = enabled ? '添加记录' : '云端连接失败，无法添加记录';
+      fab.title = enabled ? this._i18n('app.fab.add', '添加记录') : this._i18n('app.fab.cantAdd', '云端连接失败，无法添加记录');
     }
   }
 
@@ -334,7 +331,7 @@ class App {
   async loadTimelines() {
     if (!authManager.isLoggedIn() || !supabaseManager.isConfigured()) {
       this.updateTimelineSelector();
-      return { success: false, error: 'Supabase 未配置' };
+      return { success: false, error: this._i18n('app.cloud.notConfigured', 'Supabase 未配置') };
     }
 
     let lastErr = null;
@@ -428,9 +425,9 @@ class App {
   }
 
   _findTimelineName(id) {
-    if (!id) return '未选择';
+    if (!id) return this._i18n('app.timeline.unselected', '未选择');
     const t = this.timelines.find(x => x.id === id);
-    return t ? t.name : '未选择';
+    return t ? t.name : this._i18n('app.timeline.unselected', '未选择');
   }
 
   updateTimelineLabel(name) {
@@ -454,18 +451,18 @@ class App {
   updateCloudStatusIcon() {
     const el = document.getElementById('cloud-status');
     if (!el) return;
-    let iconName = 'cloud', label = '未知', cls = '';
+    let iconName = 'cloud', label = this._i18n('app.cloud.unknown', '未知'), cls = '';
 
     if (!supabaseManager.isConfigured()) {
-      iconName = 'alert-triangle'; label = 'Supabase 未配置'; cls = 'is-error';
+      iconName = 'alert-triangle'; label = this._i18n('app.cloud.notConfigured', 'Supabase 未配置'); cls = 'is-error';
     } else if (this.cloudSyncStatus === 'error') {
-      iconName = 'alert-triangle'; label = '云端错误: ' + (this.cloudErrorMessage || '未知'); cls = 'is-error';
+      iconName = 'alert-triangle'; label = this._i18n('app.cloud.error', '云端错误: ') + (this.cloudErrorMessage || this._i18n('app.cloud.unknown', '未知')); cls = 'is-error';
     } else if (!this.isOnline) {
-      iconName = 'cloud-off'; label = '离线'; cls = 'is-offline';
+      iconName = 'cloud-off'; label = this._i18n('app.cloud.offline', '离线'); cls = 'is-offline';
     } else if (this.syncInProgress) {
-      iconName = 'refresh-cw'; label = '同步中'; cls = 'is-syncing';
+      iconName = 'refresh-cw'; label = this._i18n('app.cloud.syncing', '同步中'); cls = 'is-syncing';
     } else {
-      iconName = 'cloud'; label = '云端已连接'; cls = 'is-ok';
+      iconName = 'cloud'; label = this._i18n('app.cloud.connected', '云端已连接'); cls = 'is-ok';
     }
 
     el.className = 'vx-cloud-status' + (cls ? ' ' + cls : '');
@@ -489,7 +486,7 @@ class App {
     // 下面是仅在调试 DOM 存在时才会执行的旧逻辑（理论上不会触发）
     const status = supabaseManager.getConfigStatus();
     const isLoggedIn = authManager.isLoggedIn();
-    const username = authManager.getUsername() || '未登录';
+    const username = authManager.getUsername() || this._i18n('app.user.unlogged', '未登录');
     const sessionOk = !!authManager.session;
     const cloudOk = status.isValid;
 
@@ -527,7 +524,7 @@ class App {
     if (banner) {
       if (!cloudOk) {
         banner.classList.remove('hidden');
-        banner.textContent = '云端服务暂不可用，请稍后再试或联系管理员。';
+        banner.textContent = this._i18n('app.cloud.broken', '云端服务暂不可用，请稍后再试或联系管理员。');
       } else {
         banner.classList.add('hidden');
       }
@@ -641,6 +638,10 @@ class App {
     const backHome = document.getElementById('site-back-home');
     if (backHome) backHome.addEventListener('click', (e) => { e.preventDefault(); this.showHomePage(); });
 
+    // 登录页 → 首页（auth-back-home：在 auth 页表单内）
+    const authBackHome = document.getElementById('auth-back-home');
+    if (authBackHome) authBackHome.addEventListener('click', (e) => { e.preventDefault(); this.showHomePage(); });
+
     // Logo（首页 / 登录页）→ 滚到 Hero 顶部（首页有效）
     const headerLogo = document.getElementById('site-header-logo');
     if (headerLogo) {
@@ -651,18 +652,20 @@ class App {
       });
     }
 
-    // 语言切换
-    const langSwitch = document.getElementById('site-lang-switch');
-    if (langSwitch) {
-      langSwitch.querySelectorAll('[data-lang]').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const lang = btn.getAttribute('data-lang');
-          if (window.i18n && window.i18n.setLanguage) window.i18n.setLanguage(lang);
-          this._syncLangSwitchUI();
-        });
+    // 语言切换：单按钮
+    const langBtn = document.getElementById('site-lang-toggle');
+    if (langBtn) {
+      langBtn.addEventListener('click', () => {
+        if (!window.i18n) return;
+        const current = window.i18n.getLanguage();
+        const next = current === 'zh-CN' ? 'en' : 'zh-CN';
+        window.i18n.setLanguage(next);
+        this._updateLangToggle();
+        // 触发主应用重渲染（若已登录）
+        this._refreshAppOnLangChange();
       });
-      this._syncLangSwitchUI();
     }
+    this._updateLangToggle();
 
     // 记录模态框
     document.getElementById('cancel-btn').addEventListener('click', () => this.closeModal());
@@ -743,19 +746,19 @@ class App {
       cloudStatusBtn.addEventListener('click', async (e) => {
         e.stopPropagation();
         if (!authManager.isLoggedIn() || !this.currentTimelineId) {
-          this.showToast('请先登录并选择时间轴', 'warning');
+          this.showToast(this._i18n('app.toast.loginFirst', '请先登录并选择时间轴'), 'warning');
           return;
         }
         if (this.syncInProgress) {
-          this.showToast('正在同步中，请稍候', 'info');
+          this.showToast(this._i18n('app.toast.syncing', '正在同步中，请稍候'), 'info');
           return;
         }
-        this.showToast('正在从云端刷新…', 'info');
+        this.showToast(this._i18n('app.cloud.refreshing', '正在从云端刷新…'), 'info');
         try {
           await this.syncFromCloud();
-          this.showToast('云端数据已同步', 'success');
+          this.showToast(this._i18n('app.cloud.refreshed', '云端数据已同步'), 'success');
         } catch (err) {
-          this.showToast('刷新失败: ' + (err.message || err), 'error');
+          this.showToast(this._i18n('app.cloud.refreshFailed', '刷新失败: ') + (err.message || err), 'error');
         }
       });
     }
@@ -799,19 +802,19 @@ class App {
       mobileCloudRefresh.addEventListener('click', async () => {
         this.closeMobileDrawer();
         if (!authManager.isLoggedIn() || !this.currentTimelineId) {
-          this.showToast('请先登录并选择时间轴', 'warning');
+          this.showToast(this._i18n('app.toast.loginFirst', '请先登录并选择时间轴'), 'warning');
           return;
         }
         if (this.syncInProgress) {
-          this.showToast('正在同步中，请稍候', 'info');
+          this.showToast(this._i18n('app.toast.syncing', '正在同步中，请稍候'), 'info');
           return;
         }
-        this.showToast('正在从云端刷新…', 'info');
+        this.showToast(this._i18n('app.cloud.refreshing', '正在从云端刷新…'), 'info');
         try {
           await this.syncFromCloud();
-          this.showToast('云端数据已同步', 'success');
+          this.showToast(this._i18n('app.cloud.refreshed', '云端数据已同步'), 'success');
         } catch (err) {
-          this.showToast('刷新失败: ' + (err.message || err), 'error');
+          this.showToast(this._i18n('app.cloud.refreshFailed', '刷新失败: ') + (err.message || err), 'error');
         }
       });
     }
@@ -847,14 +850,26 @@ class App {
     if (retryBtn) {
       retryBtn.addEventListener('click', async () => {
         this._clearCloudError();
-        this._setCloudError('正在重试…');
+        this._setCloudError(this._i18n('app.toast.retrying', '正在重试…'));
         try {
           await this.onLoginSuccess();
         } catch (e) {
-          this._setCloudError('重试失败: ' + (e.message || e));
+          this._setCloudError(this._i18n('app.cloud.retryFailed', '重试失败: ') + (e.message || e));
         }
       });
     }
+
+    // FAQ 手风琴：开一关一（容器整体位置稳定）
+    const faqItems = document.querySelectorAll('.vx-faq-item');
+    faqItems.forEach(item => {
+      item.addEventListener('toggle', () => {
+        if (item.open) {
+          faqItems.forEach(other => {
+            if (other !== item && other.open) other.open = false;
+          });
+        }
+      });
+    });
   }
 
   // ============================================================
@@ -1152,7 +1167,7 @@ class App {
         await this.renderView();
       }
     } catch (e) {
-      alert(e.message || '加入失败');
+      alert(e.message || this._i18n('app.team.joinFail', '加入失败'));
     }
 
     codeInput.value = '';
@@ -1163,21 +1178,21 @@ class App {
     const current = this.timelines.find(t => t.id === this.currentTimelineId);
     if (!current || current.type !== 'team') {
       // 不再静默 return —— 给用户明确反馈
-      this.showToast('请先在时间轴下拉中选择一个赛队', 'warning');
+      this.showToast(this._i18n('app.team.selectTeam', '请先在时间轴下拉中选择一个赛队'), 'warning');
       return;
     }
 
     document.getElementById('invite-code-display').textContent = current.invite_code || '---';
 
     const membersList = document.getElementById('members-list');
-    membersList.innerHTML = '<div class="px-4 py-3 text-sm text-fg/60">加载中…</div>';
+    membersList.innerHTML = `<div class="px-4 py-3 text-sm text-fg/60">${this._i18n('app.empty.loading', '加载中…')}</div>`;
 
     try {
       const members = await cloudDBManager.getTimelineMembers(this.currentTimelineId);
       const isOwner = current.owner_id === authManager.getCurrentUser()?.id;
 
       if (!members || members.length === 0) {
-        membersList.innerHTML = '<div class="px-4 py-3 text-sm text-fg/60">暂无成员</div>';
+        membersList.innerHTML = `<div class="px-4 py-3 text-sm text-fg/60">${this._i18n('app.team.noMembers', '暂无成员')}</div>`;
       } else {
         // 拥有者置顶，其余按 username 升序保持稳定
         const sortedMembers = [...members].sort((a, b) => {
@@ -1185,14 +1200,17 @@ class App {
           if (a.role !== 'owner' && b.role === 'owner') return 1;
           return (a.users?.username || '').localeCompare(b.users?.username || '');
         });
+        const ownerLabel = this._i18n('app.team.roleOwner', '所有者');
+        const memberLabel = this._i18n('app.team.roleMember', '成员');
+        const removeLabel = this._i18n('app.action.delete', '删除');
         membersList.innerHTML = sortedMembers.map(member => `
           <div class="flex justify-between items-center px-4 py-3 border-b-2 border-border last:border-b-0">
             <div class="flex flex-col gap-0.5">
-              <span class="font-semibold text-sm">${this._escapeHtml(member.users?.username || '未知')}</span>
-              <span class="text-xs font-semibold uppercase tracking-wider text-fg/60">${member.role === 'owner' ? '所有者' : '成员'}</span>
+              <span class="font-semibold text-sm">${this._escapeHtml(member.users?.username || this._i18n('app.user.unknown', '未知'))}</span>
+              <span class="text-xs font-semibold uppercase tracking-wider text-fg/60">${member.role === 'owner' ? ownerLabel : memberLabel}</span>
             </div>
             ${isOwner && member.role !== 'owner' ? `
-              <button class="vx-member-remove-btn h-8 px-3 bg-canvas border-2 border-border rounded-md text-xs font-semibold uppercase tracking-wider text-fg hover:border-danger hover:text-danger transition-all duration-200" data-user-id="${member.user_id}">移除</button>
+              <button class="vx-member-remove-btn h-8 px-3 bg-canvas border-2 border-border rounded-md text-xs font-semibold uppercase tracking-wider text-fg hover:border-danger hover:text-danger transition-all duration-200" data-user-id="${member.user_id}">${removeLabel}</button>
             ` : ''}
           </div>
         `).join('');
@@ -1206,17 +1224,17 @@ class App {
           try {
             await cloudDBManager.removeMember(this.currentTimelineId, userId);
             e.currentTarget.closest('.flex').remove();
-            this.showToast('已移除成员', 'success');
+            this.showToast(this._i18n('app.team.memberRemoved', '已移除成员'), 'success');
           } catch (err) {
             console.error(err);
-            this.showToast('移除失败: ' + (err.message || err), 'error');
+            this.showToast(this._i18n('app.team.removeFail', '移除失败: ') + (err.message || err), 'error');
           }
         });
       });
     } catch (e) {
       console.error('[VEX-Timeline] getTimelineMembers failed:', e);
-      membersList.innerHTML = `<div class="px-4 py-3 text-sm text-danger">加载失败: ${this._escapeHtml(e.message || String(e))}</div>`;
-      this.showToast('加载成员失败: ' + (e.message || e), 'error');
+      membersList.innerHTML = `<div class="px-4 py-3 text-sm text-danger">${this._i18n('app.empty.fail', '加载失败: ')}${this._escapeHtml(e.message || String(e))}</div>`;
+      this.showToast(this._i18n('app.team.membersFail', '加载成员失败: ') + (e.message || e), 'error');
     }
 
     this.openModalById('invite-modal');
@@ -1331,7 +1349,7 @@ class App {
     const imageInput = document.getElementById('record-image');
 
     if (record) {
-      modalTitle.textContent = '编辑记录';
+      modalTitle.textContent = this._i18n('app.modal.editTitle', '编辑记录');
       dateInput.value = record.date;
       timeInput.value = record.time || '';
       titleInput.value = record.title;
@@ -1347,7 +1365,7 @@ class App {
         previewImg.src = '';
       }
     } else {
-      modalTitle.textContent = '添加记录';
+      modalTitle.textContent = this._i18n('app.modal.addTitle', '添加记录');
       dateInput.value = this.formatDate(new Date());
       timeInput.value = this.formatTime(new Date());
       titleInput.value = '';
@@ -1387,8 +1405,8 @@ class App {
     const importance = activeImportanceBtn ? activeImportanceBtn.dataset.importance : 'medium';
     let imageUrl = this.tempImageData;
 
-    if (!title) { alert('请输入标题'); return; }
-    if (!date)  { alert('请选择日期'); return; }
+    if (!title) { alert(this._i18n('app.modal.titleReq', '请输入标题')); return; }
+    if (!date)  { alert(this._i18n('app.modal.dateReq', '请选择日期')); return; }
 
     // Round 5：图片上传到 Supabase Storage（避免 base64 超过列长度导致丢失）
     if (imageUrl && imageUrl.startsWith('data:')) {
@@ -1443,7 +1461,7 @@ class App {
   }
 
   async deleteRecord(id) {
-    if (!confirm('确定要删除这条记录吗？')) return;
+    if (!confirm(this._i18n('app.modal.confirmDelete', '确定要删除这条记录吗？'))) return;
     const record = this.records.find(r => r.id === id);
     await dbManager.deleteRecord(id);
     if (authManager.isLoggedIn() && supabaseManager.isConfigured() && this.currentTimelineId && record) {
@@ -1476,14 +1494,35 @@ class App {
   }
 
   formatDateLabel(date) {
-    const months = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
+    const months = [
+      this._i18n('app.month.1', '1月'),
+      this._i18n('app.month.2', '2月'),
+      this._i18n('app.month.3', '3月'),
+      this._i18n('app.month.4', '4月'),
+      this._i18n('app.month.5', '5月'),
+      this._i18n('app.month.6', '6月'),
+      this._i18n('app.month.7', '7月'),
+      this._i18n('app.month.8', '8月'),
+      this._i18n('app.month.9', '9月'),
+      this._i18n('app.month.10', '10月'),
+      this._i18n('app.month.11', '11月'),
+      this._i18n('app.month.12', '12月')
+    ];
     return `${date.getFullYear()}年 ${months[date.getMonth()]}`;
   }
 
   formatDateDisplay(dateStr) {
     const [year, month, day] = dateStr.split('-');
     const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
-    const days = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+    const days = [
+      this._i18n('app.day.full.sun', '周日'),
+      this._i18n('app.day.full.mon', '周一'),
+      this._i18n('app.day.full.tue', '周二'),
+      this._i18n('app.day.full.wed', '周三'),
+      this._i18n('app.day.full.thu', '周四'),
+      this._i18n('app.day.full.fri', '周五'),
+      this._i18n('app.day.full.sat', '周六')
+    ];
     return `${year}年${month}月${day}日 ${days[date.getDay()]}`;
   }
 
@@ -1533,7 +1572,7 @@ class App {
 
     // Round 4：取消本地时间轴，统一走云端路径
     if (!this.currentTimelineId) {
-      calendar.innerHTML = '<div class="vx-empty" style="grid-column: 1 / -1;">请先选择时间轴</div>';
+      calendar.innerHTML = `<div class="vx-empty" style="grid-column: 1 / -1;">${this._i18n('app.empty.timeline', '请先选择时间轴')}</div>`;
       return;
     }
 
@@ -1569,7 +1608,15 @@ class App {
 
     const todayStr = this.formatDate(new Date());
 
-    const days = ['日', '一', '二', '三', '四', '五', '六'];
+    const days = [
+      this._i18n('app.day.sun', '日'),
+      this._i18n('app.day.mon', '一'),
+      this._i18n('app.day.tue', '二'),
+      this._i18n('app.day.wed', '三'),
+      this._i18n('app.day.thu', '四'),
+      this._i18n('app.day.fri', '五'),
+      this._i18n('app.day.sat', '六')
+    ];
     let headerHTML = days.map(d =>
       `<div class="px-2 py-3 text-center text-xs font-semibold uppercase tracking-wider text-fg/60 bg-muted border-b-2 border-border">${d}</div>`
     ).join('');
@@ -1652,7 +1699,7 @@ class App {
     const dayRecords = allRecords.filter(r => r.date === dateStr);
 
     if (dayRecords.length === 0) {
-      content.innerHTML = `<div class="vx-empty">暂无记录</div>`;
+      content.innerHTML = `<div class="vx-empty">${this._i18n('app.empty.records', '暂无记录')}</div>`;
     } else {
       dayRecords.sort((a, b) => (a.time || '00:00').localeCompare(b.time || '00:00'));
       let html = '';
@@ -1695,7 +1742,7 @@ class App {
 
   showLoadingState() {
     const timeline = document.getElementById('timeline');
-    timeline.innerHTML = `<div class="vx-empty">加载中…</div>`;
+    timeline.innerHTML = `<div class="vx-empty">${this._i18n('app.empty.loading', '加载中…')}</div>`;
   }
 
   async renderTimeline() {
@@ -1710,7 +1757,7 @@ class App {
     }
 
     if (filteredRecords.length === 0) {
-      timeline.innerHTML = `<div class="vx-empty">暂无记录</div>`;
+      timeline.innerHTML = `<div class="vx-empty">${this._i18n('app.empty.records', '暂无记录')}</div>`;
       return;
     }
 
@@ -1725,7 +1772,11 @@ class App {
       medium: 'circle-dot',
       low:    'check-circle'
     };
-    const importanceLabel = { high: '高', medium: '中', low: '低' };
+    const importanceLabel = {
+      high:   this._i18n('app.importance.high', '高'),
+      medium: this._i18n('app.importance.medium', '中'),
+      low:    this._i18n('app.importance.low', '低')
+    };
 
     // Round 5：按 date desc, time desc 排序
     const sortedRecords = [...filteredRecords].sort((a, b) => {
