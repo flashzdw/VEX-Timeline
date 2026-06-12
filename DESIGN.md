@@ -23,7 +23,7 @@
 
 | Token | Tailwind class | 色值 | 用途 |
 |---|---|---|---|
-| `background` | `bg-bg` | `#FFFFFF` | 画布 |
+| `background` | `bg-canvas` | `#FFFFFF` | 画布 |
 | `foreground` | `text-fg` / `bg-fg` | `#111827`（Gray 900） | 高对比文本 |
 | `primary` | `bg-primary` / `text-primary` | `#3B82F6`（Blue 500） | 行动色（Action） |
 | `secondary` | `bg-secondary` / `text-secondary` | `#10B981`（Emerald 500） | 辅助强调 |
@@ -32,6 +32,29 @@
 | `border` | `border-border` | `#E5E7EB`（Gray 200） | 谨慎使用 |
 
 > 高对比是必须的，色板避免浑浊色调。
+
+### 二.五、Dark Mode Palette（深色模式色板）
+
+> **自动跟随浏览器** [`prefers-color-scheme`](https://developer.mozilla.org/docs/Web/CSS/@media/prefers-color-scheme)，无手动开关。所有 token 通过 CSS 变量在 `@media (prefers-color-scheme: dark)` 中整体覆盖，Tailwind 工具类（`bg-canvas / text-fg` 等）天然响应。
+
+| Token | Light 值 | Dark 值（slate 基底） | 用途 |
+|---|---|---|---|
+| `background` | `#FFFFFF` | `#0F172A`（slate-900） | 画布 |
+| `foreground` | `#111827` | `#F1F5F9`（slate-100） | 高对比文本 |
+| `primary` | `#3B82F6` | `#60A5FA`（blue-400） | 行动色（深色下提亮一档以保对比度） |
+| `primary-hover` | `#2563EB` | `#3B82F6`（blue-500） | Primary hover |
+| `secondary` | `#10B981` | `#34D399`（emerald-400） | 辅助强调 |
+| `accent` | `#F59E0B` | `#FBBF24`（amber-400） | 高亮 / 徽章 |
+| `muted` | `#F3F4F6` | `#1E293B`（slate-800） | 次级背景 / 色块 |
+| `border` | `#E5E7EB` | `#334155`（slate-700） | 谨慎使用 |
+| `danger` | `#EF4444` | `#F87171`（red-400） | 高风险提示 |
+
+**派生色**（如时间轴 importance 卡片背景、菜单 hover、模态框遮罩等）也按相同模式在 `:root` 与 `@media (prefers-color-scheme: dark)` 块中分别定义。详见 [src/css/styles.css](file:///workspace/src/css/styles.css) 的"派生色"和"深色模式"两节。
+
+**实现要点**：
+- `<html data-theme="light|dark">` 由 [index.html](file:///workspace/index.html) 顶部内联脚本在样式表加载**之前**设置，避免 FOUC。
+- `meta[name="theme-color"]` 配合 `media="(prefers-color-scheme: …)"` 原生属性，让浏览器顶部状态栏在浅/深色间自动切换。
+- [manifest.json](file:///workspace/manifest.json) 中 `theme_color / background_color` 取深色（`#0F172A`），因 PWA 启动画面不支持媒体查询，必须二选一。
 
 ---
 

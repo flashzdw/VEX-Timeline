@@ -2,8 +2,8 @@
   "name": "VEX-Timeline",
   "short_name": "VEX-Timeline",
   "description": "VEX备赛时间轴应用",
-  "theme_color": "#3B82F6",
-  "background_color": "#FFFFFF",
+  "theme_color": "#0F172A",
+  "background_color": "#0F172A",
   "display": "standalone",
   "start_url": "/index.html",
   "icons": [

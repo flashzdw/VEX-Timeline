@@ -4,11 +4,35 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>VEX-Timeline</title>
-    <meta name="theme-color" content="#3B82F6">
+    <!-- 状态栏颜色：原生媒体查询支持，浅/深色模式自动切换（无需 JS） -->
+    <meta name="theme-color" content="#3B82F6" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#0F172A" media="(prefers-color-scheme: dark)">
+
+    <!-- 早期主题检测：先于样式表给 <html> 设置 data-theme，避免 FOUC；同时持续监听浏览器颜色模式变化 -->
+    <script>
+      (function () {
+        try {
+          var m = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)');
+          var apply = function (dark) {
+            document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+          };
+          if (m) {
+            apply(m.matches);
+            if (m.addEventListener) {
+              m.addEventListener('change', function (e) { apply(e.matches); });
+            } else if (m.addListener) {
+              // 兼容旧版 Safari
+              m.addListener(function (e) { apply(e.matches); });
+            }
+          }
+        } catch (e) {}
+      })();
+    </script>
 
     <!-- Favicon & PWA 图标（带版本号 bust 浏览器缓存，确保新图标立即生效） -->
-    <link rel="icon" type="image/png" sizes="32x32" href="./public/icons/favicon-32.png?v=29">
-    <link rel="apple-touch-icon" sizes="180x180" href="./public/icons/apple-touch-icon.png?v=29">
+    <link rel="icon" type="image/png" sizes="32x32" href="./public/icons/favicon-32.png?v=35">
+    <link rel="icon" type="image/svg+xml" href="./public/icons/icon.svg?v=35">
+    <link rel="apple-touch-icon" sizes="180x180" href="./public/icons/apple-touch-icon.png?v=35">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -35,15 +59,15 @@
         theme: {
           extend: {
             colors: {
-              bg:       '#FFFFFF',
-              fg:       '#111827',
-              primary:  '#3B82F6',
-              'primary-hover': '#2563EB',
-              secondary:'#10B981',
-              accent:   '#F59E0B',
-              muted:    '#F3F4F6',
-              border:   '#E5E7EB',
-              danger:   '#EF4444',
+              canvas:    'var(--color-bg)',
+              fg:       'var(--color-fg)',
+              primary:  'var(--color-primary)',
+              'primary-hover': 'var(--color-primary-hover)',
+              secondary:'var(--color-secondary)',
+              accent:   'var(--color-accent)',
+              muted:    'var(--color-muted)',
+              border:   'var(--color-border)',
+              danger:   'var(--color-danger)',
             },
             fontFamily: {
               sans: ['Outfit', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
@@ -64,14 +88,14 @@
     <link rel="stylesheet" href="./src/css/styles.css">
     <link rel="manifest" href="./manifest.json">
 </head>
-<body class="bg-bg text-fg font-sans">
+<body class="bg-canvas text-fg font-sans">
 
     <!-- ============================================================
          AUTH PAGE  海报式 左右分栏
          ============================================================ -->
     <div id="auth-page" class="fixed inset-0 flex overflow-hidden">
-        <!-- 左侧 Hero（色块 + 装饰几何） -->
-        <div class="hidden lg:flex relative flex-1 bg-primary text-white p-12 flex-col justify-between overflow-hidden">
+        <!-- 左侧 Hero（色块 + 装饰几何）：深色模式下用极深藏青，避免大块刺眼蓝 -->
+        <div class="hidden lg:flex relative flex-1 bg-hero text-white p-12 flex-col justify-between overflow-hidden">
             <div class="absolute -top-32 -right-32 h-96 w-96 rounded-full bg-white/10 pointer-events-none"></div>
             <div class="absolute bottom-10 left-10 h-40 w-40 rotate-12 bg-accent/20 pointer-events-none"></div>
             <div class="absolute top-1/2 right-20 h-20 w-20 rotate-45 bg-secondary/30 pointer-events-none"></div>
@@ -97,12 +121,12 @@
         </div>
 
         <!-- 右侧登录表单  fixed + overflow-hidden 彻底锁死，禁止任何滚动（包括 iOS 橡皮筋） -->
-        <div class="flex-1 flex items-center justify-center p-6 sm:p-8 lg:p-12 bg-bg relative overflow-hidden">
+        <div class="flex-1 flex items-center justify-center p-6 sm:p-8 lg:p-12 bg-canvas relative overflow-hidden">
             <div class="hidden md:block absolute -bottom-24 -right-24 h-64 w-64 rounded-full bg-primary/5 pointer-events-none"></div>
 
             <div class="relative z-10 w-full max-w-md py-6 sm:py-0">
                 <div class="lg:hidden flex items-center gap-3 mb-6 sm:mb-8">
-                    <div class="h-10 w-10 bg-primary text-white rounded-md flex items-center justify-center font-extrabold">V</div>
+                    <div class="h-10 w-10 bg-primary text-canvas rounded-md flex items-center justify-center font-extrabold">V</div>
                     <span class="text-xl font-extrabold tracking-[-0.02em]">VEX-Timeline</span>
                 </div>
 
@@ -116,23 +140,23 @@
                     <div class="flex flex-col gap-2">
                         <label class="text-xs font-semibold uppercase tracking-wider text-fg/60" for="auth-username">用户名</label>
                         <input id="auth-username" type="text" placeholder="输入用户名" maxlength="20" autocomplete="off"
-                               class="h-14 px-4 bg-muted text-fg text-base rounded-md border-0 outline-none font-medium focus:bg-white focus:border-2 focus:border-primary transition-all duration-200">
+                               class="h-14 px-4 bg-muted text-fg text-base rounded-md border-0 outline-none font-medium focus:bg-canvas focus:border-2 focus:border-primary transition-all duration-200">
                     </div>
                     <div class="flex flex-col gap-2">
                         <label class="text-xs font-semibold uppercase tracking-wider text-fg/60" for="auth-password">密码</label>
                         <input id="auth-password" type="password" placeholder="输入密码" autocomplete="off"
-                               class="h-14 px-4 bg-muted text-fg text-base rounded-md border-0 outline-none font-medium focus:bg-white focus:border-2 focus:border-primary transition-all duration-200">
+                               class="h-14 px-4 bg-muted text-fg text-base rounded-md border-0 outline-none font-medium focus:bg-canvas focus:border-2 focus:border-primary transition-all duration-200">
                     </div>
                     <div id="auth-error" class="min-h-[1.25rem] text-sm font-medium text-primary"></div>
 
                     <div class="flex flex-col gap-3 mt-2">
                         <button id="auth-login-btn" type="button"
-                                class="h-14 bg-primary text-white rounded-md font-semibold tracking-wider uppercase text-sm flex items-center justify-center gap-2 hover:bg-primary-hover hover:scale-[1.02] transition-all duration-200">
+                                class="h-14 bg-primary text-canvas rounded-md font-semibold tracking-wider uppercase text-sm flex items-center justify-center gap-2 hover:bg-primary-hover hover:scale-[1.02] transition-all duration-200">
                             <i data-lucide="log-in" class="w-5 h-5"></i>
                             登录
                         </button>
                         <button id="auth-register-btn" type="button"
-                                class="h-14 border-4 border-fg text-fg bg-transparent rounded-md font-semibold tracking-wider uppercase text-sm flex items-center justify-center gap-2 hover:bg-fg hover:text-white hover:scale-[1.02] transition-all duration-200">
+                                class="h-14 border-4 border-fg text-fg bg-transparent rounded-md font-semibold tracking-wider uppercase text-sm flex items-center justify-center gap-2 hover:bg-fg hover:text-canvas hover:scale-[1.02] transition-all duration-200">
                             <i data-lucide="user-plus" class="w-5 h-5"></i>
                             注册
                         </button>
@@ -150,19 +174,19 @@
         <!-- ============================================================
              顶部菜单（单行高级感）  Logo | View | Timeline | Cloud | User | +
              ============================================================ -->
-        <header class="sticky top-0 z-40 bg-white border-b-2 md:border-b-4 border-border">
+        <header class="sticky top-0 z-40 bg-canvas border-b-2 md:border-b-4 border-border">
             <div class="max-w-7xl mx-auto px-3 sm:px-6 h-16 md:h-20 flex items-center justify-between gap-2 sm:gap-4">
 
                 <!-- Logo（仅桌面端显示，手机端通过 FAB 节省空间） -->
                 <a href="#" class="hidden lg:flex items-center gap-2 shrink-0">
-                    <div class="h-10 w-10 bg-primary text-white rounded-md flex items-center justify-center font-extrabold text-lg">V</div>
+                    <div class="h-10 w-10 bg-primary text-canvas rounded-md flex items-center justify-center font-extrabold text-lg">V</div>
                     <span class="hidden sm:inline font-extrabold text-xl tracking-[-0.02em] text-fg">VEX-Timeline</span>
                 </a>
 
                 <!-- 视图切换（桌面 + 移动） -->
                 <div class="flex bg-muted rounded-md p-1 gap-1">
                     <button data-view-toggle="timeline"
-                            class="h-10 px-2 sm:px-4 inline-flex items-center justify-center rounded-md text-sm font-semibold tracking-wider uppercase bg-white text-fg transition-all duration-200">
+                            class="h-10 px-2 sm:px-4 inline-flex items-center justify-center rounded-md text-sm font-semibold tracking-wider uppercase bg-canvas text-fg transition-all duration-200">
                         <i data-lucide="list" class="w-4 h-4 sm:mr-1"></i><span class="hidden sm:inline">时间轴</span>
                     </button>
                     <button data-view-toggle="month"
@@ -174,7 +198,7 @@
                 <!-- 时间轴选择器（自定义下拉） -->
                 <div id="timeline-selector" class="block relative shrink-0 max-w-[160px] sm:max-w-none">
                     <button id="timeline-select-btn" type="button"
-                            class="h-10 px-2 sm:px-4 bg-white border-2 border-border rounded-md font-semibold text-sm flex items-center gap-1 sm:gap-2 hover:border-primary transition-all duration-200">
+                            class="h-10 px-2 sm:px-4 bg-canvas border-2 border-border rounded-md font-semibold text-sm flex items-center gap-1 sm:gap-2 hover:border-primary transition-all duration-200">
                         <i data-lucide="layers" class="w-4 h-4 text-primary shrink-0"></i>
                         <span id="timeline-select-label" class="truncate">未选择</span>
                         <i data-lucide="chevron-down" class="w-4 h-4 text-fg/60 shrink-0"></i>
@@ -197,7 +221,7 @@
                         <button id="user-menu-btn" type="button"
                                 class="flex items-center gap-2 pl-1 pr-3 bg-muted rounded-full hover:bg-gray-200 transition-all duration-200"
                                 style="height:40px !important;min-height:40px !important;max-height:40px !important;box-sizing:border-box !important;overflow:hidden !important;flex-shrink:0 !important;">
-                            <span id="user-avatar" class="rounded-full bg-primary text-white font-bold flex items-center justify-center" style="height:32px !important;width:32px !important;min-height:32px !important;min-width:32px !important;max-height:32px !important;max-width:32px !important;font-size:14px !important;line-height:1 !important;flex-shrink:0 !important;">U</span>
+                            <span id="user-avatar" class="rounded-full bg-primary text-canvas font-bold flex items-center justify-center" style="height:32px !important;width:32px !important;min-height:32px !important;min-width:32px !important;max-height:32px !important;max-width:32px !important;font-size:14px !important;line-height:1 !important;flex-shrink:0 !important;">U</span>
                             <span id="user-name" class="hidden sm:inline font-semibold" style="font-size:16px !important;line-height:1 !important;flex-shrink:0 !important;"></span>
                             <i data-lucide="chevron-down" class="w-4 h-4 text-fg/60" style="flex-shrink:0 !important;"></i>
                         </button>
@@ -231,7 +255,7 @@
 
         <!-- 浮动添加按钮（FAB）：右下角 56px 圆形大按钮（所有屏幕尺寸统一入口） -->
         <button id="mobile-fab" type="button"
-                class="fixed bottom-6 right-6 z-30 h-14 w-14 rounded-full bg-primary text-white shadow-[0_8px_24px_rgba(0,0,0,0.18)] flex items-center justify-center hover:bg-primary-hover hover:scale-105 active:scale-95 transition-all duration-200"
+                class="fixed bottom-6 right-6 z-30 h-14 w-14 rounded-full bg-primary text-canvas shadow-[0_8px_24px_rgba(0,0,0,0.18)] flex items-center justify-center hover:bg-primary-hover hover:scale-105 active:scale-95 transition-all duration-200"
                 style="box-sizing:border-box;flex-shrink:0;"
                 aria-label="添加记录">
             <i data-lucide="plus" class="w-7 h-7"></i>
@@ -252,10 +276,10 @@
                     <div class="flex items-center gap-4 flex-wrap">
                         <span class="text-sm sm:text-xs font-semibold uppercase tracking-wider text-fg/60">重要性</span>
                         <div class="flex gap-2 flex-wrap">
-                            <button data-filter="all"    class="h-9 sm:h-10 px-4 rounded-md text-sm font-semibold tracking-wider uppercase bg-fg text-white transition-all duration-200">全部</button>
-                            <button data-filter="high"   class="h-9 sm:h-10 px-4 rounded-md text-sm font-semibold tracking-wider uppercase bg-white text-fg transition-all duration-200">高</button>
-                            <button data-filter="medium" class="h-9 sm:h-10 px-4 rounded-md text-sm font-semibold tracking-wider uppercase bg-white text-fg transition-all duration-200">中</button>
-                            <button data-filter="low"    class="h-9 sm:h-10 px-4 rounded-md text-sm font-semibold tracking-wider uppercase bg-white text-fg transition-all duration-200">低</button>
+                            <button data-filter="all"    class="h-9 sm:h-10 px-4 rounded-md text-sm font-semibold tracking-wider uppercase bg-fg text-canvas transition-all duration-200">全部</button>
+                            <button data-filter="high"   class="h-9 sm:h-10 px-4 rounded-md text-sm font-semibold tracking-wider uppercase bg-canvas text-fg transition-all duration-200">高</button>
+                            <button data-filter="medium" class="h-9 sm:h-10 px-4 rounded-md text-sm font-semibold tracking-wider uppercase bg-canvas text-fg transition-all duration-200">中</button>
+                            <button data-filter="low"    class="h-9 sm:h-10 px-4 rounded-md text-sm font-semibold tracking-wider uppercase bg-canvas text-fg transition-all duration-200">低</button>
                         </div>
                     </div>
                 </div>
@@ -273,7 +297,7 @@
                     </div>
                 </div>
                 <button id="cloud-retry-btn" type="button"
-                        class="h-10 px-4 bg-primary text-white rounded-md font-semibold tracking-wider uppercase text-xs flex items-center gap-2 hover:bg-primary-hover hover:scale-105 transition-all duration-200 shrink-0">
+                        class="h-10 px-4 bg-primary text-canvas rounded-md font-semibold tracking-wider uppercase text-xs flex items-center gap-2 hover:bg-primary-hover hover:scale-105 transition-all duration-200 shrink-0">
                     <i data-lucide="refresh-cw" class="w-4 h-4"></i>重试
                 </button>
             </div>
@@ -282,7 +306,7 @@
             <section id="calendar-container" class="relative z-10 hidden">
                 <div class="flex items-center justify-between mb-8 gap-4">
                     <button id="prev-month" type="button"
-                            class="h-14 w-14 bg-white border-2 border-border rounded-md flex items-center justify-center hover:bg-fg hover:text-white hover:border-fg transition-all duration-200">
+                            class="h-14 w-14 bg-canvas border-2 border-border rounded-md flex items-center justify-center hover:bg-fg hover:text-canvas hover:border-fg transition-all duration-200">
                         <i data-lucide="chevron-left" class="w-5 h-5"></i>
                     </button>
                     <div class="text-center">
@@ -290,7 +314,7 @@
                         <div id="date-label" class="font-extrabold text-3xl tracking-[-0.02em] uppercase"></div>
                     </div>
                     <button id="next-month" type="button"
-                            class="h-14 w-14 bg-white border-2 border-border rounded-md flex items-center justify-center hover:bg-fg hover:text-white hover:border-fg transition-all duration-200">
+                            class="h-14 w-14 bg-canvas border-2 border-border rounded-md flex items-center justify-center hover:bg-fg hover:text-canvas hover:border-fg transition-all duration-200">
                         <i data-lucide="chevron-right" class="w-5 h-5"></i>
                     </button>
                 </div>
@@ -301,10 +325,10 @@
         <!-- ============= DAY RECORDS OVERLAY ============= -->
         <div id="day-records-overlay" class="vx-modal-overlay">
             <div class="vx-modal max-w-2xl">
-                <div class="bg-fg text-white px-8 py-6 flex items-center justify-between">
+                <div class="bg-muted text-fg px-8 py-6 flex items-center justify-between">
                     <h3 id="day-records-title" class="font-extrabold text-2xl tracking-[-0.02em] uppercase">—</h3>
                     <button id="close-day-records" type="button"
-                            class="h-10 w-10 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded-md transition-all duration-200">
+                            class="h-10 w-10 flex items-center justify-center bg-canvas/20 hover:bg-canvas/40 rounded-md transition-all duration-200">
                         <i data-lucide="x" class="w-5 h-5"></i>
                     </button>
                 </div>
@@ -320,7 +344,7 @@
     <!-- 记录添加/编辑 -->
     <div id="record-modal" class="vx-modal-overlay">
         <div class="vx-modal">
-            <div class="bg-primary text-white px-8 py-6 flex items-center justify-between">
+            <div class="bg-primary text-canvas px-8 py-6 flex items-center justify-between">
                 <h2 id="modal-title" class="font-extrabold text-2xl tracking-[-0.02em] uppercase">添加记录</h2>
                 <i data-lucide="notebook-pen" class="w-6 h-6"></i>
             </div>
@@ -329,40 +353,40 @@
                     <div class="flex flex-col gap-2">
                         <label class="text-xs font-semibold uppercase tracking-wider text-fg/60" for="record-date">日期</label>
                         <input id="record-date" type="date"
-                               class="h-12 px-4 bg-muted text-fg rounded-md border-0 outline-none font-medium focus:bg-white focus:border-2 focus:border-primary transition-all duration-200">
+                               class="h-12 px-4 bg-muted text-fg rounded-md border-0 outline-none font-medium focus:bg-canvas focus:border-2 focus:border-primary transition-all duration-200">
                     </div>
                     <div class="flex flex-col gap-2">
                         <label class="text-xs font-semibold uppercase tracking-wider text-fg/60" for="record-time">时间</label>
                         <input id="record-time" type="time"
-                               class="h-12 px-4 bg-muted text-fg rounded-md border-0 outline-none font-medium focus:bg-white focus:border-2 focus:border-primary transition-all duration-200">
+                               class="h-12 px-4 bg-muted text-fg rounded-md border-0 outline-none font-medium focus:bg-canvas focus:border-2 focus:border-primary transition-all duration-200">
                     </div>
                 </div>
                 <div class="flex flex-col gap-2">
                     <label class="text-xs font-semibold uppercase tracking-wider text-fg/60">重要性</label>
                     <div id="importance-selector" class="grid grid-cols-3 gap-2">
                         <button type="button" data-importance="high"   class="h-12 rounded-md text-sm font-semibold tracking-wider uppercase bg-muted text-fg/60 hover:bg-red-50 transition-all duration-200">高</button>
-                        <button type="button" data-importance="medium" class="h-12 rounded-md text-sm font-semibold tracking-wider uppercase bg-fg text-white transition-all duration-200">中</button>
+                        <button type="button" data-importance="medium" class="h-12 rounded-md text-sm font-semibold tracking-wider uppercase bg-fg text-canvas transition-all duration-200">中</button>
                         <button type="button" data-importance="low"    class="h-12 rounded-md text-sm font-semibold tracking-wider uppercase bg-muted text-fg/60 hover:bg-emerald-50 transition-all duration-200">低</button>
                     </div>
                 </div>
                 <div class="flex flex-col gap-2">
                     <label class="text-xs font-semibold uppercase tracking-wider text-fg/60" for="record-title">标题</label>
                     <input id="record-title" type="text" placeholder="请输入标题"
-                           class="h-12 px-4 bg-muted text-fg rounded-md border-0 outline-none font-medium focus:bg-white focus:border-2 focus:border-primary transition-all duration-200">
+                           class="h-12 px-4 bg-muted text-fg rounded-md border-0 outline-none font-medium focus:bg-canvas focus:border-2 focus:border-primary transition-all duration-200">
                 </div>
                 <div class="flex flex-col gap-2">
                     <label class="text-xs font-semibold uppercase tracking-wider text-fg/60" for="record-content">内容</label>
                     <textarea id="record-content" placeholder="请输入内容" rows="4"
-                              class="p-4 bg-muted text-fg rounded-md border-0 outline-none font-medium resize-none focus:bg-white focus:border-2 focus:border-primary transition-all duration-200"></textarea>
+                              class="p-4 bg-muted text-fg rounded-md border-0 outline-none font-medium resize-none focus:bg-canvas focus:border-2 focus:border-primary transition-all duration-200"></textarea>
                 </div>
                 <div class="flex flex-col gap-2">
                     <label class="text-xs font-semibold uppercase tracking-wider text-fg/60" for="record-image">图片</label>
                     <input id="record-image" type="file" accept="image/*"
-                           class="text-sm font-medium file:mr-3 file:py-2 file:px-4 file:rounded-md file:border-0 file:bg-fg file:text-white file:font-semibold file:uppercase file:tracking-wider file:text-xs file:cursor-pointer hover:file:bg-primary transition-all duration-200">
+                           class="text-sm font-medium file:mr-3 file:py-2 file:px-4 file:rounded-md file:border-0 file:bg-fg file:text-canvas file:font-semibold file:uppercase file:tracking-wider file:text-xs file:cursor-pointer hover:file:bg-primary transition-all duration-200">
                     <div id="image-preview" class="hidden mt-2 relative inline-block">
                         <img id="preview-img" src="" alt="预览" class="max-w-[200px] max-h-[200px] object-cover rounded-md border-2 border-border">
                         <button type="button" id="remove-image-btn"
-                                class="absolute -top-3 -right-3 h-8 w-8 bg-white border-2 border-border rounded-md flex items-center justify-center hover:bg-red-50 hover:border-primary transition-all duration-200">
+                                class="absolute -top-3 -right-3 h-8 w-8 bg-canvas border-2 border-border rounded-md flex items-center justify-center hover:bg-red-50 hover:border-primary transition-all duration-200">
                             <i data-lucide="x" class="w-4 h-4"></i>
                         </button>
                     </div>
@@ -370,11 +394,11 @@
             </form>
             <div class="bg-muted px-8 py-6 flex justify-end gap-3">
                 <button id="cancel-btn" type="button"
-                        class="h-12 px-6 bg-white border-2 border-border text-fg rounded-md font-semibold tracking-wider uppercase text-sm hover:bg-gray-100 transition-all duration-200">
+                        class="h-12 px-6 bg-canvas border-2 border-border text-fg rounded-md font-semibold tracking-wider uppercase text-sm hover:bg-muted transition-all duration-200">
                     取消
                 </button>
                 <button id="save-btn" type="button"
-                        class="h-12 px-6 bg-primary text-white rounded-md font-semibold tracking-wider uppercase text-sm flex items-center gap-2 hover:bg-primary-hover hover:scale-105 transition-all duration-200">
+                        class="h-12 px-6 bg-primary text-canvas rounded-md font-semibold tracking-wider uppercase text-sm flex items-center gap-2 hover:bg-primary-hover hover:scale-105 transition-all duration-200">
                     <i data-lucide="save" class="w-4 h-4"></i>保存
                 </button>
             </div>
@@ -384,7 +408,7 @@
     <!-- 创建赛队时间轴 -->
     <div id="create-team-modal" class="vx-modal-overlay">
         <div class="vx-modal">
-            <div class="bg-secondary text-white px-8 py-6 flex items-center justify-between">
+            <div class="bg-secondary text-canvas px-8 py-6 flex items-center justify-between">
                 <h2 class="font-extrabold text-2xl tracking-[-0.02em] uppercase">创建赛队时间轴</h2>
                 <i data-lucide="users" class="w-6 h-6"></i>
             </div>
@@ -392,14 +416,14 @@
                 <div class="flex flex-col gap-2">
                     <label class="text-xs font-semibold uppercase tracking-wider text-fg/60" for="team-name">时间轴名称</label>
                     <input id="team-name" type="text" placeholder="输入赛队时间轴名称"
-                           class="h-12 px-4 bg-muted text-fg rounded-md border-0 outline-none font-medium focus:bg-white focus:border-2 focus:border-primary transition-all duration-200">
+                           class="h-12 px-4 bg-muted text-fg rounded-md border-0 outline-none font-medium focus:bg-canvas focus:border-2 focus:border-primary transition-all duration-200">
                 </div>
             </form>
             <div class="bg-muted px-8 py-6 flex justify-end gap-3">
                 <button id="cancel-team-btn" type="button"
-                        class="h-12 px-6 bg-white border-2 border-border text-fg rounded-md font-semibold tracking-wider uppercase text-sm hover:bg-gray-100 transition-all duration-200">取消</button>
+                        class="h-12 px-6 bg-canvas border-2 border-border text-fg rounded-md font-semibold tracking-wider uppercase text-sm hover:bg-muted transition-all duration-200">取消</button>
                 <button id="save-team-btn" type="button"
-                        class="h-12 px-6 bg-secondary text-white rounded-md font-semibold tracking-wider uppercase text-sm flex items-center gap-2 hover:scale-105 transition-all duration-200">
+                        class="h-12 px-6 bg-secondary text-canvas rounded-md font-semibold tracking-wider uppercase text-sm flex items-center gap-2 hover:scale-105 transition-all duration-200">
                     <i data-lucide="plus" class="w-4 h-4"></i>创建
                 </button>
             </div>
@@ -409,14 +433,14 @@
     <!-- 邀请成员 -->
     <div id="invite-modal" class="vx-modal-overlay">
         <div class="vx-modal">
-            <div class="bg-accent text-white px-8 py-6 flex items-center justify-between">
+            <div class="bg-accent text-canvas px-8 py-6 flex items-center justify-between">
                 <h2 class="font-extrabold text-2xl tracking-[-0.02em] uppercase">邀请成员</h2>
                 <i data-lucide="user-plus" class="w-6 h-6"></i>
             </div>
             <div class="p-8 flex flex-col gap-6">
                 <div class="flex flex-col gap-3">
                     <label class="text-xs font-semibold uppercase tracking-wider text-fg/60">邀请码</label>
-                    <div class="bg-primary text-white rounded-lg p-6 flex items-center justify-between">
+                    <div class="bg-primary text-canvas rounded-lg p-6 flex items-center justify-between">
                         <span id="invite-code-display" class="vx-mono font-extrabold text-4xl flex-1 text-center">---</span>
                         <button id="copy-invite-btn" type="button"
                                 class="h-12 w-12 border-4 border-white text-white rounded-md flex items-center justify-center hover:bg-white hover:text-primary transition-all duration-200">
@@ -431,7 +455,7 @@
             </div>
             <div class="bg-muted px-8 py-6 flex justify-end">
                 <button id="close-invite-btn" type="button"
-                        class="h-12 px-6 bg-white border-2 border-border text-fg rounded-md font-semibold tracking-wider uppercase text-sm hover:bg-gray-100 transition-all duration-200">关闭</button>
+                        class="h-12 px-6 bg-canvas border-2 border-border text-fg rounded-md font-semibold tracking-wider uppercase text-sm hover:bg-muted transition-all duration-200">关闭</button>
             </div>
         </div>
     </div>
@@ -439,7 +463,7 @@
     <!-- 加入赛队 -->
     <div id="join-team-modal" class="vx-modal-overlay">
         <div class="vx-modal">
-            <div class="bg-primary text-white px-8 py-6 flex items-center justify-between">
+            <div class="bg-primary text-canvas px-8 py-6 flex items-center justify-between">
                 <h2 class="font-extrabold text-2xl tracking-[-0.02em] uppercase">加入赛队时间轴</h2>
                 <i data-lucide="user-plus" class="w-6 h-6"></i>
             </div>
@@ -447,14 +471,14 @@
                 <div class="flex flex-col gap-2">
                     <label class="text-xs font-semibold uppercase tracking-wider text-fg/60" for="invite-code-input">邀请码</label>
                     <input id="invite-code-input" type="text" placeholder="输入 6 位邀请码" maxlength="6"
-                           class="h-14 px-4 bg-muted text-fg vx-mono font-extrabold text-2xl text-center rounded-md border-0 outline-none focus:bg-white focus:border-2 focus:border-primary transition-all duration-200">
+                           class="h-14 px-4 bg-muted text-fg vx-mono font-extrabold text-2xl text-center rounded-md border-0 outline-none focus:bg-canvas focus:border-2 focus:border-primary transition-all duration-200">
                 </div>
             </form>
             <div class="bg-muted px-8 py-6 flex justify-end gap-3">
                 <button id="cancel-join-btn" type="button"
-                        class="h-12 px-6 bg-white border-2 border-border text-fg rounded-md font-semibold tracking-wider uppercase text-sm hover:bg-gray-100 transition-all duration-200">取消</button>
+                        class="h-12 px-6 bg-canvas border-2 border-border text-fg rounded-md font-semibold tracking-wider uppercase text-sm hover:bg-muted transition-all duration-200">取消</button>
                 <button id="confirm-join-btn" type="button"
-                        class="h-12 px-6 bg-primary text-white rounded-md font-semibold tracking-wider uppercase text-sm flex items-center gap-2 hover:bg-primary-hover hover:scale-105 transition-all duration-200">
+                        class="h-12 px-6 bg-primary text-canvas rounded-md font-semibold tracking-wider uppercase text-sm flex items-center gap-2 hover:bg-primary-hover hover:scale-105 transition-all duration-200">
                     <i data-lucide="log-in" class="w-4 h-4"></i>加入
                 </button>
             </div>
@@ -465,13 +489,15 @@
          移动端抽屉
          ============================================================ -->
     <div id="mobile-drawer" class="vx-mobile-drawer">
-        <div class="flex items-center justify-between mb-6">
+        <!-- 抽屉首行：高度由内容决定（不强制 h-16/h-20），关闭按钮用绝对定位独立放置 -->
+        <div class="flex items-center justify-between mb-6 pr-14">
             <div class="flex items-center gap-2">
-                <div class="h-10 w-10 bg-primary text-white rounded-md flex items-center justify-center font-extrabold">V</div>
+                <div class="h-10 w-10 bg-primary text-canvas rounded-md flex items-center justify-center font-extrabold">V</div>
                 <span class="font-extrabold text-xl tracking-[-0.02em]">VEX-Timeline</span>
             </div>
+            <!-- 关闭按钮：绝对定位，位置由 .vx-mobile-drawer-close CSS 完全镜像 header 的开启按钮 -->
             <button id="mobile-drawer-close" type="button"
-                    class="h-10 w-10 flex items-center justify-center bg-muted rounded-md hover:bg-gray-200 transition-all duration-200">
+                    class="vx-mobile-drawer-close h-10 w-10 flex items-center justify-center bg-muted rounded-md hover:bg-border transition-all duration-200">
                 <i data-lucide="x" class="w-5 h-5"></i>
             </button>
         </div>
@@ -481,11 +507,11 @@
             <div class="text-xs font-semibold uppercase tracking-wider text-fg/60 mb-2">快捷操作</div>
             <div class="flex flex-col gap-2">
                 <button id="mobile-add-btn" type="button"
-                        class="h-12 bg-primary text-white rounded-md font-semibold tracking-wider uppercase text-sm flex items-center justify-center gap-2 hover:bg-primary-hover transition-all duration-200">
+                        class="h-12 bg-primary text-canvas rounded-md font-semibold tracking-wider uppercase text-sm flex items-center justify-center gap-2 hover:bg-primary-hover transition-all duration-200">
                     <i data-lucide="plus" class="w-4 h-4"></i>添加记录
                 </button>
                 <button id="mobile-cloud-refresh-btn" type="button"
-                        class="h-12 border-2 border-border bg-white text-fg rounded-md font-semibold tracking-wider uppercase text-sm flex items-center justify-center gap-2 hover:border-primary hover:text-primary transition-all duration-200">
+                        class="h-12 border-2 border-border bg-canvas text-fg rounded-md font-semibold tracking-wider uppercase text-sm flex items-center justify-center gap-2 hover:border-primary hover:text-primary transition-all duration-200">
                     <i data-lucide="cloud" class="w-4 h-4"></i>刷新云端
                 </button>
             </div>
@@ -502,15 +528,15 @@
             <div class="text-xs font-semibold uppercase tracking-wider text-fg/60 mb-2">赛队</div>
             <div class="flex flex-col gap-2">
                 <button data-team-action="create" type="button"
-                        class="h-12 bg-secondary text-white rounded-md font-semibold tracking-wider uppercase text-sm flex items-center justify-center gap-2 hover:scale-105 transition-all duration-200">
+                        class="h-12 bg-secondary text-canvas rounded-md font-semibold tracking-wider uppercase text-sm flex items-center justify-center gap-2 hover:scale-105 transition-all duration-200">
                     <i data-lucide="users" class="w-4 h-4"></i>创建赛队
                 </button>
                 <button data-team-action="join" type="button"
-                        class="h-12 border-4 border-secondary text-secondary rounded-md font-semibold tracking-wider uppercase text-sm flex items-center justify-center gap-2 hover:bg-secondary hover:text-white transition-all duration-200">
+                        class="h-12 border-4 border-secondary text-secondary rounded-md font-semibold tracking-wider uppercase text-sm flex items-center justify-center gap-2 hover:bg-secondary hover:text-canvas transition-all duration-200">
                     <i data-lucide="user-plus" class="w-4 h-4"></i>加入赛队
                 </button>
                 <button data-team-action="manage" id="mobile-manage-team-btn" type="button"
-                        class="hidden h-12 border-4 border-fg text-fg rounded-md font-semibold tracking-wider uppercase text-sm flex items-center justify-center gap-2 hover:bg-fg hover:text-white transition-all duration-200">
+                        class="hidden h-12 border-4 border-fg text-fg rounded-md font-semibold tracking-wider uppercase text-sm flex items-center justify-center gap-2 hover:bg-fg hover:text-canvas transition-all duration-200">
                     <i data-lucide="settings" class="w-4 h-4"></i>管理赛队
                 </button>
             </div>
@@ -518,7 +544,7 @@
 
         <!-- 移动端登出 -->
         <button id="mobile-logout-btn" type="button"
-                class="mt-auto h-12 border-4 border-primary text-primary rounded-md font-semibold tracking-wider uppercase text-sm flex items-center justify-center gap-2 hover:bg-primary hover:text-white transition-all duration-200">
+                class="mt-auto h-12 border-4 border-primary text-primary rounded-md font-semibold tracking-wider uppercase text-sm flex items-center justify-center gap-2 hover:bg-primary hover:text-canvas transition-all duration-200">
             <i data-lucide="log-out" class="w-4 h-4"></i>登出
         </button>
     </div>

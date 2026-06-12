@@ -19,6 +19,7 @@
   --color-bg: #FFFFFF;
   --color-fg: #111827;
   --color-primary: #3B82F6;
+  --color-primary-hover: #2563EB;
   --color-secondary: #10B981;
   --color-accent: #F59E0B;
   --color-muted: #F3F4F6;
@@ -27,6 +28,53 @@
 
   --radius-md: 6px;
   --radius-lg: 8px;
+}
+
+/* ============================================================
+   派生色：原代码中散落的硬编码 hex / rgba，统一为变量以便深色模式整体切换
+   ============================================================ */
+:root {
+  --color-fg-muted: rgba(17, 24, 39, 0.6);          /* 次级文字（时间戳/正文弱化） */
+  --color-modal-overlay: rgba(17, 24, 39, 0.80);     /* 模态框遮罩 */
+  --color-tl-high-bg: #FEF2F2;                       /* timeline card importance=high 背景 */
+  --color-tl-high-bg-hover: #FEE2E2;
+  --color-tl-medium-bg-hover: #FFFBEB;
+  --color-tl-low-bg-hover: #E5E7EB;
+  --color-tl-low-bg: #ECFDF5;                        /* timeline card importance=low 背景（emerald-50） */
+  --color-hero-bg: #3B82F6;                          /* 登录页左侧 Hero：浅色 = 主色蓝；深色 = 极深藏青（不刺眼但保留品牌色感） */
+  --color-cloud-ok: #059669;                         /* 云状态 OK 绿 */
+  --color-menu-hover: #EFF6FF;                       /* 时间轴下拉菜单 hover/active */
+  --color-shadow-footer: rgba(17, 24, 39, 0.04);     /* 移动端模态框 footer 顶阴影（DESIGN.md §五禁止使用，本变量保留但仅 light 下生效） */
+}
+
+/* ============================================================
+   深色模式：自动跟随浏览器 prefers-color-scheme
+   色板基于 slate，与现有 flat 设计调性契合；primary/secondary/accent 在深色下提亮一档以保对比度
+   ============================================================ */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg: #0F172A;              /* slate-900 */
+    --color-fg: #F1F5F9;              /* slate-100 */
+    --color-primary: #60A5FA;         /* blue-400 */
+    --color-primary-hover: #3B82F6;   /* blue-500 */
+    --color-secondary: #34D399;       /* emerald-400 */
+    --color-accent: #FBBF24;          /* amber-400 */
+    --color-muted: #1E293B;           /* slate-800 */
+    --color-border: #334155;          /* slate-700 */
+    --color-danger: #F87171;          /* red-400 */
+
+    --color-fg-muted: rgba(241, 245, 249, 0.78);  /* 0.6 → 0.78：提升深色下时间戳/正文次级文字的对比度（时间轴时间已多次反馈看不清） */
+    --color-modal-overlay: rgba(0, 0, 0, 0.75);
+    --color-tl-high-bg: rgba(248, 113, 113, 0.10);
+    --color-tl-high-bg-hover: rgba(248, 113, 113, 0.18);
+    --color-tl-medium-bg-hover: rgba(251, 191, 36, 0.10);
+    --color-tl-low-bg-hover: #334155;
+    --color-tl-low-bg: rgba(52, 211, 153, 0.10);      /* emerald-400 10% 透明 */
+    --color-hero-bg: #0F1E3A;                         /* 极深藏青：深色模式下 Hero 的底色，比 slate-900 略带蓝调以保留品牌识别 */
+    --color-cloud-ok: #10B981;
+    --color-menu-hover: rgba(96, 165, 250, 0.15);
+    --color-shadow-footer: transparent;
+  }
 }
 
 * {
@@ -95,7 +143,7 @@ body {
 .vx-modal-overlay {
   position: fixed;
   inset: 0;
-  background-color: rgba(17, 24, 39, 0.80); /* fg/80 */
+  background-color: var(--color-modal-overlay); /* fg/80 (light) / 纯黑 0.75 (dark) */
   display: none;
   align-items: center;
   justify-content: center;
@@ -168,7 +216,7 @@ body {
     flex-direction: column;
     gap: 0.75rem;            /* 12px */
     border-top: 1px solid var(--color-border);
-    box-shadow: 0 -2px 8px rgba(17, 24, 39, 0.04);
+    /* DESIGN.md §五禁止 box-shadow；改用 border-top 即可与 body 视觉分隔 */
     padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
   }
   .vx-modal > .bg-muted button {
@@ -198,15 +246,15 @@ body {
   animation: vx-card-in 0.3s ease-out forwards;
 }
 
-.vx-timeline-item[data-importance="high"]   { border-left-color: var(--color-primary);   background-color: #FEF2F2; }
+.vx-timeline-item[data-importance="high"]   { border-left-color: var(--color-primary);   background-color: var(--color-tl-high-bg); }
 .vx-timeline-item[data-importance="medium"] { border-left-color: var(--color-accent);    background-color: var(--color-bg); }
 .vx-timeline-item[data-importance="low"]    { border-left-color: var(--color-secondary); background-color: var(--color-muted); }
 
 .vx-timeline-item:hover { transform: scale(1.02); }
 
-.vx-timeline-item[data-importance="high"]:hover   { background-color: #FEE2E2; }
-.vx-timeline-item[data-importance="medium"]:hover { background-color: #FFFBEB; }
-.vx-timeline-item[data-importance="low"]:hover    { background-color: #E5E7EB; }
+.vx-timeline-item[data-importance="high"]:hover   { background-color: var(--color-tl-high-bg-hover); }
+.vx-timeline-item[data-importance="medium"]:hover { background-color: var(--color-tl-medium-bg-hover); }
+.vx-timeline-item[data-importance="low"]:hover    { background-color: var(--color-tl-low-bg-hover); }
 
 /* ============================================================
    月历单元
@@ -411,11 +459,11 @@ body {
 }
 
 .vx-timeline-menu-item:hover {
-  background-color: #EFF6FF; /* blue-50 */
+  background-color: var(--color-menu-hover); /* blue-50 (light) / primary 15% (dark) */
 }
 
 .vx-timeline-menu-item.active {
-  background-color: #EFF6FF;
+  background-color: var(--color-menu-hover);
   border-left-color: var(--color-primary);
   font-weight: 700;
 }
@@ -452,7 +500,7 @@ body {
 
 .vx-cloud-status .vx-cloud-icon { display: inline-flex; }
 
-.vx-cloud-status.is-ok      { background-color: #059669; color: var(--color-bg); border-color: #059669; }
+.vx-cloud-status.is-ok      { background-color: var(--color-cloud-ok); color: var(--color-bg); border-color: var(--color-cloud-ok); }
 .vx-cloud-status.is-error   { background-color: var(--color-primary);   color: var(--color-bg); border-color: var(--color-primary); }
 .vx-cloud-status.is-offline { background-color: var(--color-accent);    color: var(--color-bg); border-color: var(--color-accent); }
 .vx-cloud-status.is-syncing .vx-cloud-icon { animation: vx-spin 1.2s linear infinite; }
@@ -486,7 +534,8 @@ body {
   z-index: 100;
   display: none;
   flex-direction: column;
-  padding: 0.75rem 0.75rem calc(0.75rem + env(safe-area-inset-bottom, 0px));   /* 移动端 12px 内边距，对齐顶部 header */
+  /* 顶部 0 内边距；左右 12px；底部 12px + 安全区 */
+  padding: 0 0.75rem calc(0.75rem + env(safe-area-inset-bottom, 0px));
   overflow-y: auto;             /* 长内容可滚动（多赛队 + 4 按钮） */
   -webkit-overflow-scrolling: touch;  /* iOS 顺滑滚动 */
   animation: vx-fade-in 0.2s ease-out forwards;
@@ -494,7 +543,30 @@ body {
 
 @media (min-width: 640px) {
   .vx-mobile-drawer {
-    padding: 1.5rem;           /* sm 及以上：恢复 24px 内边距（虽然抽屉实际只在 < lg 触发） */
+    /* sm 及以上：只增加左右内边距到 24px（与 header 的 sm:px-6 对齐），顶部依然 0 让绝对定位的 X 按钮和 header 的汉堡按钮位置一致 */
+    padding: 0 1.5rem calc(1.5rem + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* 关闭按钮：绝对定位，位置完全镜像 header 的开启按钮
+   - 水平：right 距离与 header 的 px-3/sm:px-6 一致
+   - 垂直：与 header 高度 h-16 md:h-20 居中（top = (header_h - 40) / 2） */
+.vx-mobile-drawer-close {
+  position: absolute;
+  top: 12px;            /* (64 - 40) / 2 = 12，header h-16 时按钮居中 */
+  right: 0.75rem;       /* 12px，与 header px-3 一致 */
+  z-index: 1;           /* 高于首行内容 */
+}
+
+@media (min-width: 768px) {
+  .vx-mobile-drawer-close {
+    top: 20px;          /* (80 - 40) / 2 = 20，header md:h-20 时按钮居中 */
+  }
+}
+
+@media (min-width: 640px) {
+  .vx-mobile-drawer-close {
+    right: 1.5rem;      /* 24px，与 header sm:px-6 一致 */
   }
 }
 
@@ -580,7 +652,7 @@ body {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: rgba(17, 24, 39, 0.6);
+  color: var(--color-fg-muted);
   line-height: 1;             /* Round 8：压缩行高（默认 1.5=15px → 10px）让 14:30 紧贴边框 */
   margin: 0 0 4px 0;          /* Round 8：显式 margin: 0 去掉浏览器默认 margin */
   display: block;             /* Round 9：显式 block 确保 margin 生效 */
@@ -600,7 +672,7 @@ body {
 }
 .vx-item-content {
   font-size: 0.875rem;
-  color: rgba(17, 24, 39, 0.6);
+  color: var(--color-fg-muted);
   margin-top: 4px;
   margin-bottom: 8px;
 }
@@ -662,3 +734,57 @@ body {
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.15em;
 }
+
+/* ============================================================
+   主题色工具类的安全网（Tailwind Play CDN 在某些场景下可能漏生成，
+   显式声明确保深色模式一定生效——比 body 元素的暗色背景更可靠）
+   ============================================================ */
+.bg-canvas        { background-color: var(--color-bg); }
+.bg-hero          { background-color: var(--color-hero-bg); }  /* 登录页左半边 Hero（深色下用极深藏青） */
+.text-canvas      { color: var(--color-bg); }
+.bg-fg            { background-color: var(--color-fg); }
+.text-fg          { color: var(--color-fg); }
+.bg-muted         { background-color: var(--color-muted); }
+.bg-primary       { background-color: var(--color-primary); }
+.bg-secondary     { background-color: var(--color-secondary); }
+.bg-accent        { background-color: var(--color-accent); }
+.bg-danger        { background-color: var(--color-danger); }
+.bg-border        { background-color: var(--color-border); }
+.border-canvas    { border-color: var(--color-bg); }
+.border-fg        { border-color: var(--color-fg); }
+.border-border    { border-color: var(--color-border); }
+.border-primary   { border-color: var(--color-primary); }
+.border-danger    { border-color: var(--color-danger); }
+.border-secondary { border-color: var(--color-secondary); }
+.border-accent    { border-color: var(--color-accent); }
+.text-primary     { color: var(--color-primary); }
+.text-secondary   { color: var(--color-secondary); }
+.text-accent      { color: var(--color-accent); }
+.text-danger      { color: var(--color-danger); }
+.text-fg\/60      { color: var(--color-fg-muted); }
+.focus\:bg-canvas:focus    { background-color: var(--color-bg); }
+.hover\:bg-muted:hover     { background-color: var(--color-muted); }
+.hover\:bg-fg:hover        { background-color: var(--color-fg); }
+.hover\:bg-canvas:hover    { background-color: var(--color-bg); }
+.hover\:bg-primary:hover   { background-color: var(--color-primary); }
+.hover\:bg-primary-hover:hover { background-color: var(--color-primary-hover); }
+.hover\:bg-danger:hover    { background-color: var(--color-danger); }
+.hover\:bg-secondary:hover { background-color: var(--color-secondary); }
+.hover\:text-fg:hover      { color: var(--color-fg); }
+.hover\:text-canvas:hover  { color: var(--color-bg); }
+.hover\:text-danger:hover  { color: var(--color-danger); }
+.hover\:text-primary:hover { color: var(--color-primary); }
+.hover\:text-secondary:hover { color: var(--color-secondary); }
+.hover\:border-primary:hover  { border-color: var(--color-primary); }
+.hover\:border-danger:hover   { border-color: var(--color-danger); }
+.bg-canvas\/20  { background-color: rgba(255, 255, 255, 0.20); }   /* 关闭按钮等：浅色模式下是白 20% 透在 muted 上 */
+.bg-canvas\/40  { background-color: rgba(255, 255, 255, 0.40); }
+.hover\:bg-canvas\/40:hover { background-color: rgba(255, 255, 255, 0.40); }
+@media (prefers-color-scheme: dark) {
+  .bg-canvas\/20  { background-color: rgba(241, 245, 249, 0.18); } /* 深色模式下用浅色 18% 透（确保在 slate-800 muted 上可见） */
+  .bg-canvas\/40  { background-color: rgba(241, 245, 249, 0.32); }
+  .hover\:bg-canvas\/40:hover { background-color: rgba(241, 245, 249, 0.32); }
+}
+.file\:bg-fg::file-selector-button   { background-color: var(--color-fg); }
+.file\:text-canvas::file-selector-button { color: var(--color-bg); }
+.hover\:file\:bg-primary:hover::file-selector-button { background-color: var(--color-primary); }
