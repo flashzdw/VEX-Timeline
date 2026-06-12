@@ -86,6 +86,10 @@
 html {
   font-size: 16px;
   overflow-x: hidden;            /* 防止任何子元素撑出视口造成横向滚动 */
+  /* 平滑滚动：Hero「了解更多」、顶栏锚点链接、滚动指示等所有 #hash 跳转都用 smooth */
+  scroll-behavior: smooth;
+  /* 锚点跳转时给 sticky header 留出空间，避免目标内容被遮挡 */
+  scroll-padding-top: 80px;
 }
 
 body {
@@ -943,7 +947,11 @@ body[data-scene="app"] .vx-site-header { display: none !important; }
      比 max-height: 0 → 500px 更平滑（避免瞬时 snap 抽搐）
    - Chrome/Safari/Firefox 122+ 全部支持，旧浏览器降级到无动画
    ============================================================ */
-.vx-faq-item { border-bottom: 2px solid var(--color-border); }
+.vx-faq-item {
+  border-bottom: 2px solid var(--color-border);
+  /* 隔离布局：FAQ 高度变化时不会影响外部容器计算，避免底部抽搐 */
+  contain: layout;
+}
 .vx-faq-item:last-child { border-bottom: 0; }
 .vx-faq-item summary::-webkit-details-marker { display: none; }
 .vx-faq-item summary { list-style: none; }
@@ -960,6 +968,11 @@ body[data-scene="app"] .vx-site-header { display: none !important; }
 }
 .vx-faq-summary:hover { background-color: var(--color-muted); }
 
+/* + → × 图标旋转：与下方内容展开的 0.35s 同步，避免「图标转完还在展开」的违和感 */
+.vx-faq-item .vx-faq-summary > i {
+  transition: transform 0.35s cubic-bezier(0.4, 0.0, 0.2, 1) !important;
+}
+
 /* 答案外层 grid 容器：从 0fr 平滑过渡到 1fr */
 .vx-faq-grid-wrap {
   display: grid;
@@ -975,6 +988,12 @@ body[data-scene="app"] .vx-site-header { display: none !important; }
 .vx-faq-grid-wrap > .vx-faq-answer {
   overflow: hidden;
   min-height: 0;
+  /* 关键：padding-bottom 也参与过渡，与 grid-template-rows 同步
+     否则高度 0 → 内容高度时，padding 突然出现 1.25rem 造成底部 pop */
+  padding-bottom: 0;
+  transition: padding-bottom 0.35s cubic-bezier(0.4, 0.0, 0.2, 1);
+}
+.vx-faq-item[open] > .vx-faq-grid-wrap > .vx-faq-answer {
   padding-bottom: 1.25rem;
 }
 
