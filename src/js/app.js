@@ -368,7 +368,9 @@ class App {
     if (!menu) return;
 
     // Round 4：取消本地时间轴概念，只渲染云端时间轴
-    const items = this.timelines.map(t => ({ id: t.id, label: t.name, type: t.type }));
+    // label 走 _findTimelineName()：默认名（个人/赛队时间轴）会按当前语言翻译；
+    // 用户自定义名原样保留。顶部选中态 label 也是同一个函数，两边永远一致。
+    const items = this.timelines.map(t => ({ id: t.id, label: this._findTimelineName(t.id), type: t.type }));
 
     // 桌面菜单渲染
     menu.innerHTML = items.map(item => `
