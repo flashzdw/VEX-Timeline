@@ -161,52 +161,178 @@
          ============================================================ -->
     <div id="home-page" class="hidden">
 
-        <!-- ===== HERO ===== -->
+        <!-- ===== HERO =====
+             左文 + 右产品 UI 预览的左右结构
+             - 左侧：定位 eyebrow / 主标题 / 价值副标题 / CTA / 特性标签
+             - 右侧：真实产品 UI 卡片（顶部栏 + 过滤 + 时间轴），与主应用同款设计语言
+             - 背景：扁平几何 + 极简电路/机械轮廓 SVG，全部低透明度
+             - 严格遵守 DESIGN.md：零阴影 / 零渐变 / 零 backdrop-blur -->
         <section id="home-hero" class="relative min-h-screen flex flex-col overflow-hidden bg-primary text-canvas">
-            <!-- 几何装饰（pointer-events-none） -->
-            <div class="absolute -top-40 -right-40 h-[28rem] w-[28rem] rounded-full bg-white/10 pointer-events-none"></div>
-            <div class="absolute bottom-12 left-8 sm:left-16 h-44 w-44 rotate-12 bg-accent/25 pointer-events-none"></div>
-            <div class="hidden md:block absolute top-1/3 right-1/4 h-24 w-24 rotate-45 bg-secondary/30 pointer-events-none"></div>
-            <div class="hidden md:block absolute bottom-1/3 right-10 h-16 w-16 rounded-md bg-canvas/15 pointer-events-none"></div>
-            <div class="hidden lg:block absolute top-1/2 left-1/3 h-3 w-32 bg-canvas/20 pointer-events-none"></div>
-            <!-- 新增装饰（C1） -->
-            <div class="absolute top-20 right-1/3 h-16 w-16 rotate-45 bg-secondary/20 pointer-events-none"></div>
-            <div class="absolute top-1/2 left-10 hidden lg:block h-24 w-24 rounded-md bg-canvas/10 pointer-events-none"></div>
-            <div class="hidden md:block absolute bottom-20 right-1/3 h-2 w-40 bg-accent/40 pointer-events-none"></div>
-            <div class="absolute top-1/4 left-1/4 h-6 w-6 rounded-full bg-canvas/20 pointer-events-none"></div>
+            <!-- 装饰层（背景，全部 pointer-events-none） -->
+            <div class="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden="true">
+                <!-- 大色块（C1） -->
+                <div class="absolute -top-40 -right-40 h-[28rem] w-[28rem] rounded-full bg-white/10"></div>
+                <div class="absolute bottom-12 left-8 sm:left-16 h-44 w-44 rotate-12 bg-accent/25"></div>
+                <div class="hidden md:block absolute top-1/3 right-1/4 h-24 w-24 rotate-45 bg-secondary/30"></div>
+                <div class="hidden md:block absolute bottom-1/3 right-10 h-16 w-16 rounded-md bg-canvas/15"></div>
 
-            <div class="relative z-10 flex-1 max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 pt-28 sm:pt-32 lg:pt-40 pb-16 flex flex-col">
-                <div class="max-w-3xl">
-                    <div class="inline-flex items-center gap-2 px-3 py-1.5 bg-canvas/15 rounded-md mb-6 sm:mb-8">
-                        <span class="h-2 w-2 rounded-md bg-accent"></span>
-                        <span class="text-xs font-semibold uppercase tracking-wider" data-i18n="home.hero.eyebrow">VEX ROBOTICS · 备赛时间轴</span>
+                <!-- SVG 装饰 1：时间轴虚线轨（贯穿右侧 mockup 区域） -->
+                <svg class="hidden md:block absolute top-0 bottom-0 right-[14%] w-px h-full opacity-[0.20]" aria-hidden="true">
+                    <line x1="0" y1="0" x2="0" y2="100%" stroke="white" stroke-width="2" stroke-dasharray="6 8"/>
+                </svg>
+
+                <!-- SVG 装饰 2：电路感节点连线（右上） -->
+                <svg class="hidden lg:block absolute top-[14%] right-[6%] w-32 h-32 opacity-[0.22]" viewBox="0 0 128 128" aria-hidden="true">
+                    <path d="M 0 32 L 32 32 L 32 0 M 64 0 L 64 48 L 96 48" fill="none" stroke="white" stroke-width="2" stroke-linecap="square"/>
+                    <circle cx="32" cy="32" r="3" fill="white"/>
+                    <circle cx="64" cy="0" r="3" fill="white"/>
+                    <circle cx="96" cy="48" r="3" fill="white"/>
+                    <path d="M 96 48 L 128 48" fill="none" stroke="white" stroke-width="2" stroke-linecap="square" stroke-dasharray="3 4"/>
+                </svg>
+
+                <!-- SVG 装饰 3：机械轮廓（L 形定位标） -->
+                <svg class="hidden lg:block absolute bottom-[20%] right-[36%] w-6 h-6 opacity-30" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M 0 0 L 24 0 L 24 6 M 0 0 L 0 24 L 6 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="square"/>
+                </svg>
+                <svg class="hidden md:block absolute top-[22%] left-[28%] w-5 h-5 opacity-25" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M 0 0 L 24 0 L 24 6 M 0 0 L 0 24 L 6 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="square"/>
+                </svg>
+
+                <!-- 浮动小色块（C1 旧） -->
+                <div class="absolute top-20 right-1/3 h-16 w-16 rotate-45 bg-secondary/20"></div>
+                <div class="absolute top-1/2 left-10 hidden lg:block h-24 w-24 rounded-md bg-canvas/10"></div>
+                <div class="hidden md:block absolute bottom-20 right-1/3 h-2 w-40 bg-accent/40"></div>
+                <div class="absolute top-1/4 left-1/4 h-6 w-6 rounded-full bg-canvas/20"></div>
+            </div>
+
+            <!-- 主体内容 -->
+            <div class="relative z-10 flex-1 flex flex-col max-w-7xl mx-auto w-full px-6 sm:px-8 lg:px-12 pt-28 sm:pt-32 lg:pt-36 pb-8">
+                <div class="grid lg:grid-cols-12 gap-10 lg:gap-12 items-center flex-1">
+
+                    <!-- 左：文字（lg 占 5/12） -->
+                    <div class="lg:col-span-5 max-w-xl">
+                        <div class="inline-flex items-center gap-2 px-3 py-1.5 bg-canvas/15 rounded-md mb-6 sm:mb-8">
+                            <span class="h-2 w-2 rounded-md bg-accent"></span>
+                            <span class="text-xs font-semibold uppercase tracking-wider" data-i18n="home.hero.eyebrow">VEX ROBOTICS · 备赛时间轴</span>
+                        </div>
+
+                        <h1 class="font-extrabold tracking-[-0.02em] leading-[0.95] text-5xl sm:text-6xl md:text-7xl lg:text-[4.75rem] mb-6 sm:mb-8" data-i18n="home.hero.title">记录备赛<br/>每一天。</h1>
+
+                        <p class="text-lg sm:text-xl font-medium max-w-md mb-10 sm:mb-12 opacity-90 leading-relaxed" data-i18n="home.hero.subtitle">让 VEX 团队的每一次设计、测试和优化都有迹可循。</p>
+
+                        <div class="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-12 sm:mb-16">
+                            <a href="#" id="home-hero-cta-primary" class="h-14 sm:h-16 px-6 sm:px-8 bg-canvas text-primary rounded-md font-extrabold tracking-wider uppercase text-sm sm:text-base flex items-center justify-center gap-2 hover:bg-canvas/90 hover:scale-105 transition-all duration-200">
+                                <span data-i18n="home.hero.cta.primary">开始使用</span>
+                                <i data-lucide="arrow-right" class="w-5 h-5"></i>
+                            </a>
+                            <a href="#home-features" class="h-14 sm:h-16 px-6 sm:px-8 border-4 border-canvas text-canvas bg-transparent rounded-md font-extrabold tracking-wider uppercase text-sm sm:text-base flex items-center justify-center gap-2 hover:bg-canvas hover:text-primary hover:scale-105 transition-all duration-200">
+                                <i data-lucide="chevron-down" class="w-5 h-5"></i>
+                                <span data-i18n="home.hero.cta.secondary">了解更多</span>
+                            </a>
+                        </div>
+
+                        <div class="flex flex-wrap items-center gap-x-6 gap-y-3 text-xs sm:text-sm font-semibold uppercase tracking-wider opacity-90">
+                            <span class="flex items-center gap-2"><i data-lucide="cloud" class="w-4 h-4"></i><span data-i18n="home.hero.feature.cloud">云端同步</span></span>
+                            <span class="flex items-center gap-2"><i data-lucide="users" class="w-4 h-4"></i><span data-i18n="home.hero.feature.team">赛队协作</span></span>
+                            <span class="flex items-center gap-2"><i data-lucide="image" class="w-4 h-4"></i><span data-i18n="home.hero.feature.media">图片记录</span></span>
+                        </div>
                     </div>
 
-                    <h1 class="font-extrabold tracking-[-0.02em] leading-[0.95] text-5xl sm:text-6xl md:text-7xl lg:text-[5.5rem] mb-6 sm:mb-8" data-i18n="home.hero.title">记录备赛<br/>每一天。</h1>
+                    <!-- 右：产品 UI 预览（lg 占 7/12） -->
+                    <div class="lg:col-span-7 relative">
+                        <div class="vx-hero-mockup-wrap max-w-2xl mx-auto lg:ml-auto lg:mr-0">
 
-                    <p class="text-lg sm:text-xl font-medium max-w-xl mb-10 sm:mb-12 opacity-90" data-i18n="home.hero.subtitle">为 VEX 战队打造的时间轴工具。</p>
+                            <!-- 浮动标签：左上 —— 今日统计 -->
+                            <div class="vx-hero-tag vx-hero-tag--top hidden sm:inline-flex">
+                                <i data-lucide="calendar-check-2" class="w-3.5 h-3.5 text-primary"></i>
+                                <span data-i18n="home.hero.mockup.tag.today">今天 · 3 条记录</span>
+                            </div>
 
-                    <div class="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-12 sm:mb-16">
-                        <a href="#" id="home-hero-cta-primary" class="h-14 sm:h-16 px-6 sm:px-8 bg-canvas text-primary rounded-md font-extrabold tracking-wider uppercase text-sm sm:text-base flex items-center justify-center gap-2 hover:bg-canvas/90 hover:scale-105 transition-all duration-200">
-                            <span data-i18n="home.hero.cta.primary">开始使用</span>
-                            <i data-lucide="arrow-right" class="w-5 h-5"></i>
-                        </a>
-                        <a href="#home-features" class="h-14 sm:h-16 px-6 sm:px-8 border-4 border-canvas text-canvas bg-transparent rounded-md font-extrabold tracking-wider uppercase text-sm sm:text-base flex items-center justify-center gap-2 hover:bg-canvas hover:text-primary hover:scale-105 transition-all duration-200">
-                            <i data-lucide="chevron-down" class="w-5 h-5"></i>
-                            <span data-i18n="home.hero.cta.secondary">了解更多</span>
-                        </a>
-                    </div>
+                            <!-- 浮动标签：右下 —— 云端状态 -->
+                            <div class="vx-hero-tag vx-hero-tag--bottom hidden sm:inline-flex">
+                                <span class="h-2 w-2 rounded-md bg-secondary"></span>
+                                <i data-lucide="cloud" class="w-3.5 h-3.5"></i>
+                                <span data-i18n="home.hero.mockup.tag.cloud">已同步</span>
+                            </div>
 
-                    <div class="flex flex-wrap items-center gap-x-6 gap-y-3 text-xs sm:text-sm font-semibold uppercase tracking-wider opacity-90">
-                        <span class="flex items-center gap-2"><i data-lucide="cloud" class="w-4 h-4"></i><span data-i18n="home.hero.feature.cloud">云端同步</span></span>
-                        <span class="flex items-center gap-2"><i data-lucide="users" class="w-4 h-4"></i><span data-i18n="home.hero.feature.team">赛队协作</span></span>
-                        <span class="flex items-center gap-2"><i data-lucide="image" class="w-4 h-4"></i><span data-i18n="home.hero.feature.media">图片记录</span></span>
+                            <!-- 产品 UI 卡片（与主应用同款设计 token：色块化、零阴影） -->
+                            <div class="vx-hero-mockup">
+                                <!-- 顶部栏：Logo + 视图切换 + 用户头像 -->
+                                <div class="vx-hero-mockup-header">
+                                    <div class="flex items-center gap-2 min-w-0">
+                                        <div class="h-7 w-7 bg-primary text-canvas rounded-md flex items-center justify-center font-extrabold text-xs shrink-0">V</div>
+                                        <span class="text-xs font-bold tracking-tight text-fg truncate">VEX-Timeline</span>
+                                    </div>
+                                    <div class="flex items-center gap-1 bg-muted rounded-md p-0.5 shrink-0">
+                                        <span class="h-6 px-2 bg-canvas text-fg rounded text-[10px] font-semibold uppercase tracking-wider flex items-center" data-i18n="home.hero.mockup.view.timeline">时间轴</span>
+                                        <span class="h-6 px-2 text-fg/50 text-[10px] font-semibold uppercase tracking-wider flex items-center" data-i18n="home.hero.mockup.view.month">月历</span>
+                                    </div>
+                                    <div class="h-7 w-7 rounded-full bg-secondary text-canvas text-[10px] font-extrabold flex items-center justify-center shrink-0">U</div>
+                                </div>
+
+                                <!-- 主体：过滤栏 + 时间轴 -->
+                                <div class="vx-hero-mockup-body">
+                                    <!-- 过滤栏（与主应用同款） -->
+                                    <div class="vx-hero-mockup-filter">
+                                        <span class="text-[10px] font-semibold uppercase tracking-wider text-fg/50 mr-1" data-i18n="home.hero.mockup.filter.label">重要性</span>
+                                        <span class="vx-hero-pill vx-hero-pill--active" data-i18n="home.hero.mockup.filter.all">全部</span>
+                                        <span class="vx-hero-pill" data-i18n="home.hero.mockup.filter.high">高</span>
+                                        <span class="vx-hero-pill" data-i18n="home.hero.mockup.filter.medium">中</span>
+                                        <span class="vx-hero-pill" data-i18n="home.hero.mockup.filter.low">低</span>
+                                    </div>
+
+                                    <!-- 时间轴（rail + day sections + items） -->
+                                    <div class="vx-hero-mockup-rail">
+                                        <!-- Day 1 -->
+                                        <div class="vx-hero-day" style="--vx-delay: 0.1s">
+                                            <div class="vx-hero-day-header" data-i18n="home.hero.mockup.day1">11 月 12 日 · 周三</div>
+                                            <div class="vx-hero-item vx-hero-item--high">
+                                                <div class="vx-hero-dot"></div>
+                                                <div class="vx-hero-item-body">
+                                                    <div class="vx-hero-item-title" data-i18n="home.hero.mockup.record1.title">调试底盘 · 重新校准陀螺仪</div>
+                                                    <div class="vx-hero-item-meta" data-i18n="home.hero.mockup.record1.content">14:30 · 王潇 · 2 张图</div>
+                                                </div>
+                                            </div>
+                                            <div class="vx-hero-item vx-hero-item--medium">
+                                                <div class="vx-hero-dot"></div>
+                                                <div class="vx-hero-item-body">
+                                                    <div class="vx-hero-item-title" data-i18n="home.hero.mockup.record2.title">测试新 intake 设计</div>
+                                                    <div class="vx-hero-item-meta" data-i18n="home.hero.mockup.record2.content">10:15 · 团队</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <!-- Day 2 -->
+                                        <div class="vx-hero-day" style="--vx-delay: 0.25s">
+                                            <div class="vx-hero-day-header" data-i18n="home.hero.mockup.day2">11 月 11 日 · 周二</div>
+                                            <div class="vx-hero-item vx-hero-item--medium">
+                                                <div class="vx-hero-dot"></div>
+                                                <div class="vx-hero-item-body">
+                                                    <div class="vx-hero-item-title" data-i18n="home.hero.mockup.record3.title">完成 CAD 初版</div>
+                                                    <div class="vx-hero-item-meta" data-i18n="home.hero.mockup.record3.content">16:40 · 李想</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <!-- Day 3 -->
+                                        <div class="vx-hero-day" style="--vx-delay: 0.4s">
+                                            <div class="vx-hero-day-header" data-i18n="home.hero.mockup.day3">11 月 10 日 · 周一</div>
+                                            <div class="vx-hero-item vx-hero-item--low">
+                                                <div class="vx-hero-dot"></div>
+                                                <div class="vx-hero-item-body">
+                                                    <div class="vx-hero-item-title" data-i18n="home.hero.mockup.record4.title">团队讨论赛季策略</div>
+                                                    <div class="vx-hero-item-meta" data-i18n="home.hero.mockup.record4.content">19:00 · 全员</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
 
             <!-- 滚动指示 -->
-            <div class="relative z-10 pb-6 sm:pb-8 flex justify-center">
+            <div class="relative z-10 pb-6 sm:pb-8 flex justify-center shrink-0">
                 <a href="#home-features" class="h-12 w-12 rounded-full border-2 border-canvas/60 flex items-center justify-center text-canvas hover:bg-canvas hover:text-primary transition-all duration-200" data-i18n-aria-label="nav.features">
                     <i data-lucide="chevron-down" class="w-5 h-5"></i>
                 </a>
