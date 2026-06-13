@@ -131,6 +131,8 @@ class App {
     if (auth) auth.classList.remove('hidden');
     if (container) container.classList.add('hidden');
     this._syncSiteHeader('auth');
+    // 每次进入登录页：默认显示登录视图（防止上次切到注册视图残留）
+    this.switchAuthView('login');
     try { window.scrollTo({ top: 0, behavior: 'instant' in window ? 'instant' : 'auto' }); } catch (e) { window.scrollTo(0, 0); }
   }
 
@@ -872,15 +874,25 @@ class App {
       if (e.target.id === 'day-records-overlay') this.closeDayRecords();
     });
 
-    // 登录/注册（Round 4：取消离线按钮）
+    // 登录/注册 — 分离的登录视图与注册视图
     document.getElementById('auth-login-btn').addEventListener('click', () => this.handleLogin());
     document.getElementById('auth-register-btn').addEventListener('click', () => this.handleRegister());
-    document.getElementById('auth-username').addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') this.handleLogin();
+
+    // Enter 提交
+    ['auth-username-login', 'auth-password-login'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener('keydown', (e) => { if (e.key === 'Enter') this.handleLogin(); });
     });
-    document.getElementById('auth-password').addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') this.handleLogin();
+    ['auth-username-register', 'auth-password-register', 'auth-nickname', 'auth-real-name'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener('keydown', (e) => { if (e.key === 'Enter') this.handleRegister(); });
     });
+
+    // 视图切换：登录 ↔ 注册
+    const goRegister = document.getElementById('auth-go-register-btn');
+    if (goRegister) goRegister.addEventListener('click', () => this.switchAuthView('register'));
+    const goLogin = document.getElementById('auth-go-login-btn');
+    if (goLogin) goLogin.addEventListener('click', () => this.switchAuthView('login'));
 
     // 一级权限：身份单选按钮（学生 / 老师）
     this._bindIdentityPicker('auth');
@@ -1228,20 +1240,20 @@ class App {
   }
 
   async handleLogin() {
-    const usernameInput = document.getElementById('auth-username');
-    const passwordInput = document.getElementById('auth-password');
-    const errorEl = document.getElementById('auth-error');
-    const username = usernameInput.value.trim();
-    const password = passwordInput.value;
-    errorEl.textContent = '';
+    const usernameInput = document.getElementById('auth-username-login');
+    const passwordInput = document.getElementById('auth-password-login');
+    const errorEl = document.getElementById('auth-error-login');
+    const username = (usernameInput?.value || '').trim();
+    const password = passwordInput?.value || '';
+    if (errorEl) errorEl.textContent = '';
 
     if (!supabaseManager.isConfigured()) {
-      errorEl.textContent = this._i18n('auth.error.notConfigured', '云端未配置，请联系管理员');
+      if (errorEl) errorEl.textContent = this._i18n('auth.error.notConfigured', '云端未配置，请联系管理员');
       this.renderDiagnosticBar();
       return;
     }
-    if (!username) { errorEl.textContent = this._i18n('auth.error.usernameRequired', '请输入用户名'); return; }
-    if (!password) { errorEl.textContent = this._i18n('auth.error.passwordRequired', '请输入密码'); return; }
+    if (!username) { if (errorEl) errorEl.textContent = this._i18n('auth.error.usernameRequired', '请输入用户名'); return; }
+    if (!password) { if (errorEl) errorEl.textContent = this._i18n('auth.error.passwordRequired', '请输入密码'); return; }
 
     const btn = document.getElementById('auth-login-btn');
     const label = this._i18n('auth.login', '登录');
@@ -1251,31 +1263,31 @@ class App {
         await this.onLoginSuccess();
         this.renderDiagnosticBar();
       } catch (e) {
-        errorEl.textContent = e.message || e;
+        if (errorEl) errorEl.textContent = e.message || e;
       }
     });
   }
 
   async handleRegister() {
-    const usernameInput = document.getElementById('auth-username');
-    const passwordInput = document.getElementById('auth-password');
-    const errorEl = document.getElementById('auth-error');
-    const username = usernameInput.value.trim();
-    const password = passwordInput.value;
-    errorEl.textContent = '';
+    const usernameInput = document.getElementById('auth-username-register');
+    const passwordInput = document.getElementById('auth-password-register');
+    const errorEl = document.getElementById('auth-error-register');
+    const username = (usernameInput?.value || '').trim();
+    const password = passwordInput?.value || '';
+    if (errorEl) errorEl.textContent = '';
 
     if (!supabaseManager.isConfigured()) {
-      errorEl.textContent = this._i18n('auth.error.notConfigured', '云端未配置，请联系管理员');
+      if (errorEl) errorEl.textContent = this._i18n('auth.error.notConfigured', '云端未配置，请联系管理员');
       this.renderDiagnosticBar();
       return;
     }
-    if (!username) { errorEl.textContent = this._i18n('auth.error.usernameRequired', '请输入用户名'); return; }
-    if (!password || password.length < 6) { errorEl.textContent = this._i18n('auth.error.shortPassword', '密码长度至少 6 位'); return; }
+    if (!username) { if (errorEl) errorEl.textContent = this._i18n('auth.error.usernameRequired', '请输入用户名'); return; }
+    if (!password || password.length < 6) { if (errorEl) errorEl.textContent = this._i18n('auth.error.shortPassword', '密码长度至少 6 位'); return; }
 
     const profile = {
-      nickname: document.getElementById('auth-nickname').value.trim(),
-      realName: document.getElementById('auth-real-name').value.trim(),
-      nameOnlySurname: document.getElementById('auth-surname-only').checked,
+      nickname: (document.getElementById('auth-nickname')?.value || '').trim(),
+      realName: (document.getElementById('auth-real-name')?.value || '').trim(),
+      nameOnlySurname: !!document.getElementById('auth-surname-only')?.checked,
       identity: this._authIdentity
     };
 
@@ -1287,9 +1299,48 @@ class App {
         await this.onLoginSuccess();
         this.renderDiagnosticBar();
       } catch (e) {
-        errorEl.textContent = e.message || e;
+        if (errorEl) errorEl.textContent = e.message || e;
       }
     });
+  }
+
+  /**
+   * 切换登录/注册视图
+   * @param {'login'|'register'} view
+   */
+  switchAuthView(view) {
+    const loginForm = document.getElementById('auth-form-login');
+    const registerForm = document.getElementById('auth-form-register');
+    const titleEl = document.getElementById('auth-title');
+    const subtitleEl = document.getElementById('auth-subtitle');
+    // 清空错误信息
+    const loginErr = document.getElementById('auth-error-login');
+    const registerErr = document.getElementById('auth-error-register');
+    if (loginErr) loginErr.textContent = '';
+    if (registerErr) registerErr.textContent = '';
+    if (view === 'register') {
+      if (loginForm) loginForm.classList.add('hidden');
+      if (registerForm) registerForm.classList.remove('hidden');
+      if (titleEl) titleEl.textContent = this._i18n('auth.createAccount', '创建账号');
+      if (subtitleEl) subtitleEl.textContent = this._i18n('auth.subtitle.register', '创建新账号');
+      // 仅填姓默认勾上
+      const surnameCb = document.getElementById('auth-surname-only');
+      if (surnameCb) surnameCb.checked = true;
+      // 自动聚焦第一个空字段
+      setTimeout(() => {
+        const first = document.getElementById('auth-username-register');
+        if (first) first.focus();
+      }, 60);
+    } else {
+      if (loginForm) loginForm.classList.remove('hidden');
+      if (registerForm) registerForm.classList.add('hidden');
+      if (titleEl) titleEl.textContent = this._i18n('auth.welcomeBack', '欢迎回来');
+      if (subtitleEl) subtitleEl.textContent = this._i18n('auth.subtitle.login', '登录到你的账号');
+      setTimeout(() => {
+        const first = document.getElementById('auth-username-login');
+        if (first) first.focus();
+      }, 60);
+    }
   }
 
   // ============================================================
@@ -1482,9 +1533,18 @@ class App {
     this.timelines = [];
     // 登出 → 回到首页（不直接回登录页，用户需主动点击首页 CTA）
     this.showHomePage();
-    document.getElementById('auth-username').value = '';
-    document.getElementById('auth-password').value = '';
-    document.getElementById('auth-error').textContent = '';
+    // 清空两个表单的字段与错误信息
+    ['auth-username-login', 'auth-password-login', 'auth-username-register',
+     'auth-password-register', 'auth-nickname', 'auth-real-name'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+    const err1 = document.getElementById('auth-error-login');
+    const err2 = document.getElementById('auth-error-register');
+    if (err1) err1.textContent = '';
+    if (err2) err2.textContent = '';
+    // 切回登录视图
+    this.switchAuthView('login');
     this._setAddEnabled(true);
     this.cloudSyncStatus = 'unknown';
     this.cloudErrorMessage = '';

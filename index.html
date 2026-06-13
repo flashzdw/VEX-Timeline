@@ -520,62 +520,32 @@
                     </div>
                 </div>
 
-                <h2 class="font-extrabold text-3xl sm:text-4xl tracking-[-0.02em] text-fg mb-2" data-i18n="auth.welcome">欢迎回来</h2>
-                <p class="text-xs sm:text-sm font-semibold uppercase tracking-wider text-fg/60 mb-6 sm:mb-8" data-i18n="auth.subtitle">登录 · 注册</p>
+                <h2 id="auth-title" class="font-extrabold text-3xl sm:text-4xl tracking-[-0.02em] text-fg mb-2" data-i18n="auth.welcome">欢迎回来</h2>
+                <p id="auth-subtitle" class="text-xs sm:text-sm font-semibold uppercase tracking-wider text-fg/60 mb-6 sm:mb-8" data-i18n="auth.subtitle.login">登录到你的账号</p>
 
                 <!-- 移动端友好提示：仅在 Supabase 未配置时显示 -->
                 <div id="diag-banner" class="hidden mb-6 p-3 bg-muted border-2 border-border rounded-md text-xs font-medium text-fg/60 text-center" data-i18n="auth.error.notConfigured">云端未配置，请联系管理员</div>
 
-                <form id="auth-form" class="flex flex-col gap-4" autocomplete="off">
+                <!-- ============================================================
+                     登录视图（默认）
+                     ============================================================ -->
+                <form id="auth-form-login" class="flex flex-col gap-4" autocomplete="off">
                     <div class="flex flex-col gap-2">
-                        <label class="text-xs font-semibold uppercase tracking-wider text-fg/60" for="auth-username" data-i18n="auth.username">用户名</label>
-                        <input id="auth-username" type="text" maxlength="20" autocomplete="off"
+                        <label class="text-xs font-semibold uppercase tracking-wider text-fg/60" for="auth-username-login" data-i18n="auth.username">用户名</label>
+                        <input id="auth-username-login" type="text" maxlength="20" autocomplete="off"
                                data-i18n-placeholder="auth.username.ph"
                                placeholder="输入用户名"
                                class="h-14 px-4 bg-muted text-fg text-base rounded-md border-0 outline-none font-medium focus:bg-canvas focus:border-2 focus:border-primary transition-all duration-200">
                     </div>
                     <div class="flex flex-col gap-2">
-                        <label class="text-xs font-semibold uppercase tracking-wider text-fg/60" for="auth-password" data-i18n="auth.password">密码</label>
-                        <input id="auth-password" type="password" autocomplete="off"
+                        <label class="text-xs font-semibold uppercase tracking-wider text-fg/60" for="auth-password-login" data-i18n="auth.password">密码</label>
+                        <input id="auth-password-login" type="password" autocomplete="off"
                                data-i18n-placeholder="auth.password.ph"
                                placeholder="输入密码"
                                class="h-14 px-4 bg-muted text-fg text-base rounded-md border-0 outline-none font-medium focus:bg-canvas focus:border-2 focus:border-primary transition-all duration-200">
                     </div>
 
-                    <!-- 一级权限：注册附加字段（注册时必填；登录时若为空会在登录后弹窗补全） -->
-                    <div id="auth-register-fields" class="flex flex-col gap-4 mt-2 pt-4 border-t-2 border-border">
-                        <div class="flex flex-col gap-2">
-                            <label class="text-xs font-semibold uppercase tracking-wider text-fg/60" for="auth-nickname" data-i18n="auth.nickname">昵称</label>
-                            <input id="auth-nickname" type="text" maxlength="20" autocomplete="off"
-                                   data-i18n-placeholder="auth.nickname.ph"
-                                   placeholder="输入昵称（用于显示）"
-                                   class="h-12 px-4 bg-muted text-fg text-base rounded-md border-0 outline-none font-medium focus:bg-canvas focus:border-2 focus:border-primary transition-all duration-200">
-                        </div>
-                        <div class="flex flex-col gap-2">
-                            <label class="text-xs font-semibold uppercase tracking-wider text-fg/60" for="auth-real-name" data-i18n="auth.realName">真实姓名</label>
-                            <input id="auth-real-name" type="text" maxlength="20" autocomplete="off"
-                                   data-i18n-placeholder="auth.realName.ph"
-                                   placeholder="输入真实姓名"
-                                   class="h-12 px-4 bg-muted text-fg text-base rounded-md border-0 outline-none font-medium focus:bg-canvas focus:border-2 focus:border-primary transition-all duration-200">
-                        </div>
-                        <div class="flex flex-col gap-2">
-                            <span class="text-xs font-semibold uppercase tracking-wider text-fg/60" data-i18n="auth.identity">身份</span>
-                            <div class="grid grid-cols-2 gap-2">
-                                <button type="button" data-identity="student" id="auth-identity-student"
-                                        class="h-12 rounded-md text-sm font-semibold tracking-wider uppercase bg-muted text-fg/60 hover:bg-canvas hover:border-2 hover:border-primary transition-all duration-200"
-                                        data-i18n="auth.identity.student">学生</button>
-                                <button type="button" data-identity="teacher" id="auth-identity-teacher"
-                                        class="h-12 rounded-md text-sm font-semibold tracking-wider uppercase bg-muted text-fg/60 hover:bg-canvas hover:border-2 hover:border-primary transition-all duration-200"
-                                        data-i18n="auth.identity.teacher">老师</button>
-                            </div>
-                        </div>
-                        <label id="auth-surname-only-wrap" class="hidden items-center gap-2 cursor-pointer select-none pl-1">
-                            <input id="auth-surname-only" type="checkbox" class="w-4 h-4 accent-primary">
-                            <span class="text-xs font-semibold uppercase tracking-wider text-fg/80" data-i18n="auth.identity.teacher.surnameOnly">仅填姓（推荐）</span>
-                        </label>
-                    </div>
-
-                    <div id="auth-error" class="min-h-[1.25rem] text-sm font-medium text-primary"></div>
+                    <div id="auth-error-login" class="min-h-[1.25rem] text-sm font-medium text-primary"></div>
 
                     <div class="flex flex-col gap-3 mt-2">
                         <button id="auth-login-btn" type="button"
@@ -583,10 +553,72 @@
                             <i data-lucide="log-in" class="w-5 h-5"></i>
                             <span data-i18n="auth.login">登录</span>
                         </button>
+                        <button id="auth-go-register-btn" type="button"
+                                class="h-12 text-fg/70 hover:text-primary text-xs font-semibold uppercase tracking-wider transition-colors duration-200">
+                            <span data-i18n="auth.goRegister">还没有账号？立即注册</span>
+                        </button>
+                    </div>
+                </form>
+
+                <!-- ============================================================
+                     注册视图（默认隐藏）
+                     ============================================================ -->
+                <form id="auth-form-register" class="hidden flex flex-col gap-4" autocomplete="off">
+                    <div class="flex flex-col gap-2">
+                        <label class="text-xs font-semibold uppercase tracking-wider text-fg/60" for="auth-username-register" data-i18n="auth.username">用户名</label>
+                        <input id="auth-username-register" type="text" maxlength="20" autocomplete="off"
+                               data-i18n-placeholder="auth.username.ph"
+                               placeholder="输入用户名"
+                               class="h-12 px-4 bg-muted text-fg text-base rounded-md border-0 outline-none font-medium focus:bg-canvas focus:border-2 focus:border-primary transition-all duration-200">
+                    </div>
+                    <div class="flex flex-col gap-2">
+                        <label class="text-xs font-semibold uppercase tracking-wider text-fg/60" for="auth-password-register" data-i18n="auth.password">密码</label>
+                        <input id="auth-password-register" type="password" autocomplete="off"
+                               data-i18n-placeholder="auth.password.ph"
+                               placeholder="输入密码"
+                               class="h-12 px-4 bg-muted text-fg text-base rounded-md border-0 outline-none font-medium focus:bg-canvas focus:border-2 focus:border-primary transition-all duration-200">
+                    </div>
+                    <div class="flex flex-col gap-2">
+                        <label class="text-xs font-semibold uppercase tracking-wider text-fg/60" for="auth-nickname" data-i18n="auth.nickname">昵称</label>
+                        <input id="auth-nickname" type="text" maxlength="20" autocomplete="off"
+                               data-i18n-placeholder="auth.nickname.ph"
+                               placeholder="输入昵称（用于显示）"
+                               class="h-12 px-4 bg-muted text-fg text-base rounded-md border-0 outline-none font-medium focus:bg-canvas focus:border-2 focus:border-primary transition-all duration-200">
+                    </div>
+                    <div class="flex flex-col gap-2">
+                        <label class="text-xs font-semibold uppercase tracking-wider text-fg/60" for="auth-real-name" data-i18n="auth.realName">真实姓名</label>
+                        <input id="auth-real-name" type="text" maxlength="20" autocomplete="off"
+                               data-i18n-placeholder="auth.realName.ph"
+                               placeholder="输入真实姓名"
+                               class="h-12 px-4 bg-muted text-fg text-base rounded-md border-0 outline-none font-medium focus:bg-canvas focus:border-2 focus:border-primary transition-all duration-200">
+                    </div>
+                    <div class="flex flex-col gap-2">
+                        <span class="text-xs font-semibold uppercase tracking-wider text-fg/60" data-i18n="auth.identity">身份</span>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button type="button" data-identity="student" id="auth-identity-student"
+                                    class="h-12 rounded-md text-sm font-semibold tracking-wider uppercase bg-muted text-fg/60 hover:bg-canvas hover:border-2 hover:border-primary transition-all duration-200"
+                                    data-i18n="auth.identity.student">学生</button>
+                            <button type="button" data-identity="teacher" id="auth-identity-teacher"
+                                    class="h-12 rounded-md text-sm font-semibold tracking-wider uppercase bg-muted text-fg/60 hover:bg-canvas hover:border-2 hover:border-primary transition-all duration-200"
+                                    data-i18n="auth.identity.teacher">老师</button>
+                        </div>
+                    </div>
+                    <label id="auth-surname-only-wrap" class="hidden items-center gap-2 cursor-pointer select-none pl-1">
+                        <input id="auth-surname-only" type="checkbox" checked class="w-4 h-4 accent-primary">
+                        <span class="text-xs font-semibold uppercase tracking-wider text-fg/80" data-i18n="auth.identity.teacher.surnameOnly">仅填姓（推荐）</span>
+                    </label>
+
+                    <div id="auth-error-register" class="min-h-[1.25rem] text-sm font-medium text-primary"></div>
+
+                    <div class="flex flex-col gap-3 mt-2">
                         <button id="auth-register-btn" type="button"
-                                class="h-14 border-4 border-fg text-fg bg-transparent rounded-md font-semibold tracking-wider uppercase text-sm flex items-center justify-center gap-2 hover:bg-fg hover:text-canvas hover:scale-[1.02] transition-all duration-200">
+                                class="h-14 bg-primary text-canvas rounded-md font-semibold tracking-wider uppercase text-sm flex items-center justify-center gap-2 hover:bg-primary-hover hover:scale-[1.02] transition-all duration-200">
                             <i data-lucide="user-plus" class="w-5 h-5"></i>
                             <span data-i18n="auth.register">注册</span>
+                        </button>
+                        <button id="auth-go-login-btn" type="button"
+                                class="h-12 text-fg/70 hover:text-primary text-xs font-semibold uppercase tracking-wider transition-colors duration-200">
+                            <span data-i18n="auth.goLogin">已有账号？返回登录</span>
                         </button>
                     </div>
                 </form>
@@ -632,7 +664,7 @@
                     </div>
                 </div>
                 <label id="profile-surname-only-wrap" class="hidden items-center gap-2 cursor-pointer select-none pl-1">
-                    <input id="profile-surname-only" type="checkbox" class="w-4 h-4 accent-primary">
+                    <input id="profile-surname-only" type="checkbox" checked class="w-4 h-4 accent-primary">
                     <span class="text-xs font-semibold uppercase tracking-wider text-fg/80" data-i18n="auth.identity.teacher.surnameOnly">仅填姓（推荐）</span>
                 </label>
                 <div id="profile-completion-error" class="min-h-[1.25rem] text-sm font-medium text-primary"></div>
