@@ -379,6 +379,8 @@ class App {
     if (lastErr) {
       this.timelines = [];
       this.updateTimelineSelector();
+      // 防御性：拉取失败时也刷新一次管理赛队按钮可见性（此时是个人时间轴也不会显示）
+      this.updateManageButton();
       return { success: false, error: lastErr.message || String(lastErr) };
     }
 
@@ -389,6 +391,10 @@ class App {
     }
 
     this.updateTimelineSelector();
+    // 关键：loadTimelines 后 currentTimelineId 可能刚被改成 personal timeline（个人时间轴），
+    // 但 updateManageButton 只在切时间轴事件 / updateUserMenu 路径里被调用。
+    // 这里补一次，确保 manage-team-btn / mobile-manage-team-btn 状态正确。
+    this.updateManageButton();
     return { success: true };
   }
 
@@ -1555,7 +1561,8 @@ class App {
     }
 
     // 2) 预填已存在的字段值（即使 section 显示也保留兜底）
-    if (nickInput && u?.nickname) nickInput.value = u.nickname;
+    //    注意：昵称字段已合并到 username（index.html 已删掉 nickname input），
+    //    这里不再读 / 写 nickInput，避免 ReferenceError 中断整个 modal 打开流程。
     if (realInput && u?.real_name) realInput.value = u.real_name;
     if (surnameCheckbox && u?.name_only_surname) surnameCheckbox.checked = true;
 
