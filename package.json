@@ -1,0 +1,13 @@
+{
+  "name": "vex-timeline",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Personal & team timeline for VEX robotics build season.",
+  "scripts": {
+    "build": "node scripts/build-config.js",
+    "build:local": "node scripts/build-config.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
