@@ -175,6 +175,94 @@ body {
 }
 
 /* ============================================================
+   成员管理 UI：角色下拉 + X 按钮
+   - 一行 flex：显示名 | 角色下拉 | X 按钮
+   - X 按钮 hover 变红（删除操作）
+   ============================================================ */
+.vx-member-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 0.75rem;
+  border-bottom: 1px solid var(--color-border);
+}
+.vx-member-row:last-child { border-bottom: none; }
+
+.vx-member-name {
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--color-fg);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.vx-member-name .vx-member-identity-tag {
+  display: inline-block;
+  margin-left: 0.5rem;
+  padding: 1px 6px;
+  border-radius: 9999px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: var(--color-muted);
+  color: var(--color-fg-muted);
+  vertical-align: middle;
+}
+.vx-member-name .vx-member-identity-tag--student { background: var(--color-primary); color: #fff; }
+.vx-member-name .vx-member-identity-tag--teacher { background: var(--color-accent); color: #fff; }
+
+.vx-role-select {
+  height: 32px;
+  padding: 0 0.5rem;
+  background: var(--color-canvas, #fff);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-fg);
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+.vx-role-select:hover { border-color: var(--color-primary); }
+.vx-role-select:focus { border-color: var(--color-primary); }
+.vx-role-select:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+  background: var(--color-muted);
+}
+
+.vx-member-remove-btn {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-fg-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+.vx-member-remove-btn:hover {
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+  background: #FEF2F2;
+}
+.vx-member-remove-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+  background: var(--color-muted);
+}
+
+/* ============================================================
    模态框手机端：全屏展示（去除圆角、贴边）
    ============================================================ */
 @media (max-width: 767px) {

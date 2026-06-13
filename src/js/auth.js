@@ -135,7 +135,17 @@ class AuthManager {
     }
   }
 
-  async register(username, password) {
+  /**
+   * 注册
+   * @param {string} username          用户名
+   * @param {string} password          密码
+   * @param {object} [profile]         一级权限（用户身份）资料
+   * @param {string} [profile.nickname]   昵称
+   * @param {string} [profile.realName]   真实姓名（老师仅填姓时可单字符）
+   * @param {boolean} [profile.nameOnlySurname] 老师仅填姓标志
+   * @param {string} [profile.identity]   'student' | 'teacher'
+   */
+  async register(username, password, profile = {}) {
     if (!supabaseManager.isConfigured()) {
       throw (window.i18n ? window.i18n.t('auth.error.notConfigured') : '云端未配置，请联系管理员');
     }
@@ -150,6 +160,36 @@ class AuthManager {
       throw (window.i18n ? window.i18n.t('auth.error.shortPassword') : '密码长度至少6位');
     }
 
+    // 一级权限：校验 profile
+    const nickname = (profile.nickname || '').trim();
+    const realName = (profile.realName || '').trim();
+    const nameOnlySurname = !!profile.nameOnlySurname;
+    const identity = profile.identity;
+
+    if (!nickname) {
+      throw (window.i18n ? window.i18n.t('auth.error.nicknameRequired') : '请填写昵称');
+    }
+    if (!realName) {
+      throw (window.i18n ? window.i18n.t('auth.error.realNameRequired') : '请填写真实姓名');
+    }
+    if (identity !== 'student' && identity !== 'teacher') {
+      throw (window.i18n ? window.i18n.t('auth.error.identityRequired') : '请选择身份（学生/老师）');
+    }
+    if (identity === 'student') {
+      if (realName.length < 2) {
+        throw (window.i18n ? window.i18n.t('auth.error.realNameStudentTooShort') : '学生姓名至少 2 个字符');
+      }
+    }
+    if (identity === 'teacher') {
+      if (nameOnlySurname) {
+        if (realName.length !== 1) {
+          throw (window.i18n ? window.i18n.t('auth.error.realNameTeacherSurname') : '老师仅填姓时，姓名必须是 1 个字符');
+        }
+      } else if (realName.length < 2) {
+        throw (window.i18n ? window.i18n.t('auth.error.realNameTeacherTooShort') : '老师姓名至少 2 个字符');
+      }
+    }
+
     const supabase = supabaseManager.getClient();
     const email = username + '@vex-timeline.local';
 
@@ -157,7 +197,13 @@ class AuthManager {
       email,
       password,
       options: {
-        data: { username }
+        data: {
+          username,
+          nickname,
+          real_name: realName,
+          name_only_surname: nameOnlySurname,
+          identity
+        }
       }
     });
 
@@ -224,6 +270,58 @@ class AuthManager {
     this.currentUser = null;
     this.session = null;
     this._clearSessionFromStorage();
+    // 清空老用户补全标记位（防止下次登出后残留）
+    try { localStorage.removeItem('vex.profile_completed'); } catch (e) { /* ignore */ }
+  }
+
+  // ============================================================
+  // 一级权限：用户身份补全
+  // ============================================================
+
+  /**
+   * 老用户补全一级权限（真实姓名 + 身份）
+   * 调用 complete_profile RPC
+   * @param {object} profile
+   * @param {string} profile.nickname
+   * @param {string} profile.realName
+   * @param {boolean} profile.nameOnlySurname
+   * @param {string} profile.identity 'student' | 'teacher'
+   */
+  async completeProfile(profile = {}) {
+    const supabase = supabaseManager.getClient();
+    if (!supabase) throw new Error('Supabase 未配置');
+    if (!this.isLoggedIn()) throw new Error('未登录');
+
+    const nickname = (profile.nickname || '').trim();
+    const realName = (profile.realName || '').trim();
+    const nameOnlySurname = !!profile.nameOnlySurname;
+    const identity = profile.identity;
+
+    if (!nickname) throw new Error('请填写昵称');
+    if (!realName) throw new Error('请填写真实姓名');
+    if (identity !== 'student' && identity !== 'teacher') throw new Error('请选择身份');
+
+    const { error } = await supabase.rpc('complete_profile', {
+      p_nickname: nickname,
+      p_real_name: realName,
+      p_name_only_surname: nameOnlySurname,
+      p_identity: identity
+    });
+    if (error) throw error;
+
+    // 重新加载用户信息
+    await this._loadUserProfile(this.currentUser.id);
+    return this.currentUser;
+  }
+
+  /**
+   * 检测当前用户是否需要补全一级权限
+   * 条件：real_name 为空 或 identity 为空
+   * @returns {boolean}
+   */
+  needsProfileCompletion() {
+    if (!this.currentUser) return false;
+    return !this.currentUser.real_name || !this.currentUser.identity;
   }
 
   isLoggedIn() {

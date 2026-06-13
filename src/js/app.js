@@ -232,11 +232,9 @@ class App {
 
     // 保留 #user-info 上的 `hidden lg:flex` 类。`lg:flex` 会在 ≥lg 视口下自动覆盖 `hidden`，
     // 因此在 mobile (<lg) 上始终隐藏，在 desktop (≥lg) 上正常显示，无需 JS 干预。
-    const username = authManager.getUsername() || 'User';
-    document.getElementById('user-name').textContent = username;
-    document.getElementById('user-menu-name').textContent = username;
+    this.updateUserMenu();
     const avatar = document.getElementById('user-avatar');
-    if (avatar) avatar.textContent = username.charAt(0).toUpperCase();
+    if (avatar) avatar.textContent = this.getDisplayName(authManager.getCurrentUser()).charAt(0).toUpperCase();
 
     // 重置状态
     this._clearCloudError();
@@ -275,6 +273,8 @@ class App {
     if (directToApp) {
       // 冷启动且已登录：直接进入主应用（保留既有用户习惯）
       this.showMainApp();
+      // 老用户补全资料弹窗
+      this.checkProfileCompletion();
       return;
     }
 
@@ -284,6 +284,8 @@ class App {
     this.showMainApp();
     const message = (window.i18n && window.i18n.t) ? window.i18n.t('home.toast.loginSuccess', '登录成功') : '登录成功';
     this.showToast(message, { duration: 2000, type: 'success' });
+    // 老用户补全资料弹窗
+    this.checkProfileCompletion();
   }
 
   // ============================================================
@@ -315,6 +317,32 @@ class App {
       fab.style.display = enabled ? 'flex' : 'none';
       fab.disabled = !enabled;
       fab.title = enabled ? this._i18n('app.fab.add', '添加记录') : this._i18n('app.fab.cantAdd', '云端连接失败，无法添加记录');
+    }
+  }
+
+  /**
+   * 根据当前赛队角色刷新"添加记录"按钮的可见性
+   * - visitor → 隐藏 FAB 与 mobile-add-btn
+   * - 其余 → 显示
+   * 在 renderView 顶部调用，确保切完 timeline 后立即生效
+   */
+  _refreshAddButtonByRole() {
+    const canAdd = this.canAddRecord();
+    const fab = document.getElementById('mobile-fab');
+    if (fab) {
+      // 仅当 _currentTimelineRole 已被设置时（赛队时间轴）才按权限控制；
+      // 个人时间轴或非赛队情形下保持原有 _setAddEnabled 的控制
+      if (this._currentTimelineRole) {
+        fab.style.display = canAdd ? 'flex' : 'none';
+        fab.disabled = !canAdd;
+        fab.title = canAdd
+          ? this._i18n('app.fab.add', '添加记录')
+          : this._i18n('app.fab.readOnly', '访客权限，仅可查看');
+      }
+    }
+    const mobileAdd = document.getElementById('mobile-add-btn');
+    if (mobileAdd && this._currentTimelineRole) {
+      mobileAdd.classList.toggle('hidden', !canAdd);
     }
   }
 
@@ -410,6 +438,8 @@ class App {
         this.updateTimelineSelector();
         this.updateTimelineLabel(this._findTimelineName(id));
         this.updateManageButton();
+        // 切换时间轴 → 重新拉取赛队角色（决定权限）
+        this._loadCurrentTimelineRole().catch(e => console.warn('load role', e));
         this.closeAllMenus();
         await this.renderView();         // 先用本地缓存快速渲染
         this.syncFromCloud();             // Round 5：后台拉取云端最新数据
@@ -418,6 +448,8 @@ class App {
 
     this.updateTimelineLabel(this._findTimelineName(this.currentTimelineId));
     this.updateManageButton();
+    // 启动时拉取当前时间轴的角色
+    this._loadCurrentTimelineRole().catch(e => console.warn('load role', e));
 
     const isLoggedIn = authManager.isLoggedIn();
     const desktop = document.getElementById('timeline-selector');
@@ -457,14 +489,107 @@ class App {
     if (label) label.textContent = name;
   }
 
+  /**
+   * 显示名解析：真实姓名 > 昵称 > 用户名
+   * 老师仅填姓时：身份为老师 → "X 老师"；其他情形 "X"
+   * 家长/访客情形不在此处处理（用户级身份只有 student / teacher）
+   * @param {object|null} u  users 行（或 { username, nickname, real_name, name_only_surname, identity }）
+   */
+  getDisplayName(u) {
+    if (!u) return 'User';
+    if (u.real_name) {
+      if (u.name_only_surname && u.identity === 'teacher') return `${u.real_name}老师`;
+      return u.real_name;
+    }
+    if (u.nickname) return u.nickname;
+    return u.username || 'User';
+  }
+
+  /**
+   * 用户菜单 / 顶栏信息刷新
+   */
+  updateUserMenu() {
+    const u = authManager.getCurrentUser();
+    const name = this.getDisplayName(u);
+    const userNameEl = document.getElementById('user-name');
+    if (userNameEl) userNameEl.textContent = name;
+    const userMenuNameEl = document.getElementById('user-menu-name');
+    if (userMenuNameEl) userMenuNameEl.textContent = name;
+  }
+
   updateManageButton() {
+    // 管理赛队按钮的可见性：
+    // - 个人时间轴：所有设备端均不显示
+    // - 赛队时间轴：所有用户均显示（点开后弹窗内容按角色动态渲染）
     const current = this.timelines.find(t => t.id === this.currentTimelineId);
-    const isTeamOwner = current && current.type === 'team' && current.owner_id === authManager.getCurrentUser()?.id;
+    const isTeam = !!(current && current.type === 'team');
     const desktopBtn = document.getElementById('manage-team-btn');
     const mobileBtn = document.getElementById('mobile-manage-team-btn');
     [desktopBtn, mobileBtn].forEach(btn => {
-      if (btn) btn.classList.toggle('hidden', !isTeamOwner);
+      if (btn) btn.classList.toggle('hidden', !isTeam);
     });
+  }
+
+  // ============================================================
+  // 二级权限：基于赛队角色的权限判定
+  // ============================================================
+  /**
+   * 当前用户在本赛队中的角色
+   * @returns {Promise<string|null>}
+   */
+  async _loadCurrentTimelineRole() {
+    if (!this.currentTimelineId) {
+      this._currentTimelineRole = null;
+      return null;
+    }
+    const current = this.timelines.find(t => t.id === this.currentTimelineId);
+    if (!current || current.type !== 'team') {
+      this._currentTimelineRole = null;
+      return null;
+    }
+    const role = await cloudDBManager.getMemberRole(this.currentTimelineId);
+    this._currentTimelineRole = role;
+    return role;
+  }
+
+  /** 添加记录：owner/captain/teacher/member 可见，visitor 不可见 */
+  canAddRecord() {
+    const r = this._currentTimelineRole;
+    if (!r) return true; // 个人时间轴或非赛队 → 视为可加
+    return r !== 'visitor';
+  }
+  /** 编辑记录：owner/captain/teacher 任意；member 仅自己 */
+  canEditRecord(record) {
+    const r = this._currentTimelineRole;
+    if (!r) return true; // 个人时间轴
+    if (r === 'visitor') return false;
+    if (r === 'member') {
+      return record?.user_id === authManager.getCurrentUser()?.id;
+    }
+    return true; // owner / captain / teacher
+  }
+  /** 删除记录：同 canEditRecord */
+  canDeleteRecord(record) {
+    return this.canEditRecord(record);
+  }
+  /** 管理成员（调整角色 / 移除）：owner/captain/teacher */
+  canManageMembers() {
+    const r = this._currentTimelineRole;
+    return r === 'owner' || r === 'captain' || r === 'teacher';
+  }
+  /** 重置邀请码：owner/captain/teacher */
+  canResetInvite() {
+    return this.canManageMembers();
+  }
+  /** 查看邀请码：owner/captain/teacher/member（visitor 不可见） */
+  canViewInvite() {
+    const r = this._currentTimelineRole;
+    if (!r) return false;
+    return r !== 'visitor';
+  }
+  /** 删除整个赛队：仅 owner */
+  canDeleteTimeline() {
+    return this._currentTimelineRole === 'owner';
   }
 
   // ============================================================
@@ -757,6 +882,20 @@ class App {
       if (e.key === 'Enter') this.handleLogin();
     });
 
+    // 一级权限：身份单选按钮（学生 / 老师）
+    this._bindIdentityPicker('auth');
+
+    // 老用户补全资料弹窗事件
+    const profileSubmit = document.getElementById('profile-completion-submit');
+    if (profileSubmit) profileSubmit.addEventListener('click', () => this.handleProfileCompletionSubmit());
+    const profileSkip = document.getElementById('profile-completion-skip');
+    if (profileSkip) profileSkip.addEventListener('click', () => this.handleProfileCompletionSkip());
+    this._bindIdentityPicker('profile');
+    const profileRealName = document.getElementById('profile-real-name');
+    if (profileRealName) profileRealName.addEventListener('keydown', (e) => { if (e.key === 'Enter') this.handleProfileCompletionSubmit(); });
+    const profileNickname = document.getElementById('profile-nickname');
+    if (profileNickname) profileNickname.addEventListener('keydown', (e) => { if (e.key === 'Enter') this.handleProfileCompletionSubmit(); });
+
     // 登出（桌面 + 移动）
     document.getElementById('logout-btn').addEventListener('click', () => this.handleLogout());
     const mobileLogout = document.getElementById('mobile-logout-btn');
@@ -856,6 +995,12 @@ class App {
       if (!inMenu) this.closeAllMenus();
     });
 
+    // 移动端"关闭"按钮：关闭抽屉
+    const mobileMenuClose = document.getElementById('mobile-menu-close-btn');
+    if (mobileMenuClose) {
+      mobileMenuClose.addEventListener('click', () => this.closeMobileDrawer());
+    }
+
     // 赛队模态框
     document.getElementById('cancel-team-btn').addEventListener('click', () => this.closeModalById('create-team-modal'));
     document.getElementById('save-team-btn').addEventListener('click', () => this.handleCreateTeam());
@@ -875,6 +1020,52 @@ class App {
     });
 
     document.getElementById('copy-invite-btn').addEventListener('click', () => this.copyInviteCode());
+
+    // 重置邀请码
+    const regenBtn = document.getElementById('regenerate-invite-btn');
+    if (regenBtn) {
+      regenBtn.addEventListener('click', async () => {
+        if (!this.currentTimelineId) return;
+        if (!this.canResetInvite()) {
+          this.showToast(this._i18n('app.team.regenerateInvite', '重置邀请码'), 'warning');
+          return;
+        }
+        if (!confirm(this._i18n('app.team.regenerateInviteConfirm', '重置邀请码后旧码将立即失效，确定吗？'))) return;
+        try {
+          const newCode = await cloudDBManager.regenerateInviteCode(this.currentTimelineId);
+          document.getElementById('invite-code-display').textContent = newCode;
+          this.showToast(this._i18n('app.team.inviteRegenerated', '邀请码已重置'), 'success');
+        } catch (e) {
+          this.showToast(this._i18n('app.team.roleUpdateFail', '更新失败：') + (e.message || e), 'error');
+        }
+      });
+    }
+
+    // 删除赛队（仅 owner 可见）
+    const deleteTeamBtn = document.getElementById('delete-team-btn');
+    if (deleteTeamBtn) {
+      deleteTeamBtn.addEventListener('click', async () => {
+        if (!this.currentTimelineId) return;
+        if (!this.canDeleteTimeline()) return;
+        if (!confirm(this._i18n('app.team.confirmDeleteTeam', '确定要删除这个赛队时间轴吗？此操作不可撤销。'))) return;
+        try {
+          await cloudDBManager.deleteTimeline(this.currentTimelineId);
+          this.showToast(this._i18n('app.team.teamDeleted', '赛队已删除'), 'success');
+          this.closeModalById('invite-modal');
+          // 从本地列表移除
+          this.timelines = this.timelines.filter(t => t.id !== this.currentTimelineId);
+          this.currentTimelineId = this.timelines[0]?.id || null;
+          this._saveStoredTimelineId(this.currentTimelineId);
+          this.updateTimelineSelector();
+          this.updateTimelineLabel(this._findTimelineName(this.currentTimelineId));
+          this.updateManageButton();
+          this._loadCurrentTimelineRole().catch(() => {});
+          await this.renderView();
+        } catch (e) {
+          this.showToast(this._i18n('app.team.teamDeleteFail', '删除赛队失败：') + (e.message || e), 'error');
+        }
+      });
+    }
 
     // 云端重试按钮
     const retryBtn = document.getElementById('cloud-retry-btn');
@@ -1081,17 +1272,184 @@ class App {
     if (!username) { errorEl.textContent = this._i18n('auth.error.usernameRequired', '请输入用户名'); return; }
     if (!password || password.length < 6) { errorEl.textContent = this._i18n('auth.error.shortPassword', '密码长度至少 6 位'); return; }
 
+    const profile = {
+      nickname: document.getElementById('auth-nickname').value.trim(),
+      realName: document.getElementById('auth-real-name').value.trim(),
+      nameOnlySurname: document.getElementById('auth-surname-only').checked,
+      identity: this._authIdentity
+    };
+
     const btn = document.getElementById('auth-register-btn');
     const label = this._i18n('auth.register', '注册');
     await this._withAuthButtonLoading(btn, label, async () => {
       try {
-        await authManager.register(username, password);
+        await authManager.register(username, password, profile);
         await this.onLoginSuccess();
         this.renderDiagnosticBar();
       } catch (e) {
         errorEl.textContent = e.message || e;
       }
     });
+  }
+
+  // ============================================================
+  // 一级权限：身份选择器（学生 / 老师）
+  // ============================================================
+  _authIdentity = null;     // 注册表单当前选中的身份
+  _profileIdentity = null;  // 补全资料弹窗当前选中的身份
+
+  /**
+   * 绑定身份选择器（学生 / 老师）
+   * @param {'auth'|'profile'} scope
+   */
+  _bindIdentityPicker(scope) {
+    const attr = scope === 'auth' ? 'data-identity' : 'data-profile-identity';
+    const stateKey = scope === 'auth' ? '_authIdentity' : '_profileIdentity';
+    const studentBtn = document.getElementById(scope === 'auth' ? 'auth-identity-student' : 'profile-identity-student');
+    const teacherBtn = document.getElementById(scope === 'auth' ? 'auth-identity-teacher' : 'profile-identity-teacher');
+    const surnameWrap = document.getElementById(scope === 'auth' ? 'auth-surname-only-wrap' : 'profile-surname-only-wrap');
+    const surnameCheckbox = document.getElementById(scope === 'auth' ? 'auth-surname-only' : 'profile-surname-only');
+
+    const paintSelected = () => {
+      const sel = this[stateKey];
+      const setActive = (btn, isActive) => {
+        if (!btn) return;
+        btn.classList.toggle('bg-primary', isActive);
+        btn.classList.toggle('text-canvas', isActive);
+        btn.classList.toggle('bg-muted', !isActive);
+        btn.classList.toggle('text-fg/60', !isActive);
+        btn.classList.toggle('border-2', isActive);
+        btn.classList.toggle('border-primary', isActive);
+      };
+      setActive(studentBtn, sel === 'student');
+      setActive(teacherBtn, sel === 'teacher');
+      if (surnameWrap) {
+        if (sel === 'teacher') {
+          surnameWrap.classList.remove('hidden');
+          surnameWrap.classList.add('flex');
+        } else {
+          surnameWrap.classList.add('hidden');
+          surnameWrap.classList.remove('flex');
+          if (surnameCheckbox) surnameCheckbox.checked = false;
+        }
+      }
+    };
+    if (studentBtn) {
+      studentBtn.addEventListener('click', () => {
+        this[stateKey] = 'student';
+        if (surnameCheckbox) surnameCheckbox.checked = false;
+        paintSelected();
+      });
+    }
+    if (teacherBtn) {
+      teacherBtn.addEventListener('click', () => {
+        this[stateKey] = 'teacher';
+        paintSelected();
+      });
+    }
+    paintSelected();
+  }
+
+  // ============================================================
+  // 一级权限：老用户补全资料
+  // ============================================================
+  _ensureProfileIdentity() {
+    // 如果 currentUser.identity 已有值，预填
+    if (!this._profileIdentity && authManager.getCurrentUser()?.identity) {
+      this._profileIdentity = authManager.getCurrentUser().identity;
+      this._bindIdentityPicker('profile');
+    }
+  }
+
+  /**
+   * 主应用初始化后调用：若需要补全资料，弹出弹窗
+   */
+  checkProfileCompletion() {
+    if (!authManager.isLoggedIn()) return;
+    if (!authManager.needsProfileCompletion()) return;
+    // 仅在主应用已显示时才弹窗（避免与登录/注册弹窗叠加）
+    this._ensureProfileIdentity();
+    this.openProfileCompletionModal();
+  }
+
+  openProfileCompletionModal() {
+    const modal = document.getElementById('profile-completion-modal');
+    if (!modal) return;
+    const u = authManager.getCurrentUser();
+    // 预填已存在的字段
+    const nickInput = document.getElementById('profile-nickname');
+    const realInput = document.getElementById('profile-real-name');
+    const surnameCheckbox = document.getElementById('profile-surname-only');
+    if (nickInput && u?.nickname) nickInput.value = u.nickname;
+    if (realInput && u?.real_name) realInput.value = u.real_name;
+    if (surnameCheckbox && u?.name_only_surname) surnameCheckbox.checked = true;
+    // 跳过按钮：仅当 identity 已有值时可用
+    const skipBtn = document.getElementById('profile-completion-skip');
+    if (skipBtn) {
+      const canSkip = !!u?.identity;
+      skipBtn.disabled = !canSkip;
+      skipBtn.classList.toggle('opacity-50', !canSkip);
+      skipBtn.classList.toggle('cursor-not-allowed', !canSkip);
+    }
+    modal.classList.add('active');
+    // i18n re-render
+    if (window.i18n) window.i18n.apply();
+  }
+
+  closeProfileCompletionModal() {
+    const modal = document.getElementById('profile-completion-modal');
+    if (modal) modal.classList.remove('active');
+  }
+
+  async handleProfileCompletionSubmit() {
+    const errorEl = document.getElementById('profile-completion-error');
+    if (errorEl) errorEl.textContent = '';
+    const nickname = document.getElementById('profile-nickname').value.trim();
+    const realName = document.getElementById('profile-real-name').value.trim();
+    const surnameOnly = document.getElementById('profile-surname-only').checked;
+    const identity = this._profileIdentity;
+
+    if (!nickname) { errorEl.textContent = this._i18n('auth.error.nicknameRequired', '请填写昵称'); return; }
+    if (!realName) { errorEl.textContent = this._i18n('auth.error.realNameRequired', '请填写真实姓名'); return; }
+    if (!identity) { errorEl.textContent = this._i18n('auth.error.identityRequired', '请选择身份'); return; }
+    if (identity === 'student' && realName.length < 2) {
+      errorEl.textContent = this._i18n('auth.error.realNameStudentTooShort', '学生姓名至少 2 个字符');
+      return;
+    }
+    if (identity === 'teacher' && surnameOnly && realName.length !== 1) {
+      errorEl.textContent = this._i18n('auth.error.realNameTeacherSurname', '老师仅填姓时，姓名必须是 1 个字符');
+      return;
+    }
+    if (identity === 'teacher' && !surnameOnly && realName.length < 2) {
+      errorEl.textContent = this._i18n('auth.error.realNameTeacherTooShort', '老师姓名至少 2 个字符');
+      return;
+    }
+
+    const btn = document.getElementById('profile-completion-submit');
+    const label = this._i18n('auth.completion.submit', '保存');
+    await this._withAuthButtonLoading(btn, label, async () => {
+      try {
+        await authManager.completeProfile({
+          nickname, realName, nameOnlySurname: surnameOnly, identity
+        });
+        this.closeProfileCompletionModal();
+        // 标记完成（防止中途刷新重复弹窗）
+        try { localStorage.setItem('vex.profile_completed', 'true'); } catch (e) { /* ignore */ }
+        // 刷新用户显示
+        this.updateUserMenu();
+        this.showToast(this._i18n('app.toast.profileSaved', '资料已保存'), 'success');
+      } catch (e) {
+        errorEl.textContent = this._i18n('auth.error.profileSaveFailed', '保存失败：') + (e.message || e);
+      }
+    });
+  }
+
+  handleProfileCompletionSkip() {
+    // 仅当 identity 已有值时可用
+    const u = authManager.getCurrentUser();
+    if (!u?.identity) return;
+    try { localStorage.setItem('vex.profile_completed', 'true'); } catch (e) { /* ignore */ }
+    this.closeProfileCompletionModal();
   }
 
   /**
@@ -1189,6 +1547,7 @@ class App {
         this.timelines.push(timeline);
         this.currentTimelineId = timeline.id;
         this.updateTimelineSelector();
+        this._loadCurrentTimelineRole().catch(() => {});
       }
     } catch (e) {
       console.error('[VEX-Timeline] createTimeline failed:', e);
@@ -1210,6 +1569,7 @@ class App {
         this.timelines.push(timeline);
         this.currentTimelineId = timeline.id;
         this.updateTimelineSelector();
+        this._loadCurrentTimelineRole().catch(() => {});
         await this.renderView();
       }
     } catch (e) {
@@ -1223,54 +1583,114 @@ class App {
   async handleManageTeam() {
     const current = this.timelines.find(t => t.id === this.currentTimelineId);
     if (!current || current.type !== 'team') {
-      // 不再静默 return —— 给用户明确反馈
+      // 不再弹"请切换到赛队"——管理赛队按钮在个人时间轴下根本不显示
+      // 这里仍是兜底：万一某种 race condition 进入此函数
       this.showToast(this._i18n('app.team.selectTeam', '请先在时间轴下拉中选择一个赛队'), 'warning');
       return;
     }
 
+    // 1. 按角色控制邀请码 / 重置邀请码 / 删除赛队 的可见性
+    const role = await this._loadCurrentTimelineRole();
+    const inviteSection = document.getElementById('invite-code-section');
+    const regenBtn = document.getElementById('regenerate-invite-btn');
+    const deleteBtn = document.getElementById('delete-team-btn');
+    if (inviteSection) inviteSection.classList.toggle('hidden', !this.canViewInvite());
+    if (regenBtn) regenBtn.classList.toggle('hidden', !this.canResetInvite());
+    if (deleteBtn) deleteBtn.classList.toggle('hidden', !this.canDeleteTimeline());
+
+    // 2. 显示邀请码
     document.getElementById('invite-code-display').textContent = current.invite_code || '---';
 
+    // 3. 加载成员列表
     const membersList = document.getElementById('members-list');
     membersList.innerHTML = `<div class="px-4 py-3 text-sm text-fg/60">${this._i18n('app.empty.loading', '加载中…')}</div>`;
 
     try {
       const members = await cloudDBManager.getTimelineMembers(this.currentTimelineId);
-      const isOwner = current.owner_id === authManager.getCurrentUser()?.id;
+      const canManage = this.canManageMembers();
 
       if (!members || members.length === 0) {
         membersList.innerHTML = `<div class="px-4 py-3 text-sm text-fg/60">${this._i18n('app.team.noMembers', '暂无成员')}</div>`;
       } else {
-        // 拥有者置顶，其余按 username 升序保持稳定
+        // 拥有者置顶，其余按 displayName 升序
         const sortedMembers = [...members].sort((a, b) => {
           if (a.role === 'owner' && b.role !== 'owner') return -1;
           if (a.role !== 'owner' && b.role === 'owner') return 1;
-          return (a.users?.username || '').localeCompare(b.users?.username || '');
+          return this.getDisplayName(a.users || {}).localeCompare(this.getDisplayName(b.users || {}));
         });
-        const ownerLabel = this._i18n('app.team.roleOwner', '所有者');
-        const memberLabel = this._i18n('app.team.roleMember', '成员');
-        const removeLabel = this._i18n('app.action.delete', '删除');
-        membersList.innerHTML = sortedMembers.map(member => `
-          <div class="flex justify-between items-center px-4 py-3 border-b-2 border-border last:border-b-0">
-            <div class="flex flex-col gap-0.5">
-              <span class="font-semibold text-sm">${this._escapeHtml(member.users?.username || this._i18n('app.user.unknown', '未知'))}</span>
-              <span class="text-xs font-semibold uppercase tracking-wider text-fg/60">${member.role === 'owner' ? ownerLabel : memberLabel}</span>
+        const roleLabel = {
+          owner: this._i18n('app.team.roleOwner', '所有者'),
+          captain: this._i18n('app.team.roleCaptain', '队长'),
+          teacher: this._i18n('app.team.roleTeacher', '老师'),
+          member: this._i18n('app.team.roleMember', '队员'),
+          visitor: this._i18n('app.team.roleVisitor', '访客')
+        };
+        const ROLE_OPTIONS = ['captain', 'teacher', 'member', 'visitor'];
+
+        membersList.innerHTML = sortedMembers.map(member => {
+          const user = member.users || {};
+          const displayName = this._escapeHtml(this.getDisplayName(user));
+          const identityTag = user.identity
+            ? `<span class="vx-member-identity-tag vx-member-identity-tag--${user.identity}">${user.identity === 'student' ? this._i18n('auth.identity.student', '学生') : this._i18n('auth.identity.teacher', '老师')}</span>`
+            : '';
+          const isOwnerRow = member.role === 'owner';
+          const currentRoleLabel = roleLabel[member.role] || member.role;
+          const roleSelectHtml = (canManage && !isOwnerRow) ? `
+            <select class="vx-role-select" data-user-id="${member.user_id}">
+              ${ROLE_OPTIONS.map(r => `<option value="${r}" ${r === member.role ? 'selected' : ''}>${this._escapeHtml(roleLabel[r] || r)}</option>`).join('')}
+            </select>
+          ` : `
+            <span class="text-xs font-semibold uppercase tracking-wider text-fg/60">${this._escapeHtml(currentRoleLabel)}</span>
+          `;
+          const removeBtnHtml = (canManage && !isOwnerRow) ? `
+            <button class="vx-member-remove-btn" data-user-id="${member.user_id}" title="${this._escapeHtml(this._i18n('app.action.delete', '删除'))}" aria-label="${this._escapeHtml(this._i18n('app.action.delete', '删除'))}">
+              <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+          ` : '';
+          return `
+            <div class="vx-member-row">
+              <div class="vx-member-name">${displayName}${identityTag}</div>
+              ${roleSelectHtml}
+              ${removeBtnHtml}
             </div>
-            ${isOwner && member.role !== 'owner' ? `
-              <button class="vx-member-remove-btn h-8 px-3 bg-canvas border-2 border-border rounded-md text-xs font-semibold uppercase tracking-wider text-fg hover:border-danger hover:text-danger transition-all duration-200" data-user-id="${member.user_id}">${removeLabel}</button>
-            ` : ''}
-          </div>
-        `).join('');
+          `;
+        }).join('');
       }
 
       if (window.lucide && lucide.createIcons) lucide.createIcons();
 
+      // 角色下拉 change → 更新角色
+      membersList.querySelectorAll('.vx-role-select').forEach(sel => {
+        sel.addEventListener('change', async (e) => {
+          const userId = e.currentTarget.dataset.userId;
+          const newRole = e.currentTarget.value;
+          e.currentTarget.disabled = true;
+          try {
+            await cloudDBManager.updateMemberRole(this.currentTimelineId, userId, newRole);
+            this.showToast(this._i18n('app.team.roleUpdated', '角色已更新'), 'success');
+            // 刷新成员列表（保持排序与显示名一致）
+            await this._refreshMembersList();
+          } catch (err) {
+            console.error(err);
+            this.showToast(this._i18n('app.team.roleUpdateFail', '更新角色失败：') + (err.message || err), 'error');
+          } finally {
+            e.currentTarget.disabled = false;
+          }
+        });
+      });
+
+      // X 按钮 click → 弹出确认 → removeMember
       membersList.querySelectorAll('.vx-member-remove-btn').forEach(btn => {
         btn.addEventListener('click', async (e) => {
+          e.stopPropagation();
           const userId = e.currentTarget.dataset.userId;
+          const row = e.currentTarget.closest('.vx-member-row');
+          const displayName = row ? row.querySelector('.vx-member-name')?.textContent || '' : '';
+          if (!confirm(this._i18n('app.team.confirmRemoveMember', '确定要移除该成员吗？') + (displayName ? ` (${displayName})` : ''))) return;
           try {
             await cloudDBManager.removeMember(this.currentTimelineId, userId);
-            e.currentTarget.closest('.flex').remove();
             this.showToast(this._i18n('app.team.memberRemoved', '已移除成员'), 'success');
+            await this._refreshMembersList();
           } catch (err) {
             console.error(err);
             this.showToast(this._i18n('app.team.removeFail', '移除失败: ') + (err.message || err), 'error');
@@ -1284,6 +1704,97 @@ class App {
     }
 
     this.openModalById('invite-modal');
+  }
+
+  /** 重新渲染成员列表（保留加载中/错误态逻辑） */
+  async _refreshMembersList() {
+    if (!this.currentTimelineId) return;
+    const membersList = document.getElementById('members-list');
+    try {
+      const members = await cloudDBManager.getTimelineMembers(this.currentTimelineId);
+      const canManage = this.canManageMembers();
+      if (!members || members.length === 0) {
+        membersList.innerHTML = `<div class="px-4 py-3 text-sm text-fg/60">${this._i18n('app.team.noMembers', '暂无成员')}</div>`;
+        return;
+      }
+      const sortedMembers = [...members].sort((a, b) => {
+        if (a.role === 'owner' && b.role !== 'owner') return -1;
+        if (a.role !== 'owner' && b.role === 'owner') return 1;
+        return this.getDisplayName(a.users || {}).localeCompare(this.getDisplayName(b.users || {}));
+      });
+      const roleLabel = {
+        owner: this._i18n('app.team.roleOwner', '所有者'),
+        captain: this._i18n('app.team.roleCaptain', '队长'),
+        teacher: this._i18n('app.team.roleTeacher', '老师'),
+        member: this._i18n('app.team.roleMember', '队员'),
+        visitor: this._i18n('app.team.roleVisitor', '访客')
+      };
+      const ROLE_OPTIONS = ['captain', 'teacher', 'member', 'visitor'];
+      membersList.innerHTML = sortedMembers.map(member => {
+        const user = member.users || {};
+        const displayName = this._escapeHtml(this.getDisplayName(user));
+        const identityTag = user.identity
+          ? `<span class="vx-member-identity-tag vx-member-identity-tag--${user.identity}">${user.identity === 'student' ? this._i18n('auth.identity.student', '学生') : this._i18n('auth.identity.teacher', '老师')}</span>`
+          : '';
+        const isOwnerRow = member.role === 'owner';
+        const currentRoleLabel = roleLabel[member.role] || member.role;
+        const roleSelectHtml = (canManage && !isOwnerRow) ? `
+          <select class="vx-role-select" data-user-id="${member.user_id}">
+            ${ROLE_OPTIONS.map(r => `<option value="${r}" ${r === member.role ? 'selected' : ''}>${this._escapeHtml(roleLabel[r] || r)}</option>`).join('')}
+          </select>
+        ` : `
+          <span class="text-xs font-semibold uppercase tracking-wider text-fg/60">${this._escapeHtml(currentRoleLabel)}</span>
+        `;
+        const removeBtnHtml = (canManage && !isOwnerRow) ? `
+          <button class="vx-member-remove-btn" data-user-id="${member.user_id}" title="${this._escapeHtml(this._i18n('app.action.delete', '删除'))}" aria-label="${this._escapeHtml(this._i18n('app.action.delete', '删除'))}">
+            <i data-lucide="x" class="w-4 h-4"></i>
+          </button>
+        ` : '';
+        return `
+          <div class="vx-member-row">
+            <div class="vx-member-name">${displayName}${identityTag}</div>
+            ${roleSelectHtml}
+            ${removeBtnHtml}
+          </div>
+        `;
+      }).join('');
+      if (window.lucide && lucide.createIcons) lucide.createIcons();
+      // 重新绑定 change / click 事件
+      membersList.querySelectorAll('.vx-role-select').forEach(sel => {
+        sel.addEventListener('change', async (e) => {
+          const userId = e.currentTarget.dataset.userId;
+          const newRole = e.currentTarget.value;
+          e.currentTarget.disabled = true;
+          try {
+            await cloudDBManager.updateMemberRole(this.currentTimelineId, userId, newRole);
+            this.showToast(this._i18n('app.team.roleUpdated', '角色已更新'), 'success');
+            await this._refreshMembersList();
+          } catch (err) {
+            this.showToast(this._i18n('app.team.roleUpdateFail', '更新角色失败：') + (err.message || err), 'error');
+          } finally {
+            e.currentTarget.disabled = false;
+          }
+        });
+      });
+      membersList.querySelectorAll('.vx-member-remove-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          const userId = e.currentTarget.dataset.userId;
+          const row = e.currentTarget.closest('.vx-member-row');
+          const displayName = row ? row.querySelector('.vx-member-name')?.textContent || '' : '';
+          if (!confirm(this._i18n('app.team.confirmRemoveMember', '确定要移除该成员吗？') + (displayName ? ` (${displayName})` : ''))) return;
+          try {
+            await cloudDBManager.removeMember(this.currentTimelineId, userId);
+            this.showToast(this._i18n('app.team.memberRemoved', '已移除成员'), 'success');
+            await this._refreshMembersList();
+          } catch (err) {
+            this.showToast(this._i18n('app.team.removeFail', '移除失败: ') + (err.message || err), 'error');
+          }
+        });
+      });
+    } catch (e) {
+      membersList.innerHTML = `<div class="px-4 py-3 text-sm text-danger">${this._i18n('app.empty.fail', '加载失败: ')}${this._escapeHtml(e.message || String(e))}</div>`;
+    }
   }
 
   // ============================================================
@@ -1616,6 +2127,7 @@ class App {
     if (!timelineContainer || !calendarContainer) return;
 
     this.syncViewToggleState();
+    this._refreshAddButtonByRole();
 
     // Round 4：未登录或未选择时间轴时不渲染内容（防止本地/云端错乱）
     if (!authManager.isLoggedIn() || !this.currentTimelineId) {

@@ -541,6 +541,40 @@
                                placeholder="输入密码"
                                class="h-14 px-4 bg-muted text-fg text-base rounded-md border-0 outline-none font-medium focus:bg-canvas focus:border-2 focus:border-primary transition-all duration-200">
                     </div>
+
+                    <!-- 一级权限：注册附加字段（注册时必填；登录时若为空会在登录后弹窗补全） -->
+                    <div id="auth-register-fields" class="flex flex-col gap-4 mt-2 pt-4 border-t-2 border-border">
+                        <div class="flex flex-col gap-2">
+                            <label class="text-xs font-semibold uppercase tracking-wider text-fg/60" for="auth-nickname" data-i18n="auth.nickname">昵称</label>
+                            <input id="auth-nickname" type="text" maxlength="20" autocomplete="off"
+                                   data-i18n-placeholder="auth.nickname.ph"
+                                   placeholder="输入昵称（用于显示）"
+                                   class="h-12 px-4 bg-muted text-fg text-base rounded-md border-0 outline-none font-medium focus:bg-canvas focus:border-2 focus:border-primary transition-all duration-200">
+                        </div>
+                        <div class="flex flex-col gap-2">
+                            <label class="text-xs font-semibold uppercase tracking-wider text-fg/60" for="auth-real-name" data-i18n="auth.realName">真实姓名</label>
+                            <input id="auth-real-name" type="text" maxlength="20" autocomplete="off"
+                                   data-i18n-placeholder="auth.realName.ph"
+                                   placeholder="输入真实姓名"
+                                   class="h-12 px-4 bg-muted text-fg text-base rounded-md border-0 outline-none font-medium focus:bg-canvas focus:border-2 focus:border-primary transition-all duration-200">
+                        </div>
+                        <div class="flex flex-col gap-2">
+                            <span class="text-xs font-semibold uppercase tracking-wider text-fg/60" data-i18n="auth.identity">身份</span>
+                            <div class="grid grid-cols-2 gap-2">
+                                <button type="button" data-identity="student" id="auth-identity-student"
+                                        class="h-12 rounded-md text-sm font-semibold tracking-wider uppercase bg-muted text-fg/60 hover:bg-canvas hover:border-2 hover:border-primary transition-all duration-200"
+                                        data-i18n="auth.identity.student">学生</button>
+                                <button type="button" data-identity="teacher" id="auth-identity-teacher"
+                                        class="h-12 rounded-md text-sm font-semibold tracking-wider uppercase bg-muted text-fg/60 hover:bg-canvas hover:border-2 hover:border-primary transition-all duration-200"
+                                        data-i18n="auth.identity.teacher">老师</button>
+                            </div>
+                        </div>
+                        <label id="auth-surname-only-wrap" class="hidden items-center gap-2 cursor-pointer select-none pl-1">
+                            <input id="auth-surname-only" type="checkbox" class="w-4 h-4 accent-primary">
+                            <span class="text-xs font-semibold uppercase tracking-wider text-fg/80" data-i18n="auth.identity.teacher.surnameOnly">仅填姓（推荐）</span>
+                        </label>
+                    </div>
+
                     <div id="auth-error" class="min-h-[1.25rem] text-sm font-medium text-primary"></div>
 
                     <div class="flex flex-col gap-3 mt-2">
@@ -556,6 +590,61 @@
                         </button>
                     </div>
                 </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         PROFILE COMPLETION MODAL  老用户首次登录新版本强制弹窗
+         - 必须补全 nickname / real_name / identity 后才能继续使用
+         - 老师可勾选「仅填姓」让 real_name 接受单字符
+         ============================================================ -->
+    <div id="profile-completion-modal" class="vx-modal-overlay">
+        <div class="vx-modal max-w-md">
+            <div class="bg-accent text-canvas px-8 py-6">
+                <h2 class="font-extrabold text-2xl tracking-[-0.02em] uppercase" data-i18n="auth.completion.title">完善资料</h2>
+                <p class="mt-2 text-sm font-medium opacity-90" data-i18n="auth.completion.desc">为了在赛队中更好地协作，请补全以下信息。</p>
+            </div>
+            <form id="profile-completion-form" class="p-8 flex flex-col gap-4" autocomplete="off">
+                <div class="flex flex-col gap-2">
+                    <label class="text-xs font-semibold uppercase tracking-wider text-fg/60" for="profile-nickname" data-i18n="auth.nickname">昵称</label>
+                    <input id="profile-nickname" type="text" maxlength="20" autocomplete="off"
+                           data-i18n-placeholder="auth.nickname.ph"
+                           placeholder="输入昵称（用于显示）"
+                           class="h-12 px-4 bg-muted text-fg text-base rounded-md border-0 outline-none font-medium focus:bg-canvas focus:border-2 focus:border-primary transition-all duration-200">
+                </div>
+                <div class="flex flex-col gap-2">
+                    <label class="text-xs font-semibold uppercase tracking-wider text-fg/60" for="profile-real-name" data-i18n="auth.realName">真实姓名</label>
+                    <input id="profile-real-name" type="text" maxlength="20" autocomplete="off"
+                           data-i18n-placeholder="auth.realName.ph"
+                           placeholder="输入真实姓名"
+                           class="h-12 px-4 bg-muted text-fg text-base rounded-md border-0 outline-none font-medium focus:bg-canvas focus:border-2 focus:border-primary transition-all duration-200">
+                </div>
+                <div class="flex flex-col gap-2">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-fg/60" data-i18n="auth.identity">身份</span>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button type="button" data-profile-identity="student" id="profile-identity-student"
+                                class="h-12 rounded-md text-sm font-semibold tracking-wider uppercase bg-muted text-fg/60 hover:bg-canvas hover:border-2 hover:border-primary transition-all duration-200"
+                                data-i18n="auth.identity.student">学生</button>
+                        <button type="button" data-profile-identity="teacher" id="profile-identity-teacher"
+                                class="h-12 rounded-md text-sm font-semibold tracking-wider uppercase bg-muted text-fg/60 hover:bg-canvas hover:border-2 hover:border-primary transition-all duration-200"
+                                data-i18n="auth.identity.teacher">老师</button>
+                    </div>
+                </div>
+                <label id="profile-surname-only-wrap" class="hidden items-center gap-2 cursor-pointer select-none pl-1">
+                    <input id="profile-surname-only" type="checkbox" class="w-4 h-4 accent-primary">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-fg/80" data-i18n="auth.identity.teacher.surnameOnly">仅填姓（推荐）</span>
+                </label>
+                <div id="profile-completion-error" class="min-h-[1.25rem] text-sm font-medium text-primary"></div>
+            </form>
+            <div class="bg-muted px-8 py-6 flex justify-end gap-3">
+                <button id="profile-completion-skip" type="button"
+                        class="h-12 px-6 bg-canvas border-2 border-border text-fg rounded-md font-semibold tracking-wider uppercase text-sm hover:bg-muted transition-all duration-200"
+                        data-i18n="auth.completion.skip">稍后</button>
+                <button id="profile-completion-submit" type="button"
+                        class="h-12 px-6 bg-primary text-canvas rounded-md font-semibold tracking-wider uppercase text-sm flex items-center gap-2 hover:bg-primary-hover hover:scale-105 transition-all duration-200">
+                    <i data-lucide="check" class="w-4 h-4"></i><span data-i18n="auth.completion.submit">保存</span>
+                </button>
             </div>
         </div>
     </div>
@@ -836,15 +925,16 @@
         </div>
     </div>
 
-    <!-- 邀请成员 -->
+    <!-- 管理赛队 / 成员管理（统一入口，按角色动态渲染） -->
     <div id="invite-modal" class="vx-modal-overlay">
-        <div class="vx-modal">
+        <div class="vx-modal max-w-lg">
             <div class="bg-accent text-canvas px-8 py-6 flex items-center justify-between">
-                <h2 class="font-extrabold text-2xl tracking-[-0.02em] uppercase" data-i18n="app.team.inviteTitle">邀请成员</h2>
-                <i data-lucide="user-plus" class="w-6 h-6"></i>
+                <h2 class="font-extrabold text-2xl tracking-[-0.02em] uppercase" data-i18n="app.team.manageTitle">管理赛队</h2>
+                <i data-lucide="user-cog" class="w-6 h-6"></i>
             </div>
             <div class="p-8 flex flex-col gap-6">
-                <div class="flex flex-col gap-3">
+                <!-- 邀请码区域（owner/captain/teacher/member 可见，visitor 不可见） -->
+                <div id="invite-code-section" class="flex flex-col gap-3">
                     <label class="text-xs font-semibold uppercase tracking-wider text-fg/60" data-i18n="app.team.inviteCode">邀请码</label>
                     <div class="bg-primary text-canvas rounded-lg p-6 flex items-center justify-between">
                         <span id="invite-code-display" class="vx-mono font-extrabold text-4xl flex-1 text-center">---</span>
@@ -853,11 +943,24 @@
                             <i data-lucide="copy" class="w-5 h-5"></i>
                         </button>
                     </div>
+                    <!-- 重置邀请码（owner/captain/teacher 可见，member/visitor 不可见） -->
+                    <button id="regenerate-invite-btn" type="button"
+                            class="self-start h-10 px-4 bg-canvas border-2 border-border text-fg rounded-md font-semibold tracking-wider uppercase text-xs flex items-center gap-2 hover:bg-muted transition-all duration-200">
+                        <i data-lucide="refresh-cw" class="w-4 h-4"></i><span data-i18n="app.team.regenerateInvite">重置邀请码</span>
+                    </button>
                 </div>
+
+                <!-- 成员列表区域（所有角色都可见） -->
                 <div class="flex flex-col gap-3">
                     <label class="text-xs font-semibold uppercase tracking-wider text-fg/60" data-i18n="app.team.members">成员列表</label>
-                    <div id="members-list" class="border-2 border-border rounded-md max-h-60 overflow-y-auto"></div>
+                    <div id="members-list" class="border-2 border-border rounded-md max-h-72 overflow-y-auto"></div>
                 </div>
+
+                <!-- 删除赛队（仅 owner 可见） -->
+                <button id="delete-team-btn" type="button"
+                        class="self-start h-10 px-4 bg-canvas border-2 border-primary text-primary rounded-md font-semibold tracking-wider uppercase text-xs flex items-center gap-2 hover:bg-primary hover:text-canvas transition-all duration-200">
+                    <i data-lucide="trash-2" class="w-4 h-4"></i><span data-i18n="app.team.deleteTeam">删除赛队</span>
+                </button>
             </div>
             <div class="bg-muted px-8 py-6 flex justify-end">
                 <button id="close-invite-btn" type="button"
@@ -947,6 +1050,10 @@
                 <button data-team-action="manage" id="mobile-manage-team-btn" type="button"
                         class="hidden h-12 border-4 border-fg text-fg rounded-md font-semibold tracking-wider uppercase text-sm flex items-center justify-center gap-2 hover:bg-fg hover:text-canvas transition-all duration-200">
                     <i data-lucide="settings" class="w-4 h-4"></i><span data-i18n="app.team.manage">管理赛队</span>
+                </button>
+                <button id="mobile-menu-close-btn" type="button"
+                        class="h-12 border-4 border-muted text-fg/60 rounded-md font-semibold tracking-wider uppercase text-sm flex items-center justify-center gap-2 hover:bg-muted transition-all duration-200">
+                    <i data-lucide="x" class="w-4 h-4"></i><span data-i18n="app.team.close">关闭</span>
                 </button>
             </div>
         </div>
