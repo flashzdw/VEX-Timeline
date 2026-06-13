@@ -1844,6 +1844,16 @@ class App {
       });
     }
 
+    // 5) 绑定取消按钮（事件委托到 modal 容器，3 个 tab 各有一个"取消"按钮）
+    if (!modal.__cancelBound) {
+      modal.__cancelBound = true;
+      modal.addEventListener('click', (e) => {
+        const cancelBtn = e.target.closest('[data-settings-action="cancel"]');
+        if (!cancelBtn) return;
+        modal.classList.remove('active');
+      });
+    }
+
     // 5) 重置到 default tab (basic)
     this._switchSettingsTab('basic');
 

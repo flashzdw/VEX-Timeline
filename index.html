@@ -735,10 +735,15 @@
                             <span class="text-xs font-semibold uppercase tracking-wider text-fg/80" data-i18n="auth.identity.teacher.surnameOnly">仅填姓（推荐）</span>
                         </label>
                         <p class="settings-error min-h-[1.25rem] text-sm font-medium text-primary"></p>
-                        <button type="submit"
-                                class="h-12 bg-primary text-canvas rounded-md font-semibold tracking-wider uppercase text-sm flex items-center justify-center gap-2 hover:bg-primary-hover hover:scale-[1.02] transition-all duration-200">
-                            <i data-lucide="save" class="w-4 h-4"></i><span data-i18n="app.action.save">保存</span>
-                        </button>
+                        <div class="flex gap-3">
+                            <button type="button" data-settings-action="cancel"
+                                    class="h-12 px-6 bg-canvas border-2 border-border text-fg rounded-md font-semibold tracking-wider uppercase text-sm hover:bg-muted transition-all duration-200"
+                                    data-i18n="app.modal.cancel">取消</button>
+                            <button type="submit"
+                                    class="flex-1 h-12 bg-primary text-canvas rounded-md font-semibold tracking-wider uppercase text-sm flex items-center justify-center gap-2 hover:bg-primary-hover hover:scale-[1.02] transition-all duration-200">
+                                <i data-lucide="save" class="w-4 h-4"></i><span data-i18n="app.action.save">保存</span>
+                            </button>
+                        </div>
                     </form>
                 </section>
 
@@ -750,10 +755,15 @@
                                class="h-12 px-4 bg-muted text-fg text-base rounded-md border-0 outline-none font-medium focus:bg-canvas focus:border-2 focus:border-primary transition-all duration-200">
                         <p class="text-xs text-fg/50" data-i18n="app.user.usernameHint">修改后下次登录需用新用户名</p>
                         <p class="settings-username-error min-h-[1.25rem] text-sm font-medium text-primary"></p>
-                        <button type="submit"
-                                class="h-12 bg-primary text-canvas rounded-md font-semibold tracking-wider uppercase text-sm flex items-center justify-center gap-2 hover:bg-primary-hover hover:scale-[1.02] transition-all duration-200">
-                            <i data-lucide="refresh-cw" class="w-4 h-4"></i><span data-i18n="app.action.update">更新</span>
-                        </button>
+                        <div class="flex gap-3">
+                            <button type="button" data-settings-action="cancel"
+                                    class="h-12 px-6 bg-canvas border-2 border-border text-fg rounded-md font-semibold tracking-wider uppercase text-sm hover:bg-muted transition-all duration-200"
+                                    data-i18n="app.modal.cancel">取消</button>
+                            <button type="submit"
+                                    class="flex-1 h-12 bg-primary text-canvas rounded-md font-semibold tracking-wider uppercase text-sm flex items-center justify-center gap-2 hover:bg-primary-hover hover:scale-[1.02] transition-all duration-200">
+                                <i data-lucide="refresh-cw" class="w-4 h-4"></i><span data-i18n="app.action.update">更新</span>
+                            </button>
+                        </div>
                     </form>
                 </section>
 
@@ -770,10 +780,15 @@
                                placeholder="确认新密码"
                                class="h-12 px-4 bg-muted text-fg text-base rounded-md border-0 outline-none font-medium focus:bg-canvas focus:border-2 focus:border-primary transition-all duration-200">
                         <p class="settings-password-error min-h-[1.25rem] text-sm font-medium text-primary"></p>
-                        <button type="submit"
-                                class="h-12 bg-primary text-canvas rounded-md font-semibold tracking-wider uppercase text-sm flex items-center justify-center gap-2 hover:bg-primary-hover hover:scale-[1.02] transition-all duration-200">
-                            <i data-lucide="key" class="w-4 h-4"></i><span data-i18n="app.user.changePassword">更改密码</span>
-                        </button>
+                        <div class="flex gap-3">
+                            <button type="button" data-settings-action="cancel"
+                                    class="h-12 px-6 bg-canvas border-2 border-border text-fg rounded-md font-semibold tracking-wider uppercase text-sm hover:bg-muted transition-all duration-200"
+                                    data-i18n="app.modal.cancel">取消</button>
+                            <button type="submit"
+                                    class="flex-1 h-12 bg-primary text-canvas rounded-md font-semibold tracking-wider uppercase text-sm flex items-center justify-center gap-2 hover:bg-primary-hover hover:scale-[1.02] transition-all duration-200">
+                                <i data-lucide="key" class="w-4 h-4"></i><span data-i18n="app.user.changePassword">更改密码</span>
+                            </button>
+                        </div>
                     </form>
                 </section>
             </div>

@@ -216,17 +216,57 @@ console.log('tab 数量:', tabBtns.length);
 if (tabBtns.length !== 3) { console.log('FAIL: 应有 3 个 tab, 实际 ' + tabBtns.length); process.exit(1); }
 console.log('OK: 3 个 tab 存在');
 
-// 默认状态：basic tab 激活，其他两个 inactive
+// 声明 tab / panel 变量（先声明后用，避免 TDZ）
 const basicTab = tabNav.querySelector('[data-settings-tab="basic"]');
 const usernameTab = tabNav.querySelector('[data-settings-tab="username"]');
 const passwordTab = tabNav.querySelector('[data-settings-tab="password"]');
-if (!basicTab.classList.contains('is-active')) { console.log('FAIL: 默认 basic tab 应激活'); process.exit(1); }
-console.log('OK: 默认 basic tab 激活');
-
-// 默认 panel 状态
 const basicPanel = doc.querySelector('[data-settings-panel="basic"]');
 const usernamePanel = doc.querySelector('[data-settings-panel="username"]');
 const passwordPanel = doc.querySelector('[data-settings-panel="password"]');
+
+// 4c) 取消按钮：3 个 panel 各一个，点击关闭 modal
+console.log('\n--- 4c) 取消按钮（关闭 modal）---');
+const cancelBtns = modal.querySelectorAll('[data-settings-action="cancel"]');
+console.log('取消按钮数量:', cancelBtns.length);
+if (cancelBtns.length !== 3) { console.log('FAIL: 应有 3 个取消按钮（每个 panel 一个）, 实际 ' + cancelBtns.length); process.exit(1); }
+console.log('OK: 3 个取消按钮存在');
+
+// 切到 username tab，验证取消按钮在那个 panel
+usernameTab.click();
+const usernamePanelCancel = usernamePanel.querySelector('[data-settings-action="cancel"]');
+if (!usernamePanelCancel) { console.log('FAIL: username panel 内无取消按钮'); process.exit(1); }
+if (usernamePanelCancel.textContent.trim() !== '取消') { console.log('FAIL: 取消按钮文案错误, 实际 "' + usernamePanelCancel.textContent.trim() + '"'); process.exit(1); }
+console.log('OK: username panel 取消按钮文案 = 取消');
+
+// 点击 username panel 的取消按钮 → modal 应关闭
+usernamePanelCancel.click();
+if (modal.classList.contains('active')) { console.log('FAIL: 取消按钮点击后 modal 未关闭'); process.exit(1); }
+console.log('OK: 取消按钮点击后 modal 关闭');
+
+// 重新打开 modal 验证其他 tab 也有取消按钮
+app.openSettingsModal();
+if (!modal.classList.contains('active')) { console.log('FAIL: 重新打开失败'); process.exit(1); }
+basicTab.click();
+const basicPanelCancel = basicPanel.querySelector('[data-settings-action="cancel"]');
+if (!basicPanelCancel) { console.log('FAIL: basic panel 内无取消按钮'); process.exit(1); }
+console.log('OK: basic panel 取消按钮存在');
+
+// 点击 basic 取消 → 关 modal
+basicPanelCancel.click();
+if (modal.classList.contains('active')) { console.log('FAIL: basic 取消按钮未关闭 modal'); process.exit(1); }
+console.log('OK: basic 取消按钮点击后 modal 关闭');
+
+// 重新打开继续后续测试
+app.openSettingsModal();
+basicTab.click();  // 显式切回 basic（让后续断言 4b 默认态成立）
+
+// ============================================================
+// 4b 续：tab 互斥切换的原有测试（继续 basic 默认态）
+// ============================================================
+if (!basicTab.classList.contains('is-active')) { console.log('FAIL: 默认 basic tab 应激活'); process.exit(1); }
+console.log('OK: 默认 basic tab 激活');
+
+// 默认 panel 状态（变量已在 4b 顶部声明）
 if (basicPanel.classList.contains('hidden')) { console.log('FAIL: basic panel 默认应显示'); process.exit(1); }
 if (!usernamePanel.classList.contains('hidden')) { console.log('FAIL: username panel 默认应隐藏'); process.exit(1); }
 if (!passwordPanel.classList.contains('hidden')) { console.log('FAIL: password panel 默认应隐藏'); process.exit(1); }
