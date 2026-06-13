@@ -1,7 +1,8 @@
 // Bump CACHE_NAME version whenever JS/CSS changes are deployed.
 // This forces the new service worker to skip the old cache and refetch everything.
-// v36: 图标内 3 个节点圆等距化（间距 187px 等距），整体内容上 89/下 89 真正居中
-const CACHE_NAME = 'vex-timeline-cache-v38';
+// v39: 修复自定义域名上 i18n 键被原样显示的问题 —— 旧 SW 缓存里没有 home.hero.mockup.* 键
+//      同时把样式从 text-fg/50（未定义）改回 text-fg/60
+const CACHE_NAME = 'vex-timeline-cache-v39';
 
 // Only cache the static shell — NEVER cache JS files (auth.js, app.js, config.js, etc.)
 // because they change with each deploy and JS bugs in cached files can break the app.
