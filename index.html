@@ -237,7 +237,7 @@
                                     </div>
                                     <div class="flex items-center gap-1 bg-muted rounded-md p-0.5 shrink-0">
                                         <span class="h-6 px-2 bg-canvas text-fg rounded text-[10px] font-semibold uppercase tracking-wider flex items-center" data-i18n="home.hero.mockup.view.timeline">时间轴</span>
-                                        <span class="h-6 px-2 text-fg/50 text-[10px] font-semibold uppercase tracking-wider flex items-center" data-i18n="home.hero.mockup.view.month">月历</span>
+                                        <span class="h-6 px-2 text-fg/60 text-[10px] font-semibold uppercase tracking-wider flex items-center" data-i18n="home.hero.mockup.view.month">月历</span>
                                     </div>
                                     <div class="h-7 w-7 rounded-full bg-secondary text-canvas text-[10px] font-extrabold flex items-center justify-center shrink-0">U</div>
                                 </div>
@@ -780,9 +780,13 @@
                 </div>
                 <div class="flex flex-col gap-2">
                     <label class="text-xs font-semibold uppercase tracking-wider text-fg/60" for="record-image" data-i18n="app.modal.image">图片</label>
-                    <input id="record-image" type="file" accept="image/*"
-                           class="text-sm font-medium file:mr-3 file:py-2 file:px-4 file:rounded-md file:border-0 file:bg-fg file:text-canvas file:font-semibold file:uppercase file:tracking-wider file:text-xs file:cursor-pointer hover:file:bg-primary transition-all duration-200">
-                    <span class="text-xs font-semibold uppercase tracking-wider text-fg/40" data-i18n="app.modal.chooseFile">点击或拖拽图片到此处</span>
+                    <div class="flex items-center gap-3 flex-wrap">
+                        <input id="record-image" type="file" accept="image/*" class="vx-file-input-sr">
+                        <button type="button" id="record-image-trigger"
+                                class="h-10 px-4 bg-fg text-canvas rounded-md font-semibold tracking-wider uppercase text-xs hover:bg-primary transition-all duration-200 cursor-pointer"
+                                data-i18n="app.modal.chooseFile">选择文件</button>
+                        <span id="record-image-name" class="text-xs font-medium text-fg/60 truncate max-w-[14rem]" data-i18n="app.modal.noFile">未选择任何文件</span>
+                    </div>
                     <div id="image-preview" class="hidden mt-2 relative inline-block">
                         <img id="preview-img" src="" data-i18n-alt="app.modal.preview" alt="预览" class="max-w-[200px] max-h-[200px] object-cover rounded-md border-2 border-border">
                         <button type="button" id="remove-image-btn"

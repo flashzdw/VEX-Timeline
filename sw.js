@@ -1,7 +1,9 @@
 // Bump CACHE_NAME version whenever JS/CSS changes are deployed.
 // This forces the new service worker to skip the old cache and refetch everything.
-// v36: 图标内 3 个节点圆等距化（间距 187px 等距），整体内容上 89/下 89 真正居中
-const CACHE_NAME = 'vex-timeline-cache-v38';
+// v40: 修复添加文件按钮的 i18n + 选了文件却仍显示「未选择任何文件」的问题
+//      - 用自定义按钮 + 文件名 span 替换原生 <input type="file"> 视觉
+//      - 新增 app.modal.noFile / app.modal.fileSelected
+const CACHE_NAME = 'vex-timeline-cache-v40';
 
 // Only cache the static shell — NEVER cache JS files (auth.js, app.js, config.js, etc.)
 // because they change with each deploy and JS bugs in cached files can break the app.
