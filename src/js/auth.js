@@ -180,13 +180,20 @@ class AuthManager {
         throw (window.i18n ? window.i18n.t('auth.error.realNameStudentTooShort') : '学生姓名至少 2 个字符');
       }
     }
-    if (identity === 'teacher' || identity === 'parent') {
+    // 老师：可"仅填姓" 1 字符，否则 >= 2 字符
+    if (identity === 'teacher') {
       if (nameOnlySurname) {
         if (realName.length !== 1) {
           throw (window.i18n ? window.i18n.t('auth.error.realNameTeacherSurname') : '仅填姓时，姓名必须是 1 个字符');
         }
       } else if (realName.length < 2) {
         throw (window.i18n ? window.i18n.t('auth.error.realNameTeacherTooShort') : '姓名至少 2 个字符');
+      }
+    }
+    // 家长：强制忽略 surname-only，强制 >= 2 字符（孩子全名）
+    if (identity === 'parent') {
+      if (realName.length < 2) {
+        throw (window.i18n ? window.i18n.t('auth.error.realNameParentTooShort') : '孩子的姓名至少 2 个字符');
       }
     }
 
@@ -284,8 +291,8 @@ class AuthManager {
    * @param {object} profile
    * @param {string} profile.nickname
    * @param {string} profile.realName
-   * @param {boolean} profile.nameOnlySurname
-   * @param {string} profile.identity 'student' | 'teacher'
+   * @param {boolean} profile.nameOnlySurname  （家长会被强制设为 false）
+   * @param {string} profile.identity 'student' | 'teacher' | 'parent'
    */
   async completeProfile(profile = {}) {
     const supabase = supabaseManager.getClient();
@@ -294,12 +301,14 @@ class AuthManager {
 
     const nickname = (profile.nickname || '').trim();
     const realName = (profile.realName || '').trim();
-    const nameOnlySurname = !!profile.nameOnlySurname;
+    // 家长：强制忽略 surname-only
+    const nameOnlySurname = profile.identity === 'parent' ? false : !!profile.nameOnlySurname;
     const identity = profile.identity;
 
     if (!nickname) throw new Error('请填写昵称');
     if (!realName) throw new Error('请填写真实姓名');
     if (identity !== 'student' && identity !== 'teacher' && identity !== 'parent') throw new Error('请选择身份');
+    if (identity === 'parent' && realName.length < 2) throw new Error('孩子的姓名至少 2 个字符');
 
     const { error } = await supabase.rpc('complete_profile', {
       p_nickname: nickname,

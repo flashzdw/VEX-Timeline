@@ -586,11 +586,12 @@
                                class="h-12 px-4 bg-muted text-fg text-base rounded-md border-0 outline-none font-medium focus:bg-canvas focus:border-2 focus:border-primary transition-all duration-200">
                     </div>
                     <div class="flex flex-col gap-2">
-                        <label class="text-xs font-semibold uppercase tracking-wider text-fg/60" for="auth-real-name" data-i18n="auth.realName">真实姓名</label>
+                        <label id="auth-real-name-label" class="text-xs font-semibold uppercase tracking-wider text-fg/60" for="auth-real-name" data-i18n="auth.realName">真实姓名</label>
                         <input id="auth-real-name" type="text" maxlength="20" autocomplete="off"
                                data-i18n-placeholder="auth.realName.ph"
                                placeholder="输入真实姓名"
                                class="h-12 px-4 bg-muted text-fg text-base rounded-md border-0 outline-none font-medium focus:bg-canvas focus:border-2 focus:border-primary transition-all duration-200">
+                        <p id="auth-real-name-hint" class="hidden text-xs text-fg/50 -mt-1" data-i18n="auth.realName.parent.hint">系统会自动在后面添加"家长"</p>
                     </div>
                     <div class="flex flex-col gap-2">
                         <span class="text-xs font-semibold uppercase tracking-wider text-fg/60" data-i18n="auth.identity">身份</span>
@@ -651,11 +652,12 @@
                 </div>
                 <!-- 真实姓名：已存在时整段隐藏 -->
                 <div id="profile-real-name-section" class="flex flex-col gap-2">
-                    <label class="text-xs font-semibold uppercase tracking-wider text-fg/60" for="profile-real-name" data-i18n="auth.realName">真实姓名</label>
+                    <label id="profile-real-name-label" class="text-xs font-semibold uppercase tracking-wider text-fg/60" for="profile-real-name" data-i18n="auth.realName">真实姓名</label>
                     <input id="profile-real-name" type="text" maxlength="20" autocomplete="off"
                            data-i18n-placeholder="auth.realName.ph"
                            placeholder="输入真实姓名"
                            class="h-12 px-4 bg-muted text-fg text-base rounded-md border-0 outline-none font-medium focus:bg-canvas focus:border-2 focus:border-primary transition-all duration-200">
+                    <p id="profile-real-name-hint" class="hidden text-xs text-fg/50 -mt-1" data-i18n="auth.realName.parent.hint">系统会自动在后面添加"家长"</p>
                 </div>
                 <!-- 身份：已存在时整段隐藏 -->
                 <div id="profile-identity-section" class="flex flex-col gap-2">

@@ -504,6 +504,7 @@ class App {
   /**
    * 长显示名：昵称（真实姓名），用于成员列表 / 下拉菜单头部
    * - 老师仅填姓时：昵称（X 老师）
+   * - 家长：填的是孩子的全名 → 昵称（孩子名家长），自动追加"家长"后缀
    * - 其他情形：昵称（真实姓名）
    * - 真实姓名为空时：退化为只显示昵称
    */
@@ -511,6 +512,10 @@ class App {
     if (!u) return 'User';
     const nick = u.nickname || u.username || 'User';
     if (!u.real_name) return nick;
+    if (u.identity === 'parent') {
+      // 家长：用户填的是孩子的名字，系统统一加"家长"后缀
+      return `${nick}（${u.real_name}家长）`;
+    }
     if (u.name_only_surname && u.identity === 'teacher') {
       return `${nick}（${u.real_name}老师）`;
     }
@@ -1337,7 +1342,10 @@ class App {
     const profile = {
       nickname: (document.getElementById('auth-nickname')?.value || '').trim(),
       realName: (document.getElementById('auth-real-name')?.value || '').trim(),
-      nameOnlySurname: !!document.getElementById('auth-surname-only')?.checked,
+      // 家长不享受"仅填姓"（填的是孩子全名），强制关闭
+      nameOnlySurname: this._authIdentity === 'parent'
+        ? false
+        : !!document.getElementById('auth-surname-only')?.checked,
       identity: this._authIdentity
     };
 
@@ -1412,10 +1420,43 @@ class App {
     const parentBtn  = document.getElementById(`${prefix}-parent`);
     const surnameWrap = document.getElementById(scope === 'auth' ? 'auth-surname-only-wrap' : 'profile-surname-only-wrap');
     const surnameCheckbox = document.getElementById(scope === 'auth' ? 'auth-surname-only' : 'profile-surname-only');
+    const realNameLabel = document.getElementById(scope === 'auth' ? 'auth-real-name-label' : 'profile-real-name-label');
+    const realNameInput = document.getElementById(scope === 'auth' ? 'auth-real-name' : 'profile-real-name');
+    const realNameHint  = document.getElementById(scope === 'auth' ? 'auth-real-name-hint' : 'profile-real-name-hint');
 
     const buttons = { student: studentBtn, teacher: teacherBtn, parent: parentBtn };
 
-    // 让「学生」按钮立刻在视觉上高亮（默认状态）
+    // 切换身份时同步真实姓名字段的标签/占位/提示，以及仅填姓的可见性
+    const syncRealNameField = (selected) => {
+      const t = (k, d) => (window.i18n && window.i18n.t ? window.i18n.t(k, d) : (d || k));
+      if (selected === 'parent') {
+        if (realNameLabel) realNameLabel.textContent = t('auth.realName.parent', '孩子的姓名');
+        if (realNameInput) realNameInput.placeholder = t('auth.realName.parent.ph', '请输入孩子的真实姓名');
+        if (realNameHint)  realNameHint.classList.remove('hidden');
+        // 家长不享受"仅填姓"，强制隐藏 + 取消勾选
+        if (surnameWrap) {
+          surnameWrap.classList.add('hidden');
+          surnameWrap.classList.remove('flex');
+        }
+        if (surnameCheckbox) surnameCheckbox.checked = false;
+      } else {
+        if (realNameLabel) realNameLabel.textContent = t('auth.realName', '真实姓名');
+        if (realNameInput) realNameInput.placeholder = t('auth.realName.ph', '输入真实姓名');
+        if (realNameHint)  realNameHint.classList.add('hidden');
+        if (surnameWrap) {
+          if (selected === 'teacher') {
+            surnameWrap.classList.remove('hidden');
+            surnameWrap.classList.add('flex');
+          } else {
+            surnameWrap.classList.add('hidden');
+            surnameWrap.classList.remove('flex');
+            if (surnameCheckbox) surnameCheckbox.checked = false;
+          }
+        }
+      }
+    };
+
+    // 让当前选中的按钮立刻在视觉上高亮
     const paintSelected = () => {
       const sel = this[stateKey];
       const setActive = (btn, isActive) => {
@@ -1430,17 +1471,7 @@ class App {
       setActive(studentBtn, sel === 'student');
       setActive(teacherBtn, sel === 'teacher');
       setActive(parentBtn,  sel === 'parent');
-      if (surnameWrap) {
-        // 老师 / 家长都支持"仅填姓"（1 字符）
-        if (sel === 'teacher' || sel === 'parent') {
-          surnameWrap.classList.remove('hidden');
-          surnameWrap.classList.add('flex');
-        } else {
-          surnameWrap.classList.add('hidden');
-          surnameWrap.classList.remove('flex');
-          if (surnameCheckbox) surnameCheckbox.checked = false;
-        }
-      }
+      syncRealNameField(sel);
     };
     // 给三个按钮都绑 click
     Object.entries(buttons).forEach(([key, btn]) => {
@@ -1586,7 +1617,10 @@ class App {
     const realName = wantRealName
       ? (document.getElementById('profile-real-name')?.value || '').trim()
       : (authManager.getCurrentUser()?.real_name || '');
-    const surnameOnly = !!document.getElementById('profile-surname-only')?.checked;
+    // 家长强制关闭 surname-only（不享受"仅填姓"逻辑）
+    const surnameOnly = identity === 'parent'
+      ? false
+      : !!document.getElementById('profile-surname-only')?.checked;
     const identity = wantIdentity ? this._profileIdentity : (authManager.getCurrentUser()?.identity || '');
 
     // 只校验"需要补全"的字段
@@ -1612,6 +1646,11 @@ class App {
     }
     if (identity === 'teacher' && !surnameOnly && realName && realName.length < 2) {
       if (errorEl) errorEl.textContent = this._i18n('auth.error.realNameTeacherTooShort', '老师姓名至少 2 个字符');
+      return;
+    }
+    // 家长：必须 >= 2 字符（孩子全名），不享受 surname-only
+    if (identity === 'parent' && realName && realName.length < 2) {
+      if (errorEl) errorEl.textContent = this._i18n('auth.error.realNameParentTooShort', '孩子的姓名至少 2 个字符');
       return;
     }
 

@@ -98,10 +98,16 @@ const cases = [
     expectFull: '王队（王老师）',
   },
   {
-    name: '家长仅填姓：昵称（X），不自动加"老师"后缀',
-    input: { nickname: '张爸', username: 'zhangbaba', real_name: '张', identity: 'parent', name_only_surname: true },
+    name: '家长：昵称（孩子名家长），自动追加"家长"后缀',
+    input: { nickname: '张爸', username: 'zhangbaba', real_name: '张东炜', identity: 'parent' },
     expectShort: '张爸',
-    expectFull: '张爸（张）',     // parent 不带"老师"后缀
+    expectFull: '张爸（张东炜家长）',
+  },
+  {
+    name: '家长 surname-only 标志被忽略：仍按孩子全名展示',
+    input: { nickname: '李妈', real_name: '李思琦', identity: 'parent', name_only_surname: true },
+    expectShort: '李妈',
+    expectFull: '李妈（李思琦家长）',
   },
   {
     name: '学生：昵称（真实姓名）',
