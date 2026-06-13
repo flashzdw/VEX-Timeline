@@ -705,10 +705,10 @@
                     <i data-lucide="key" class="w-4 h-4 inline-block mr-1.5 -mt-0.5"></i><span data-i18n="app.user.changePassword">更改密码</span>
                 </button>
             </nav>
-            <div class="p-8 max-h-[70vh] overflow-y-auto">
+            <div class="p-8 max-h-[70vh] overflow-y-auto grid h-[360px]">
                 <!-- 面板 A：基本信息（真实姓名 + 身份） -->
-                <section data-settings-panel="basic">
-                    <form id="settings-basic-form" class="flex flex-col gap-4">
+                <section data-settings-panel="basic" class="row-start-1 col-start-1 flex flex-col h-full overflow-y-auto">
+                    <form id="settings-basic-form" class="flex flex-col gap-4 h-full">
                         <div class="flex flex-col gap-2">
                             <label id="settings-real-name-label" class="text-xs font-semibold uppercase tracking-wider text-fg/60" for="settings-real-name" data-i18n="auth.realName">真实姓名</label>
                             <input id="settings-real-name" type="text" maxlength="20" autocomplete="off"
@@ -735,7 +735,7 @@
                             <span class="text-xs font-semibold uppercase tracking-wider text-fg/80" data-i18n="auth.identity.teacher.surnameOnly">仅填姓（推荐）</span>
                         </label>
                         <p class="settings-error min-h-[1.25rem] text-sm font-medium text-primary"></p>
-                        <div class="flex gap-3">
+                        <div class="mt-auto flex gap-3">
                             <button type="button" data-settings-action="cancel"
                                     class="h-12 px-6 bg-canvas border-2 border-border text-fg rounded-md font-semibold tracking-wider uppercase text-sm hover:bg-muted transition-all duration-200"
                                     data-i18n="app.modal.cancel">取消</button>
@@ -748,14 +748,14 @@
                 </section>
 
                 <!-- 面板 B：用户名 -->
-                <section data-settings-panel="username" class="vx-settings-panel-hidden row-start-1 col-start-1">
-                    <form id="settings-username-form" class="flex flex-col gap-3">
+                <section data-settings-panel="username" class="vx-settings-panel-hidden row-start-1 col-start-1 flex flex-col h-full">
+                    <form id="settings-username-form" class="flex flex-col gap-3 h-full">
                         <input id="settings-username" type="text" minlength="3" maxlength="20" autocomplete="username"
                                placeholder="输入新用户名"
                                class="h-12 px-4 bg-muted text-fg text-base rounded-md border-0 outline-none font-medium focus:bg-canvas focus:border-2 focus:border-primary transition-all duration-200">
                         <p class="text-xs text-fg/50" data-i18n="app.user.usernameHint">修改后下次登录需用新用户名</p>
                         <p class="settings-username-error min-h-[1.25rem] text-sm font-medium text-primary"></p>
-                        <div class="flex gap-3">
+                        <div class="mt-auto flex gap-3">
                             <button type="button" data-settings-action="cancel"
                                     class="h-12 px-6 bg-canvas border-2 border-border text-fg rounded-md font-semibold tracking-wider uppercase text-sm hover:bg-muted transition-all duration-200"
                                     data-i18n="app.modal.cancel">取消</button>
@@ -768,8 +768,8 @@
                 </section>
 
                 <!-- 面板 C：更改密码 -->
-                <section data-settings-panel="password" class="vx-settings-panel-hidden row-start-1 col-start-1">
-                    <form id="settings-password-form" class="flex flex-col gap-3">
+                <section data-settings-panel="password" class="vx-settings-panel-hidden row-start-1 col-start-1 flex flex-col h-full">
+                    <form id="settings-password-form" class="flex flex-col gap-3 h-full">
                         <input id="settings-old-password" type="password" minlength="6" autocomplete="current-password"
                                placeholder="旧密码"
                                class="h-12 px-4 bg-muted text-fg text-base rounded-md border-0 outline-none font-medium focus:bg-canvas focus:border-2 focus:border-primary transition-all duration-200">
@@ -780,7 +780,7 @@
                                placeholder="确认新密码"
                                class="h-12 px-4 bg-muted text-fg text-base rounded-md border-0 outline-none font-medium focus:bg-canvas focus:border-2 focus:border-primary transition-all duration-200">
                         <p class="settings-password-error min-h-[1.25rem] text-sm font-medium text-primary"></p>
-                        <div class="flex gap-3">
+                        <div class="mt-auto flex gap-3">
                             <button type="button" data-settings-action="cancel"
                                     class="h-12 px-6 bg-canvas border-2 border-border text-fg rounded-md font-semibold tracking-wider uppercase text-sm hover:bg-muted transition-all duration-200"
                                     data-i18n="app.modal.cancel">取消</button>
