@@ -266,7 +266,7 @@
       'common.loading': '加载中…',
       'common.backHome': '返回首页',
 
-      'home.toast.loginSuccess': '登录成功，正在进入应用…',
+      'home.toast.loginSuccess': '登录成功',
       'home.toast.enterNow': '立即进入',
 
       'app.modal.preview': '预览',
@@ -538,7 +538,7 @@
       'common.loading': 'Loading…',
       'common.backHome': 'Back to home',
 
-      'home.toast.loginSuccess': 'Signed in, entering app…',
+      'home.toast.loginSuccess': 'Signed in',
       'home.toast.enterNow': 'Enter now',
 
       'app.modal.preview': 'Preview',

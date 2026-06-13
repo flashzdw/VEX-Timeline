@@ -866,8 +866,24 @@ button:disabled.hover\:scale-105:hover { transform: none; }
   backdrop-filter: none;
 }
 .vx-site-header a, .vx-site-header button { color: var(--color-fg); }
+/* 加固：app / auth 场景下完全隐藏 site-header
+   - 同时使用 class + id 双重选择器，提升特异性，避免被其他规则绕过
+   - 叠加 visibility:hidden + height:0，彻底从布局中抹除（防止某些浏览器对 sticky + display:none 的渲染抖动） */
 body[data-scene="auth"] .vx-site-header,
-body[data-scene="app"] .vx-site-header { display: none !important; }
+body[data-scene="auth"] #site-header,
+body[data-scene="app"]  .vx-site-header,
+body[data-scene="app"]  #site-header {
+  display: none !important;
+  visibility: hidden !important;
+  height: 0 !important;
+  min-height: 0 !important;
+  max-height: 0 !important;
+  overflow: hidden !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  pointer-events: none !important;
+}
 
 .vx-site-nav-link {
   display: inline-flex;

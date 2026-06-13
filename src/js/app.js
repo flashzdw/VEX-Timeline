@@ -216,15 +216,6 @@ class App {
   // ============================================================
   /**
    * 登录成功入口
-   * 流程：
-   *  1) 拉取 timelines 与云端记录
-   *  2) 先切到首页（避免直接进入主应用突兀）
-   *  3) 在首页显示 toast 提示"登录成功，正在进入应用…"
-   *  4) 3 秒后自动（或点击"立即进入"立即）切到主应用
-   *  5) 隐藏冷启动遮罩
-   */
-  /**
-   * 登录成功入口
    * @param {object} [opts]
    * @param {boolean} [opts.directToApp=false]  为 true 时跳过"首页 + toast"过渡，
    *        直接进入主应用（用于冷启动时已登录场景，保持原行为）
@@ -280,16 +271,12 @@ class App {
       return;
     }
 
-    // 主动登录 / 注册：先到首页，3 秒 toast 后切到主应用
-    this.showHomePage();
-    const enterApp = () => {
-      if (this._loginRedirectTimer) { clearTimeout(this._loginRedirectTimer); this._loginRedirectTimer = null; }
-      this.showMainApp();
-    };
-    const message = (window.i18n && window.i18n.t) ? window.i18n.t('home.toast.loginSuccess') : '登录成功，正在进入应用…';
-    const actionLabel = (window.i18n && window.i18n.t) ? window.i18n.t('home.toast.enterNow') : '立即进入';
-    this.showToast(message, { duration: 3000, actionLabel: actionLabel, action: enterApp });
-    this._loginRedirectTimer = setTimeout(enterApp, 3000);
+    // 修复：主动登录 / 注册后直接进入主应用，不再闪回到宣传首页 3 秒
+    // - 避免 "登录成功 → 整页宣传页 hero/features 重新渲染" 给用户造成「页面 reload」的错觉
+    // - 保留一个简短的成功 toast 作为反馈
+    this.showMainApp();
+    const message = (window.i18n && window.i18n.t) ? window.i18n.t('home.toast.loginSuccess', '登录成功') : '登录成功';
+    this.showToast(message, { duration: 2000, type: 'success' });
   }
 
   // ============================================================
