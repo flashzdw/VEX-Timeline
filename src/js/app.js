@@ -908,6 +908,27 @@ class App {
     const profileNickname = document.getElementById('profile-nickname');
     if (profileNickname) profileNickname.addEventListener('keydown', (e) => { if (e.key === 'Enter') this.handleProfileCompletionSubmit(); });
 
+    // "稍后" 劝导弹窗：OK 按钮 → 关闭弹窗 + 焦点回到主弹窗的第一个未填字段
+    const nudgeOk = document.getElementById('profile-nudge-ok');
+    if (nudgeOk) {
+      nudgeOk.addEventListener('click', () => {
+        this.closeProfileNudgeModal();
+        // 焦点回到主弹窗第一个未填且仍可见的字段
+        setTimeout(() => {
+          const candidates = ['profile-nickname', 'profile-real-name', 'profile-identity-student', 'profile-identity-teacher'];
+          for (const id of candidates) {
+            const el = document.getElementById(id);
+            if (!el) continue;
+            const section = el.closest('div.flex.flex-col');
+            if (section && !section.classList.contains('hidden')) {
+              el.focus();
+              break;
+            }
+          }
+        }, 100);
+      });
+    }
+
     // 登出（桌面 + 移动）
     document.getElementById('logout-btn').addEventListener('click', () => this.handleLogout());
     const mobileLogout = document.getElementById('mobile-logout-btn');
@@ -1345,9 +1366,10 @@ class App {
 
   // ============================================================
   // 一级权限：身份选择器（学生 / 老师）
+  // - 默认选中「学生」：绝大多数用户是学生，少点一下 = 提升效率
   // ============================================================
-  _authIdentity = null;     // 注册表单当前选中的身份
-  _profileIdentity = null;  // 补全资料弹窗当前选中的身份
+  _authIdentity = 'student';     // 注册表单当前选中的身份（默认学生）
+  _profileIdentity = 'student';  // 补全资料弹窗当前选中的身份（默认学生）
 
   /**
    * 绑定身份选择器（学生 / 老师）
@@ -1361,6 +1383,7 @@ class App {
     const surnameWrap = document.getElementById(scope === 'auth' ? 'auth-surname-only-wrap' : 'profile-surname-only-wrap');
     const surnameCheckbox = document.getElementById(scope === 'auth' ? 'auth-surname-only' : 'profile-surname-only');
 
+    // 让「学生」按钮立刻在视觉上高亮（默认状态）
     const paintSelected = () => {
       const sel = this[stateKey];
       const setActive = (btn, isActive) => {
@@ -1398,6 +1421,7 @@ class App {
         paintSelected();
       });
     }
+    // 初始绘制一次（让默认的"学生"在视觉上高亮）
     paintSelected();
   }
 
@@ -1405,8 +1429,8 @@ class App {
   // 一级权限：老用户补全资料
   // ============================================================
   _ensureProfileIdentity() {
-    // 如果 currentUser.identity 已有值，预填
-    if (!this._profileIdentity && authManager.getCurrentUser()?.identity) {
+    // 如果 currentUser.identity 已有值，预填到 picker（即便 section 隐藏也同步内部状态）
+    if (authManager.getCurrentUser()?.identity) {
       this._profileIdentity = authManager.getCurrentUser().identity;
       this._bindIdentityPicker('profile');
     }
@@ -1418,7 +1442,6 @@ class App {
   checkProfileCompletion() {
     if (!authManager.isLoggedIn()) return;
     if (!authManager.needsProfileCompletion()) return;
-    // 仅在主应用已显示时才弹窗（避免与登录/注册弹窗叠加）
     this._ensureProfileIdentity();
     this.openProfileCompletionModal();
   }
@@ -1427,21 +1450,63 @@ class App {
     const modal = document.getElementById('profile-completion-modal');
     if (!modal) return;
     const u = authManager.getCurrentUser();
-    // 预填已存在的字段
+
+    // 1) 根据已有数据隐藏已存在的字段：
+    //    - 若用户已经有昵称，隐藏昵称输入框（不允许覆盖）
+    //    - 同理：真实姓名 / 身份
+    //    - 避免老用户被强迫重新输入"老版本没问过但其实不存在"的内容
+    const nicknameSection = document.getElementById('profile-nickname-section');
+    const realNameSection = document.getElementById('profile-real-name-section');
+    const identitySection = document.getElementById('profile-identity-section');
     const nickInput = document.getElementById('profile-nickname');
     const realInput = document.getElementById('profile-real-name');
     const surnameCheckbox = document.getElementById('profile-surname-only');
+    const surnameWrap = document.getElementById('profile-surname-only-wrap');
+
+    // 昵称：已存在 → 整段隐藏（提示用户在赛队里以这个昵称显示）
+    if (u?.nickname) {
+      if (nicknameSection) {
+        nicknameSection.classList.add('hidden');
+      }
+    } else {
+      if (nicknameSection) nicknameSection.classList.remove('hidden');
+    }
+
+    // 真实姓名：已存在 → 整段隐藏
+    if (u?.real_name) {
+      if (realNameSection) {
+        realNameSection.classList.add('hidden');
+        // surname-only 与 real_name 绑定；real_name 已有则隐藏 surname-only
+        if (surnameWrap) {
+          surnameWrap.classList.add('hidden');
+          surnameWrap.classList.remove('flex');
+        }
+      }
+    } else {
+      if (realNameSection) realNameSection.classList.remove('hidden');
+    }
+
+    // 身份：已存在 → 整段隐藏
+    if (u?.identity) {
+      if (identitySection) {
+        identitySection.classList.add('hidden');
+        if (surnameWrap) {
+          surnameWrap.classList.add('hidden');
+          surnameWrap.classList.remove('flex');
+        }
+      }
+    } else {
+      if (identitySection) identitySection.classList.remove('hidden');
+    }
+
+    // 2) 预填已存在的字段值（即使 section 显示也保留兜底）
     if (nickInput && u?.nickname) nickInput.value = u.nickname;
     if (realInput && u?.real_name) realInput.value = u.real_name;
     if (surnameCheckbox && u?.name_only_surname) surnameCheckbox.checked = true;
-    // 跳过按钮：仅当 identity 已有值时可用
-    const skipBtn = document.getElementById('profile-completion-skip');
-    if (skipBtn) {
-      const canSkip = !!u?.identity;
-      skipBtn.disabled = !canSkip;
-      skipBtn.classList.toggle('opacity-50', !canSkip);
-      skipBtn.classList.toggle('cursor-not-allowed', !canSkip);
-    }
+
+    // 3) 兜底：让"保存"按钮一定可用（不再根据 identity 是否存在禁用 skip）
+    //    "稍后"按钮改为始终可点，但点击后弹"劝导弹窗"（见 handleProfileCompletionSkip）
+
     modal.classList.add('active');
     // i18n re-render
     if (window.i18n) window.i18n.apply();
@@ -1452,27 +1517,69 @@ class App {
     if (modal) modal.classList.remove('active');
   }
 
+  /**
+   * 打开"你必须填哦"劝导弹窗（来自点击"稍后"）
+   */
+  openProfileNudgeModal() {
+    const modal = document.getElementById('profile-nudge-modal');
+    if (!modal) return;
+    modal.classList.add('active');
+    if (window.lucide && lucide.createIcons) lucide.createIcons();
+    // 自动聚焦"好的，我去填"按钮
+    setTimeout(() => {
+      const ok = document.getElementById('profile-nudge-ok');
+      if (ok) ok.focus();
+    }, 80);
+  }
+
+  closeProfileNudgeModal() {
+    const modal = document.getElementById('profile-nudge-modal');
+    if (modal) modal.classList.remove('active');
+  }
+
   async handleProfileCompletionSubmit() {
     const errorEl = document.getElementById('profile-completion-error');
     if (errorEl) errorEl.textContent = '';
-    const nickname = document.getElementById('profile-nickname').value.trim();
-    const realName = document.getElementById('profile-real-name').value.trim();
-    const surnameOnly = document.getElementById('profile-surname-only').checked;
-    const identity = this._profileIdentity;
+    // 仅取"显示中"的字段值；已隐藏的字段（用户已有数据）保持原值不变
+    const nicknameSection = document.getElementById('profile-nickname-section');
+    const realNameSection = document.getElementById('profile-real-name-section');
+    const identitySection = document.getElementById('profile-identity-section');
+    const wantNickname = nicknameSection && !nicknameSection.classList.contains('hidden');
+    const wantRealName = realNameSection && !realNameSection.classList.contains('hidden');
+    const wantIdentity = identitySection && !identitySection.classList.contains('hidden');
 
-    if (!nickname) { errorEl.textContent = this._i18n('auth.error.nicknameRequired', '请填写昵称'); return; }
-    if (!realName) { errorEl.textContent = this._i18n('auth.error.realNameRequired', '请填写真实姓名'); return; }
-    if (!identity) { errorEl.textContent = this._i18n('auth.error.identityRequired', '请选择身份'); return; }
-    if (identity === 'student' && realName.length < 2) {
-      errorEl.textContent = this._i18n('auth.error.realNameStudentTooShort', '学生姓名至少 2 个字符');
+    const nickname = wantNickname
+      ? (document.getElementById('profile-nickname')?.value || '').trim()
+      : (authManager.getCurrentUser()?.nickname || '');
+    const realName = wantRealName
+      ? (document.getElementById('profile-real-name')?.value || '').trim()
+      : (authManager.getCurrentUser()?.real_name || '');
+    const surnameOnly = !!document.getElementById('profile-surname-only')?.checked;
+    const identity = wantIdentity ? this._profileIdentity : (authManager.getCurrentUser()?.identity || '');
+
+    // 只校验"需要补全"的字段
+    if (wantNickname && !nickname) {
+      if (errorEl) errorEl.textContent = this._i18n('auth.error.nicknameRequired', '请填写昵称');
+      return;
+    }
+    if (wantRealName && !realName) {
+      if (errorEl) errorEl.textContent = this._i18n('auth.error.realNameRequired', '请填写真实姓名');
+      return;
+    }
+    if (wantIdentity && !identity) {
+      if (errorEl) errorEl.textContent = this._i18n('auth.error.identityRequired', '请选择身份');
+      return;
+    }
+    if (identity === 'student' && realName && realName.length < 2) {
+      if (errorEl) errorEl.textContent = this._i18n('auth.error.realNameStudentTooShort', '学生姓名至少 2 个字符');
       return;
     }
     if (identity === 'teacher' && surnameOnly && realName.length !== 1) {
-      errorEl.textContent = this._i18n('auth.error.realNameTeacherSurname', '老师仅填姓时，姓名必须是 1 个字符');
+      if (errorEl) errorEl.textContent = this._i18n('auth.error.realNameTeacherSurname', '老师仅填姓时，姓名必须是 1 个字符');
       return;
     }
-    if (identity === 'teacher' && !surnameOnly && realName.length < 2) {
-      errorEl.textContent = this._i18n('auth.error.realNameTeacherTooShort', '老师姓名至少 2 个字符');
+    if (identity === 'teacher' && !surnameOnly && realName && realName.length < 2) {
+      if (errorEl) errorEl.textContent = this._i18n('auth.error.realNameTeacherTooShort', '老师姓名至少 2 个字符');
       return;
     }
 
@@ -1490,17 +1597,18 @@ class App {
         this.updateUserMenu();
         this.showToast(this._i18n('app.toast.profileSaved', '资料已保存'), 'success');
       } catch (e) {
-        errorEl.textContent = this._i18n('auth.error.profileSaveFailed', '保存失败：') + (e.message || e);
+        if (errorEl) errorEl.textContent = this._i18n('auth.error.profileSaveFailed', '保存失败：') + (e.message || e);
       }
     });
   }
 
+  /**
+   * "稍后"按钮 → 弹一个俏皮劝导弹窗（让用户觉得网站有性格）
+   * - 不再直接关闭 / 跳过
+   * - 关闭劝导弹窗后焦点回到主弹窗的第一个未填字段
+   */
   handleProfileCompletionSkip() {
-    // 仅当 identity 已有值时可用
-    const u = authManager.getCurrentUser();
-    if (!u?.identity) return;
-    try { localStorage.setItem('vex.profile_completed', 'true'); } catch (e) { /* ignore */ }
-    this.closeProfileCompletionModal();
+    this.openProfileNudgeModal();
   }
 
   /**

@@ -638,21 +638,24 @@
                 <p class="mt-2 text-sm font-medium opacity-90" data-i18n="auth.completion.desc">为了在赛队中更好地协作，请补全以下信息。</p>
             </div>
             <form id="profile-completion-form" class="p-8 flex flex-col gap-4" autocomplete="off">
-                <div class="flex flex-col gap-2">
+                <!-- 昵称：已存在时整段隐藏 -->
+                <div id="profile-nickname-section" class="flex flex-col gap-2">
                     <label class="text-xs font-semibold uppercase tracking-wider text-fg/60" for="profile-nickname" data-i18n="auth.nickname">昵称</label>
                     <input id="profile-nickname" type="text" maxlength="20" autocomplete="off"
                            data-i18n-placeholder="auth.nickname.ph"
                            placeholder="输入昵称（用于显示）"
                            class="h-12 px-4 bg-muted text-fg text-base rounded-md border-0 outline-none font-medium focus:bg-canvas focus:border-2 focus:border-primary transition-all duration-200">
                 </div>
-                <div class="flex flex-col gap-2">
+                <!-- 真实姓名：已存在时整段隐藏 -->
+                <div id="profile-real-name-section" class="flex flex-col gap-2">
                     <label class="text-xs font-semibold uppercase tracking-wider text-fg/60" for="profile-real-name" data-i18n="auth.realName">真实姓名</label>
                     <input id="profile-real-name" type="text" maxlength="20" autocomplete="off"
                            data-i18n-placeholder="auth.realName.ph"
                            placeholder="输入真实姓名"
                            class="h-12 px-4 bg-muted text-fg text-base rounded-md border-0 outline-none font-medium focus:bg-canvas focus:border-2 focus:border-primary transition-all duration-200">
                 </div>
-                <div class="flex flex-col gap-2">
+                <!-- 身份：已存在时整段隐藏 -->
+                <div id="profile-identity-section" class="flex flex-col gap-2">
                     <span class="text-xs font-semibold uppercase tracking-wider text-fg/60" data-i18n="auth.identity">身份</span>
                     <div class="grid grid-cols-2 gap-2">
                         <button type="button" data-profile-identity="student" id="profile-identity-student"
@@ -676,6 +679,27 @@
                 <button id="profile-completion-submit" type="button"
                         class="h-12 px-6 bg-primary text-canvas rounded-md font-semibold tracking-wider uppercase text-sm flex items-center gap-2 hover:bg-primary-hover hover:scale-105 transition-all duration-200">
                     <i data-lucide="check" class="w-4 h-4"></i><span data-i18n="auth.completion.submit">保存</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         PROFILE COMPLETION "NUDGE" MODAL  「稍后」按钮的俏皮劝导弹窗
+         - 不是真的关闭，而是告诉用户这几项对他的赛队身份很重要
+         - 体验上比禁用"稍后"按钮更友好，也更有"有性格的网站"的感觉
+         ============================================================ -->
+    <div id="profile-nudge-modal" class="vx-modal-overlay">
+        <div class="vx-modal max-w-sm">
+            <div class="bg-primary text-canvas px-8 py-6 text-center">
+                <div class="text-5xl mb-3">🤔</div>
+                <h2 class="font-extrabold text-2xl tracking-[-0.02em] uppercase" data-i18n="auth.nudge.title">等一下！</h2>
+            </div>
+            <div class="p-8 text-center flex flex-col gap-4">
+                <p class="text-base text-fg font-medium leading-relaxed" data-i18n="auth.nudge.body">这几项对你在赛队里被认出很重要哦，真的不填一下吗？</p>
+                <button id="profile-nudge-ok" type="button"
+                        class="h-12 bg-primary text-canvas rounded-md font-semibold tracking-wider uppercase text-sm flex items-center justify-center gap-2 hover:bg-primary-hover hover:scale-[1.02] transition-all duration-200">
+                    <i data-lucide="check" class="w-5 h-5"></i><span data-i18n="auth.nudge.ok">好的，我去填</span>
                 </button>
             </div>
         </div>
