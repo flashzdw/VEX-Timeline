@@ -688,14 +688,11 @@
         <div class="vx-modal max-w-lg">
             <div class="bg-primary text-canvas px-8 py-6 flex items-center justify-between">
                 <h2 class="font-extrabold text-2xl tracking-[-0.02em] uppercase" data-i18n="app.user.settings">个人设置</h2>
-                <div class="flex items-center gap-2">
-                    <i data-lucide="settings" class="w-6 h-6"></i>
-                    <!-- 关闭按钮：与 day-records-modal 同款（X 图标 + 半透明白底圆角） -->
-                    <button id="settings-modal-close" type="button" aria-label="关闭"
-                            class="h-10 w-10 flex items-center justify-center bg-canvas/20 hover:bg-canvas/40 rounded-md transition-all duration-200">
-                        <i data-lucide="x" class="w-5 h-5"></i>
-                    </button>
-                </div>
+                <!-- 关闭按钮：与 day-records-modal 同款（X 图标 + 半透明白底圆角） -->
+                <button id="settings-modal-close" type="button" aria-label="关闭"
+                        class="h-10 w-10 flex items-center justify-center bg-canvas/20 hover:bg-canvas/40 rounded-md transition-all duration-200">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
             </div>
             <!-- 顶部 Tab 导航：三个并列文字 tab，底部高亮线指示 active -->
             <nav id="settings-tab-nav" class="flex border-b-2 border-border bg-canvas">
