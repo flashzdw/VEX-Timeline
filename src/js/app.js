@@ -196,6 +196,10 @@ class App {
       try { this.updateCloudStatusIcon(); } catch (e) { /* noop */ }
       try { this.renderDiagnosticBar(); } catch (e) { /* noop */ }
       try { this.renderUserMenu(); } catch (e) { /* noop */ }
+      // 关键：applyI18n() 会把 <span id="timeline-select-label"> 上的 data-i18n 重新应用
+      // 一次，导致 label 被覆盖成「未选择/Unselected」。这里再调一次 updateTimelineSelector()
+      // 把它写回当前时间轴的（已翻译过的）名字。
+      try { this.updateTimelineSelector(); } catch (e) { /* noop */ }
     }
   }
 
@@ -214,15 +218,6 @@ class App {
   // ============================================================
   // 登录成功/失败
   // ============================================================
-  /**
-   * 登录成功入口
-   * 流程：
-   *  1) 拉取 timelines 与云端记录
-   *  2) 先切到首页（避免直接进入主应用突兀）
-   *  3) 在首页显示 toast 提示"登录成功，正在进入应用…"
-   *  4) 3 秒后自动（或点击"立即进入"立即）切到主应用
-   *  5) 隐藏冷启动遮罩
-   */
   /**
    * 登录成功入口
    * @param {object} [opts]
@@ -280,16 +275,12 @@ class App {
       return;
     }
 
-    // 主动登录 / 注册：先到首页，3 秒 toast 后切到主应用
-    this.showHomePage();
-    const enterApp = () => {
-      if (this._loginRedirectTimer) { clearTimeout(this._loginRedirectTimer); this._loginRedirectTimer = null; }
-      this.showMainApp();
-    };
-    const message = (window.i18n && window.i18n.t) ? window.i18n.t('home.toast.loginSuccess') : '登录成功，正在进入应用…';
-    const actionLabel = (window.i18n && window.i18n.t) ? window.i18n.t('home.toast.enterNow') : '立即进入';
-    this.showToast(message, { duration: 3000, actionLabel: actionLabel, action: enterApp });
-    this._loginRedirectTimer = setTimeout(enterApp, 3000);
+    // 修复：主动登录 / 注册后直接进入主应用，不再闪回到宣传首页 3 秒
+    // - 避免 "登录成功 → 整页宣传页 hero/features 重新渲染" 给用户造成「页面 reload」的错觉
+    // - 保留一个简短的成功 toast 作为反馈
+    this.showMainApp();
+    const message = (window.i18n && window.i18n.t) ? window.i18n.t('home.toast.loginSuccess', '登录成功') : '登录成功';
+    this.showToast(message, { duration: 2000, type: 'success' });
   }
 
   // ============================================================
@@ -377,7 +368,9 @@ class App {
     if (!menu) return;
 
     // Round 4：取消本地时间轴概念，只渲染云端时间轴
-    const items = this.timelines.map(t => ({ id: t.id, label: t.name, type: t.type }));
+    // label 走 _findTimelineName()：默认名（个人/赛队时间轴）会按当前语言翻译；
+    // 用户自定义名原样保留。顶部选中态 label 也是同一个函数，两边永远一致。
+    const items = this.timelines.map(t => ({ id: t.id, label: this._findTimelineName(t.id), type: t.type }));
 
     // 桌面菜单渲染
     menu.innerHTML = items.map(item => `
@@ -428,10 +421,32 @@ class App {
     if (desktop) desktop.classList.toggle('hidden', !isLoggedIn);
   }
 
+  /**
+   * 已知时间轴「默认名」 →  对应的 i18n key
+   * - 旧账号里早就存了「个人时间轴」「赛队时间轴」等中文名
+   * - 切换到英文模式时，这些名字应该自动翻译成 "Personal timeline" / "Team timeline"
+   * - 用户自定义名（非默认）原样保留，不做翻译
+   */
+  static DEFAULT_TIMELINE_NAME_KEYS = {
+    // zh-CN 默认
+    '个人时间轴': 'app.term.personalTimeline',
+    '赛队时间轴': 'app.term.teamTimeline',
+    // en 默认
+    'Personal timeline': 'app.term.personalTimeline',
+    'Personal Timeline': 'app.term.personalTimeline',
+    'Team timeline': 'app.term.teamTimeline',
+    'Team Timeline': 'app.term.teamTimeline'
+  };
+
   _findTimelineName(id) {
     if (!id) return this._i18n('app.timeline.unselected', '未选择');
     const t = this.timelines.find(x => x.id === id);
-    return t ? t.name : this._i18n('app.timeline.unselected', '未选择');
+    if (!t) return this._i18n('app.timeline.unselected', '未选择');
+    // 默认名 → 走 i18n 翻译
+    const i18nKey = App.DEFAULT_TIMELINE_NAME_KEYS[t.name];
+    if (i18nKey) return this._i18n(i18nKey, t.name);
+    // 用户自定义名：原样展示
+    return t.name;
   }
 
   updateTimelineLabel(name) {
@@ -1513,37 +1528,35 @@ class App {
     return `${year}-${month}-${day}`;
   }
 
+  /**
+   * 渲染顶部「年 + 月」标签：完全走 i18n 格式串，避开了硬编码的「年/月」
+   * - zh-CN: "{y}年 {m}"  →  "2026年 6月"
+   * - en:    "{m} {y}"    →  "Jun 2026"
+   */
   formatDateLabel(date) {
-    const months = [
-      this._i18n('app.month.1', '1月'),
-      this._i18n('app.month.2', '2月'),
-      this._i18n('app.month.3', '3月'),
-      this._i18n('app.month.4', '4月'),
-      this._i18n('app.month.5', '5月'),
-      this._i18n('app.month.6', '6月'),
-      this._i18n('app.month.7', '7月'),
-      this._i18n('app.month.8', '8月'),
-      this._i18n('app.month.9', '9月'),
-      this._i18n('app.month.10', '10月'),
-      this._i18n('app.month.11', '11月'),
-      this._i18n('app.month.12', '12月')
-    ];
-    return `${date.getFullYear()}年 ${months[date.getMonth()]}`;
+    const month = this._i18n(`app.month.${date.getMonth() + 1}`, `${date.getMonth() + 1}月`);
+    const year = String(date.getFullYear());
+    const format = this._i18n('app.dateFormat.short', '{y}年 {m}');
+    return format.replace('{y}', year).replace('{m}', month);
   }
 
+  /**
+   * 渲染每条记录上方的大日期头：完全走 i18n 格式串
+   * - zh-CN: "{y}年{m}月{d}日 {wd}"  →  "2026年06月11日 周四"
+   * - en:    "{wd}, {m} {d}, {y}"   →  "Thursday, Jun 11, 2026"
+   */
   formatDateDisplay(dateStr) {
     const [year, month, day] = dateStr.split('-');
     const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
-    const days = [
-      this._i18n('app.day.full.sun', '周日'),
-      this._i18n('app.day.full.mon', '周一'),
-      this._i18n('app.day.full.tue', '周二'),
-      this._i18n('app.day.full.wed', '周三'),
-      this._i18n('app.day.full.thu', '周四'),
-      this._i18n('app.day.full.fri', '周五'),
-      this._i18n('app.day.full.sat', '周六')
-    ];
-    return `${year}年${month}月${day}日 ${days[date.getDay()]}`;
+    const dayKey = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][date.getDay()];
+    const monthName = this._i18n(`app.month.${date.getMonth() + 1}`, `${date.getMonth() + 1}月`);
+    const weekday = this._i18n(`app.day.full.${dayKey}`, '周日');
+    const format = this._i18n('app.dateFormat', '{y}年{m}月{d}日 {wd}');
+    return format
+      .replace('{y}', year)
+      .replace('{m}', monthName)
+      .replace('{d}', parseInt(day, 10))   // 去掉前导 0（"01" → 1）
+      .replace('{wd}', weekday);
   }
 
   formatTime(date) {

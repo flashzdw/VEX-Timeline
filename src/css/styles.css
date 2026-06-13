@@ -866,8 +866,24 @@ button:disabled.hover\:scale-105:hover { transform: none; }
   backdrop-filter: none;
 }
 .vx-site-header a, .vx-site-header button { color: var(--color-fg); }
+/* 加固：app / auth 场景下完全隐藏 site-header
+   - 同时使用 class + id 双重选择器，提升特异性，避免被其他规则绕过
+   - 叠加 visibility:hidden + height:0，彻底从布局中抹除（防止某些浏览器对 sticky + display:none 的渲染抖动） */
 body[data-scene="auth"] .vx-site-header,
-body[data-scene="app"] .vx-site-header { display: none !important; }
+body[data-scene="auth"] #site-header,
+body[data-scene="app"]  .vx-site-header,
+body[data-scene="app"]  #site-header {
+  display: none !important;
+  visibility: hidden !important;
+  height: 0 !important;
+  min-height: 0 !important;
+  max-height: 0 !important;
+  overflow: hidden !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  pointer-events: none !important;
+}
 
 .vx-site-nav-link {
   display: inline-flex;
@@ -918,6 +934,215 @@ body[data-scene="app"] .vx-site-header { display: none !important; }
 .vx-lang-toggle:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
 /* 主应用顶栏复用同款 */
 .vx-lang-toggle--app { background-color: var(--color-canvas); }
+
+/* ============================================================
+   首页 Hero 产品 UI 预览（左侧文字 + 右侧 mockup 卡片）
+   - 严格遵循 DESIGN.md：色块化、零阴影、零渐变
+   - mockup 卡片视觉语言与主应用同款：色块 token / 重要性左侧色条 / rail+dot 时间轴
+   - 轻量动画：卡片轻微浮动 + 三个 day 区块顺序淡入（用 --vx-delay 错峰）
+   ============================================================ */
+.vx-hero-mockup-wrap {
+  position: relative;
+  width: 100%;
+  /* 卡片轻微悬浮：6s 慢节奏，避免抢眼 */
+  animation: vx-hero-float 6s ease-in-out infinite;
+}
+
+@keyframes vx-hero-float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-6px); }
+}
+
+/* 卡片本体 */
+.vx-hero-mockup {
+  position: relative;
+  background-color: var(--color-bg);
+  border: 2px solid var(--color-border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+/* 顶部栏：模拟主应用顶栏（Logo / 视图切换 / 头像） */
+.vx-hero-mockup-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 14px;
+  background-color: var(--color-muted);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.vx-hero-mockup-body {
+  padding: 16px 18px 18px 18px;
+}
+
+/* 过滤栏 pills（与主应用 filter bar 同款）
+   - 去掉之前的 bg-muted 卡片背景，让「重要性」标签直接落在白底上，对比度更清晰
+   - 仅靠 gap 拉开元素间距，视觉更轻盈 */
+.vx-hero-mockup-filter {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.vx-hero-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 4px;
+  background-color: var(--color-bg);
+  color: var(--color-fg-muted);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border: 1px solid var(--color-border);
+}
+.vx-hero-pill--active {
+  background-color: var(--color-fg);
+  color: var(--color-bg);
+  border-color: var(--color-fg);
+}
+
+/* 时间轴容器：左侧留 22px 让出 dot 空间 */
+.vx-hero-mockup-rail {
+  position: relative;
+  padding-left: 22px;
+}
+.vx-hero-mockup-rail::before {
+  content: '';
+  position: absolute;
+  left: 9px;
+  top: 6px;
+  bottom: 6px;
+  width: 2px;
+  background-color: var(--color-border);
+  border-radius: 1px;
+}
+
+/* 单 day 区块（顺序淡入） */
+.vx-hero-day {
+  position: relative;
+  animation: vx-hero-day-in 0.5s ease-out both;
+  animation-delay: var(--vx-delay, 0s);
+}
+.vx-hero-day + .vx-hero-day { margin-top: 14px; }
+
+.vx-hero-day-header {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--color-fg);
+  margin-bottom: 6px;
+  line-height: 1.2;
+}
+
+@keyframes vx-hero-day-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* 单条 timeline 记录（与主应用 vx-timeline-item 同款：色块化 + 重要性左侧 3px 色条） */
+.vx-hero-item {
+  position: relative;
+  background-color: var(--color-muted);
+  border-radius: 6px;
+  padding: 8px 10px;
+  margin-bottom: 6px;
+  border-left: 3px solid var(--color-border);
+}
+.vx-hero-item:last-child { margin-bottom: 0; }
+
+/* 三档重要性背景：复用主应用 token 风格，hover 态省略（静态示意） */
+.vx-hero-item--high {
+  background-color: var(--color-tl-high-bg);
+  border-left-color: var(--color-danger);
+}
+.vx-hero-item--medium {
+  background-color: var(--color-tl-medium-bg-hover);
+  border-left-color: var(--color-accent);
+}
+.vx-hero-item--low {
+  background-color: var(--color-tl-low-bg);
+  border-left-color: var(--color-secondary);
+}
+
+/* rail 圆点（骑在竖线上） */
+.vx-hero-dot {
+  position: absolute;
+  left: -22px;
+  top: 11px;
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  background-color: var(--color-bg);
+  border: 2px solid var(--color-border);
+  z-index: 1;
+}
+.vx-hero-item--high   .vx-hero-dot { border-color: var(--color-danger);    background-color: var(--color-danger); }
+.vx-hero-item--medium .vx-hero-dot { border-color: var(--color-accent);     background-color: var(--color-accent); }
+.vx-hero-item--low    .vx-hero-dot { border-color: var(--color-secondary);  background-color: var(--color-secondary); }
+
+.vx-hero-item-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.vx-hero-item-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-fg);
+  line-height: 1.3;
+}
+.vx-hero-item-meta {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--color-fg-muted);
+  letter-spacing: 0.02em;
+}
+
+/* 浮动标签（贴卡片左上和右下） */
+.vx-hero-tag {
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background-color: var(--color-bg);
+  border: 2px solid var(--color-border);
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-fg);
+  white-space: nowrap;
+  z-index: 2;
+}
+.vx-hero-tag--top {
+  top: -12px;
+  left: -10px;
+}
+.vx-hero-tag--bottom {
+  bottom: -12px;
+  right: -10px;
+}
+
+@media (max-width: 639px) {
+  /* 移动端卡片紧贴容器，浮动标签内嵌（用普通 absolute 定位） */
+  .vx-hero-tag--top    { top: 12px;    left: 12px; }
+  .vx-hero-tag--bottom { bottom: 12px; right: 12px; }
+}
+
+@media (min-width: 640px) and (max-width: 1023px) {
+  .vx-hero-tag--top    { top: -10px; left: 16px; }
+  .vx-hero-tag--bottom { bottom: -10px; right: 16px; }
+}
 
 /* ============================================================
    首页功能卡
