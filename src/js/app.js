@@ -587,15 +587,12 @@ class App {
     if (!r) return true; // 个人时间轴或非赛队 → 视为可加
     return r !== 'visitor';
   }
-  /** 编辑记录：owner/captain/teacher 任意；member 仅自己 */
+  /** 编辑记录：owner/captain/teacher/member 均可（visitor 不可；个人时间轴可） */
   canEditRecord(record) {
     const r = this._currentTimelineRole;
     if (!r) return true; // 个人时间轴
     if (r === 'visitor') return false;
-    if (r === 'member') {
-      return record?.user_id === authManager.getCurrentUser()?.id;
-    }
-    return true; // owner / captain / teacher
+    return true; // owner / captain / teacher / member
   }
   /** 删除记录：同 canEditRecord */
   canDeleteRecord(record) {
@@ -724,6 +721,10 @@ class App {
         cloud_id: r.id
       })));
       await this.processSyncQueue();
+      // 同步重载当前赛队角色：让"管理赛队"按钮 / 编辑 / 删除 / 添加按钮
+      // 在切换权限后能立即按新角色显示
+      await this._loadCurrentTimelineRole();
+      this.updateManageButton();
       await this.renderView();
       this.cloudSyncStatus = 'ok';
     } catch (e) {
@@ -2167,9 +2168,7 @@ class App {
         membersList.innerHTML = sortedMembers.map(member => {
           const user = member.users || {};
           const displayName = this._escapeHtml(this.getFullDisplayName(user));
-          const identityTag = user.identity
-            ? `<span class="vx-member-identity-tag vx-member-identity-tag--${user.identity}">${user.identity === 'student' ? this._i18n('auth.identity.student', '学生') : user.identity === 'teacher' ? this._i18n('auth.identity.teacher', '老师') : this._i18n('auth.identity.parent', '家长')}</span>`
-            : '';
+          // 一级权限（identity）只是给队长参考；二级权限（role）才是真正维度，队长给出后不再显示一级身份胶囊
           const isOwnerRow = member.role === 'owner';
           const currentRoleLabel = roleLabel[member.role] || member.role;
           // 角色胶囊：每个成员名后都展示（owner 永远显示，不可管理时也显示，可管理时仍显示 — 与下拉并存）
@@ -2186,7 +2185,7 @@ class App {
           ` : '';
           return `
             <div class="vx-member-row">
-              <div class="vx-member-name">${displayName}${identityTag}${roleTag}</div>
+              <div class="vx-member-name">${displayName}${roleTag}</div>
               ${roleSelectHtml}
               ${removeBtnHtml}
             </div>
@@ -2270,9 +2269,7 @@ class App {
       membersList.innerHTML = sortedMembers.map(member => {
         const user = member.users || {};
         const displayName = this._escapeHtml(this.getFullDisplayName(user));
-        const identityTag = user.identity
-          ? `<span class="vx-member-identity-tag vx-member-identity-tag--${user.identity}">${user.identity === 'student' ? this._i18n('auth.identity.student', '学生') : user.identity === 'teacher' ? this._i18n('auth.identity.teacher', '老师') : this._i18n('auth.identity.parent', '家长')}</span>`
-          : '';
+        // 一级权限（identity）只是给队长参考；二级权限（role）才是真正维度，队长给出后不再显示一级身份胶囊
         const isOwnerRow = member.role === 'owner';
         const currentRoleLabel = roleLabel[member.role] || member.role;
         // 角色胶囊：每个成员名后都展示（owner 永远显示；可管理时与下拉并存；不可管理时单独显示）
@@ -2289,7 +2286,7 @@ class App {
         ` : '';
         return `
           <div class="vx-member-row">
-            <div class="vx-member-name">${displayName}${identityTag}${roleTag}</div>
+            <div class="vx-member-name">${displayName}${roleTag}</div>
             ${roleSelectHtml}
             ${removeBtnHtml}
           </div>
