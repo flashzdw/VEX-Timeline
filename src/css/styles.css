@@ -947,7 +947,15 @@ body[data-scene="app"] .vx-site-header { display: none !important; }
    - grid-template-rows: 0fr → 1fr 实现 auto 高度过渡（现代 CSS 技巧）
    - 高度 + opacity 双属性同步：内容「渐渐出现」而非「突然可见」
    - 缓动 cubic-bezier(0.16, 1, 0.3, 1)：easeOutExpo 变种，丝滑无机械感
+   - 外层 .vx-faq-list 强制 GPU 层 (translateZ(0)) + will-change: contents
+     把 FAQ 高度变化的布局 reflow 隔离在自身合成层里，最大程度减少下方板块的抽搐
    ============================================================ */
+.vx-faq-list {
+  /* 强制 GPU 合成层：FAQ 内部高度变化时，下方板块无需重排 */
+  transform: translateZ(0);
+  will-change: contents;
+}
+
 .vx-faq-item {
   border-bottom: 2px solid var(--color-border);
   /* 隔离布局：FAQ 高度变化时不会影响外部容器计算，避免底部抽搐 */
@@ -1016,15 +1024,16 @@ body[data-scene="app"] .vx-site-header { display: none !important; }
 }
 
 /* ============================================================
-   暗黑模式：How-to / Footer 不要变成"白色孤岛"
+   暗黑模式：How-to / Footer 不要变成"白色孤岛"，且与 FAQ 区分
    - 原因：bg-fg / text-canvas 用了语义 token，dark mode 下 var(--color-fg) 翻转为浅色
      导致这两个原本"深色 section"在暗色模式里变成大块白色
-   - 解法：在 @media (prefers-color-scheme: dark) 下强制使用 slate-800（比页面 bg 略亮一档）
-     既保留"反色 section"的视觉分隔感，又避免大面积白
+   - FAQ 暗色 = bg-muted = slate-800 (#1E293B)
+   - How-to / Footer 必须用不同色阶：slate-700 (#334155)，比 FAQ 略亮一档
+     形成"页面 slate-900 < FAQ slate-800 < How-to slate-700"的层次感
    ============================================================ */
 @media (prefers-color-scheme: dark) {
-  #home-howto { background-color: #1E293B !important; color: #F1F5F9 !important; }
-  footer      { background-color: #1E293B !important; color: #F1F5F9 !important; }
+  #home-howto { background-color: #334155 !important; color: #F1F5F9 !important; }
+  footer      { background-color: #334155 !important; color: #F1F5F9 !important; }
 }
 
 /* ============================================================

@@ -866,6 +866,7 @@ class App {
 
     // FAQ 手风琴：开一关一（容器整体位置稳定）
     // 注意：重构成 button + div 模式（不用 <details>），避免浏览器默认 toggle 行为
+    // 用 requestAnimationFrame 把 class 切换推迟到下一帧，避免点击瞬间的 micro-stutter
     const faqItems = document.querySelectorAll('.vx-faq-item');
     faqItems.forEach(item => {
       const button = item.querySelector('.vx-faq-summary');
@@ -880,11 +881,13 @@ class App {
             if (otherBtn) otherBtn.setAttribute('aria-expanded', 'false');
           }
         });
-        // 再决定当前是开还是关
-        if (!isOpen) {
-          item.classList.add('is-open');
-          button.setAttribute('aria-expanded', 'true');
-        }
+        // 用 rAF 把状态变更推迟到下一帧，让点击反馈（按下）和过渡（动画）解耦
+        requestAnimationFrame(() => {
+          if (!isOpen) {
+            item.classList.add('is-open');
+            button.setAttribute('aria-expanded', 'true');
+          }
+        });
       });
     });
   }
