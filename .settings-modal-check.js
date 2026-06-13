@@ -134,20 +134,6 @@ if (!basicForm || !usernameForm || !passwordForm) {
 }
 console.log('OK: 3 个表单都存在（basic / username / password）');
 
-// 关闭按钮存在
-const closeBtn = doc.getElementById('settings-modal-close');
-if (!closeBtn) { console.log('FAIL: 缺少关闭按钮 #settings-modal-close'); process.exit(1); }
-console.log('OK: 关闭按钮存在');
-
-// 关闭按钮能正常关闭 modal
-closeBtn.click();
-if (modal.classList.contains('active')) { console.log('FAIL: 点关闭按钮后 modal 仍 active'); process.exit(1); }
-console.log('OK: 点 X 关闭按钮能关闭 modal');
-
-// 重新打开（供后续测试）
-app.openSettingsModal();
-if (!modal.classList.contains('active')) { console.log('FAIL: 关闭后重开失败'); process.exit(1); }
-
 // ============================================================
 // 3) 预填：real_name / username / identity
 // ============================================================

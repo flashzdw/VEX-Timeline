@@ -1844,15 +1844,6 @@ class App {
       });
     }
 
-    // 4b) 绑定关闭按钮（X）
-    const closeBtn = document.getElementById('settings-modal-close');
-    if (closeBtn && !closeBtn.__bound) {
-      closeBtn.__bound = true;
-      closeBtn.addEventListener('click', () => {
-        modal.classList.remove('active');
-      });
-    }
-
     // 5) 重置到 default tab (basic)
     this._switchSettingsTab('basic');
 
