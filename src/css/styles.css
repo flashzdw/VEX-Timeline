@@ -86,6 +86,10 @@
 html {
   font-size: 16px;
   overflow-x: hidden;            /* 防止任何子元素撑出视口造成横向滚动 */
+  /* 平滑滚动：Hero「了解更多」、顶栏锚点链接、滚动指示等所有 #hash 跳转都用 smooth */
+  scroll-behavior: smooth;
+  /* 锚点跳转时给 sticky header 留出空间，避免目标内容被遮挡 */
+  scroll-padding-top: 80px;
 }
 
 body {
@@ -841,6 +845,240 @@ body {
 button:disabled { cursor: not-allowed; opacity: 0.85; }
 button:disabled.hover\:scale-\[1\.02\]:hover { transform: none; }
 button:disabled.hover\:scale-105:hover { transform: none; }
+
+/* ============================================================
+   共用顶栏（首页 / 登录页）
+   - 浅色下白底 + border-b-2；深色下 slate-800 + slate-700 边
+   - sticky 顶置 + z-index 50（低于 #app-loading=300 与 modal=1000）
+   - 由 <body data-scene="home|auth|app"> 控制显隐：
+       home → 显示
+       auth → 隐藏
+       app  → 隐藏
+   ============================================================ */
+.vx-site-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background-color: var(--color-bg);
+  border-bottom: 2px solid var(--color-border);
+  /* 防止内容透过 */
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+.vx-site-header a, .vx-site-header button { color: var(--color-fg); }
+body[data-scene="auth"] .vx-site-header,
+body[data-scene="app"] .vx-site-header { display: none !important; }
+
+.vx-site-nav-link {
+  display: inline-flex;
+  align-items: center;
+  height: 2.5rem;        /* 40px 触摸目标 */
+  padding: 0 0.75rem;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.875rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  transition: background-color 0.2s, color 0.2s;
+}
+.vx-site-nav-link:hover {
+  background-color: var(--color-muted);
+  color: var(--color-primary);
+}
+
+/* ============================================================
+   语言切换：单按钮（点击切换 zh-CN ⇄ en）
+   - min-width 96px 固定宽度，避免切语言时按钮位置变化
+   - 浅色下 bg-muted + hover 边框 / 加深
+   ============================================================ */
+.vx-lang-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 40px;
+  width: 40px;
+  padding: 0;
+  background-color: var(--color-muted);
+  border: 2px solid var(--color-border);
+  border-radius: 6px;
+  color: var(--color-fg);
+  font-weight: 800;
+  font-size: 0.8125rem;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: background-color 0.2s, border-color 0.2s, color 0.2s;
+  flex-shrink: 0;
+}
+.vx-lang-toggle:hover {
+  background-color: var(--color-canvas);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+.vx-lang-toggle:active { transform: scale(0.97); }
+.vx-lang-toggle:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+/* 主应用顶栏复用同款 */
+.vx-lang-toggle--app { background-color: var(--color-canvas); }
+
+/* ============================================================
+   首页功能卡
+   - 色块化（无阴影、无边框），hover 缩放
+   ============================================================ */
+.vx-feature-card {
+  padding: 1.75rem;
+  border-radius: 8px;
+  transition: transform 0.25s, background-color 0.25s;
+  cursor: default;
+}
+.vx-feature-card:hover { transform: scale(1.03); }
+
+/* How-to 步骤卡 hover 上移（保持暗色下不刺眼） */
+#home-howto li { transition: transform 0.2s ease, background-color 0.2s ease; }
+#home-howto li:hover { transform: translateY(-4px); background-color: rgba(255, 255, 255, 0.08); }
+
+/* ============================================================
+   装饰艺术带：vx-triangle（正三角 clip-path）
+   ============================================================ */
+.vx-triangle { clip-path: polygon(50% 0%, 0% 100%, 100% 100%); }
+
+/* ============================================================
+   FAQ 折叠项（重构为 button + div 模式，参考 React/Framer Motion 实现）
+   - 不用 <details>，避免浏览器对 summary 默认点击处理带来的微小延迟
+   - 加号旋转 0.3s、内容展开 0.4s，制造「图标先到位 → 内容再展开」的层次
+   - 缓动 cubic-bezier(0.16, 1, 0.3, 1)：easeOutExpo 变种，丝滑无机械感
+   - 外层 .vx-faq-list 强制 GPU 层 (translateZ(0)) + will-change: contents
+     把 FAQ 高度变化的布局 reflow 隔离在自身合成层里，最大程度减少下方板块的抽搐
+   - 现代浏览器 (Chrome 129+ / Safari 17.4+) 用 interpolate-size + height: 0→auto
+     比 grid-template-rows 更平滑（直接对 auto 高度插值，不依赖 fr 单位）
+   - 旧浏览器降级到 grid-template-rows 方案，仍可工作
+   ============================================================ */
+.vx-faq-list {
+  /* 强制 GPU 合成层：FAQ 内部高度变化时，下方板块无需重排 */
+  transform: translateZ(0);
+  will-change: contents;
+}
+
+.vx-faq-item {
+  border-bottom: 2px solid var(--color-border);
+  /* 隔离布局：FAQ 高度变化时不会影响外部容器计算，避免底部抽搐 */
+  contain: layout;
+}
+.vx-faq-item:last-child { border-bottom: 0; }
+
+/* 折叠项 button：reset 默认 button 样式 */
+.vx-faq-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  width: 100%;
+  padding: 1rem 1.25rem;
+  background: transparent;
+  border: 0;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  /* 防止文字变化时 summary 高度跳动（不同语言字符宽度不同） */
+  min-height: 64px;
+  transition: background-color 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.vx-faq-summary:hover { background-color: var(--color-muted); }
+.vx-faq-summary:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: -2px;
+}
+
+/* + → × 图标旋转：略快于内容（0.3s vs 0.4s），制造层次 */
+.vx-faq-chevron {
+  display: inline-block;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.vx-faq-item.is-open .vx-faq-chevron {
+  transform: rotate(45deg);
+}
+
+/* ============================================================
+   答案容器：现代浏览器优先用 interpolate-size + height: 0→auto
+   旧浏览器降级到 grid-template-rows: 0fr→1fr
+   ============================================================ */
+@supports (interpolate-size: allow-keywords) {
+  :root { interpolate-size: allow-keywords; }
+
+  .vx-faq-grid-wrap {
+    height: 0;
+    overflow: hidden;
+    will-change: height;
+    transition: height 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .vx-faq-item.is-open > .vx-faq-grid-wrap {
+    height: auto;
+  }
+
+  .vx-faq-grid-wrap > .vx-faq-answer {
+    overflow: hidden;
+    /* 上下 padding 一致 (1.25rem)：让答案与问题、答案与下个问题边框都保持相同间距 */
+    padding-top: 1.25rem;
+    padding-bottom: 1.25rem;
+    opacity: 0;
+    will-change: opacity;
+    transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .vx-faq-item.is-open > .vx-faq-grid-wrap > .vx-faq-answer {
+    opacity: 1;
+  }
+}
+
+/* 旧浏览器降级方案：grid-template-rows 0fr→1fr */
+@supports not (interpolate-size: allow-keywords) {
+  .vx-faq-grid-wrap {
+    display: grid;
+    grid-template-rows: 0fr;
+    will-change: grid-template-rows;
+    transition: grid-template-rows 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .vx-faq-item.is-open > .vx-faq-grid-wrap {
+    grid-template-rows: 1fr;
+  }
+
+  .vx-faq-grid-wrap > .vx-faq-answer {
+    overflow: hidden;
+    min-height: 0;
+    /* 上下 padding 一致 (1.25rem) */
+    padding-top: 1.25rem;
+    padding-bottom: 0;
+    opacity: 0;
+    will-change: padding-bottom, opacity;
+    transition: padding-bottom 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+                opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .vx-faq-item.is-open > .vx-faq-grid-wrap > .vx-faq-answer {
+    padding-bottom: 1.25rem;
+    opacity: 1;
+  }
+}
+
+/* ============================================================
+   暗黑模式：How-to / Footer 不要变成"白色孤岛"，且与 FAQ 区分
+   - 原因：bg-fg / text-canvas 用了语义 token，dark mode 下 var(--color-fg) 翻转为浅色
+     导致这两个原本"深色 section"在暗色模式里变成大块白色
+   - FAQ 暗色 = bg-muted = slate-800 (#1E293B)
+   - How-to / Footer 必须用不同色阶：slate-700 (#334155)，比 FAQ 略亮一档
+     形成"页面 slate-900 < FAQ slate-800 < How-to slate-700"的层次感
+   ============================================================ */
+@media (prefers-color-scheme: dark) {
+  #home-howto { background-color: #334155 !important; color: #F1F5F9 !important; }
+  footer      { background-color: #334155 !important; color: #F1F5F9 !important; }
+}
+
+/* ============================================================
+   首页 / 登录页 顶栏之下：避免 sticky header 遮挡
+   ============================================================ */
+#home-page { padding-top: 0; }   /* 顶栏 sticky 自带占位 */
+
+/* ============================================================
+   浅 / 深色：登录页左侧 hero 在深色下用极深藏青
+   ============================================================ */
+.bg-hero { background-color: var(--color-hero-bg); }
 
 .vx-app-loading {
   position: fixed;

@@ -59,14 +59,16 @@ class App {
 
     if (authManager.isLoggedIn()) {
       if (supabaseManager.isConfigured()) {
-        await this.onLoginSuccess();
+        // 冷启动且已登录 → 直接进入主应用（保留既有用户习惯）
+        await this.onLoginSuccess({ directToApp: true });
       } else {
         console.warn('[VEX-Timeline] Session exists but Supabase not configured. Clearing session.');
         await authManager.logout();
-        this.showAuthPage();
+        this.showHomePage();
       }
     } else {
-      this.showAuthPage();
+      // 未登录 → 显示首页（首屏）
+      this.showHomePage();
     }
   }
 
@@ -87,17 +89,114 @@ class App {
     return false;
   }
 
-  showAuthPage() {
+  // ============================================================
+  // 页面切换：首页 / 登录页 / 主应用
+  // ============================================================
+  /**
+   * 显示官网首页（首屏）
+   * - 隐藏登录页与主应用容器
+   * - 顶栏：显示锚点导航 + "开始使用"，隐藏"返回首页"
+   * - 隐藏冷启动遮罩
+   */
+  showHomePage() {
     this._hideAppLoading();
-    document.getElementById('auth-page').classList.remove('hidden');
+    const home = document.getElementById('home-page');
+    const auth = document.getElementById('auth-page');
     const container = document.querySelector('.container');
+    if (home) home.classList.remove('hidden');
+    if (auth) auth.classList.add('hidden');
     if (container) container.classList.add('hidden');
+    this._syncSiteHeader('home');
+    // 每次切到首页都滚到顶部
+    try { window.scrollTo({ top: 0, behavior: 'instant' in window ? 'instant' : 'auto' }); } catch (e) { window.scrollTo(0, 0); }
   }
 
-  hideAuthPage() {
-    document.getElementById('auth-page').classList.add('hidden');
+  /** 隐藏首页（用于登录成功或登出时短暂停留后离开） */
+  hideHomePage() {
+    const home = document.getElementById('home-page');
+    if (home) home.classList.add('hidden');
+  }
+
+  /**
+   * 显示登录页（第二屏）
+   * - 从首页 / 登出后进入
+   * - 顶栏：隐藏锚点导航与"开始使用"，显示"返回首页"
+   */
+  goToAuth() {
+    const home = document.getElementById('home-page');
+    const auth = document.getElementById('auth-page');
     const container = document.querySelector('.container');
+    if (home) home.classList.add('hidden');
+    if (auth) auth.classList.remove('hidden');
+    if (container) container.classList.add('hidden');
+    this._syncSiteHeader('auth');
+    try { window.scrollTo({ top: 0, behavior: 'instant' in window ? 'instant' : 'auto' }); } catch (e) { window.scrollTo(0, 0); }
+  }
+
+  /**
+   * 进入主应用（`.container`）
+   * - 隐藏首页 + 登录页
+   * - 顶栏：完全隐藏（主应用内部有自己的 header）
+   */
+  showMainApp() {
+    const home = document.getElementById('home-page');
+    const auth = document.getElementById('auth-page');
+    const container = document.querySelector('.container');
+    if (home) home.classList.add('hidden');
+    if (auth) auth.classList.add('hidden');
     if (container) container.classList.remove('hidden');
+    this._syncSiteHeader('app');
+    try { window.scrollTo({ top: 0, behavior: 'instant' in window ? 'instant' : 'auto' }); } catch (e) { window.scrollTo(0, 0); }
+  }
+
+  /**
+   * 同步共用顶栏在不同场景下的可见性
+   * 使用 `<body data-scene="home|auth|app">` 作为唯一真相源，CSS 决定显隐
+   *  - 'home'：完整顶栏（logo + 锚点导航 + 语言 + 开始使用）
+   *  - 'auth'：完全隐藏顶栏（auth 页自带 "返回首页" 链接）
+   *  - 'app'：完全隐藏（主应用使用内部 header）
+   */
+  _syncSiteHeader(scene) {
+    document.body.setAttribute('data-scene', scene || 'home');
+  }
+
+  // 兼容旧调用名（部分旧代码可能仍引用 showAuthPage / hideAuthPage）
+  showAuthPage() { this.goToAuth(); }
+  hideAuthPage() { /* no-op: 主应用通过 showMainApp() 切换；保留以兼容旧代码 */ }
+
+  /**
+   * 同步语言切换器按钮 UI（单按钮：根据当前语言显示"中" / "EN"）
+   * 同时更新首页 (#site-lang-label) 和主应用 (#app-lang-label) 两个按钮
+   */
+  _updateLangToggle() {
+    if (!window.i18n) return;
+    const current = window.i18n.getLanguage();
+    const text = current === 'zh-CN' ? '中' : 'EN';
+    const siteLabel = document.getElementById('site-lang-label');
+    const appLabel = document.getElementById('app-lang-label');
+    if (siteLabel) siteLabel.textContent = text;
+    if (appLabel) appLabel.textContent = text;
+  }
+
+  /**
+   * 切语言后重新渲染主应用（按需：仅在主应用已挂载时）
+   *  - 重新调用 applyI18n 扫描 data-i18n 节点
+   *  - 重渲染当前视图、时间标题、视图切换高亮、云状态图标、用户菜单
+   */
+  _refreshAppOnLangChange() {
+    if (!window.i18n || !window.i18n.applyI18n) return;
+    window.i18n.applyI18n();
+    this._updateLangToggle();
+    // 仅在主应用场景下重渲染数据视图
+    const scene = document.body.getAttribute('data-scene');
+    if (scene === 'app') {
+      try { this.renderDate(); } catch (e) { /* noop */ }
+      try { this.renderView(); } catch (e) { /* noop */ }
+      try { this.renderFilterChips(); } catch (e) { /* noop */ }
+      try { this.updateCloudStatusIcon(); } catch (e) { /* noop */ }
+      try { this.renderDiagnosticBar(); } catch (e) { /* noop */ }
+      try { this.renderUserMenu(); } catch (e) { /* noop */ }
+    }
   }
 
   /**
@@ -115,8 +214,24 @@ class App {
   // ============================================================
   // 登录成功/失败
   // ============================================================
-  async onLoginSuccess() {
-    this.hideAuthPage();
+  /**
+   * 登录成功入口
+   * 流程：
+   *  1) 拉取 timelines 与云端记录
+   *  2) 先切到首页（避免直接进入主应用突兀）
+   *  3) 在首页显示 toast 提示"登录成功，正在进入应用…"
+   *  4) 3 秒后自动（或点击"立即进入"立即）切到主应用
+   *  5) 隐藏冷启动遮罩
+   */
+  /**
+   * 登录成功入口
+   * @param {object} [opts]
+   * @param {boolean} [opts.directToApp=false]  为 true 时跳过"首页 + toast"过渡，
+   *        直接进入主应用（用于冷启动时已登录场景，保持原行为）
+   */
+  async onLoginSuccess(opts = {}) {
+    const directToApp = !!opts.directToApp;
+
     // 保留 #user-info 上的 `hidden lg:flex` 类。`lg:flex` 会在 ≥lg 视口下自动覆盖 `hidden`，
     // 因此在 mobile (<lg) 上始终隐藏，在 desktop (≥lg) 上正常显示，无需 JS 干预。
     const username = authManager.getUsername() || 'User';
@@ -134,7 +249,7 @@ class App {
     if (!loadResult.success) {
       // 拉取失败 → 显示错误条 + 隐藏 add 按钮
       this.cloudSyncStatus = 'error';
-      this.cloudErrorMessage = loadResult.error || '无法连接到云端';
+      this.cloudErrorMessage = loadResult.error || this._i18n('app.cloud.unreachable', '无法连接到云端');
       this.updateCloudStatusIcon();
       this._setCloudError(this.cloudErrorMessage);
       this._setAddEnabled(false);
@@ -148,7 +263,7 @@ class App {
       try {
         await this.syncFromCloud();
       } catch (e) {
-        this._setCloudError('同步云端记录失败: ' + (e.message || e));
+        this._setCloudError(this._i18n('app.cloud.syncFail', '同步云端记录失败: ') + (e.message || e));
         // sync 失败不影响渲染本地已有数据
       }
     }
@@ -156,8 +271,25 @@ class App {
     this.renderDate();
     await this.renderView();
 
-    // 冷启动遮罩收尾：等首屏渲染完再关，让用户感觉不到遮罩和内容之间的切换
+    // 冷启动遮罩：进入首页或主应用后即可关闭
     this._hideAppLoading();
+
+    if (directToApp) {
+      // 冷启动且已登录：直接进入主应用（保留既有用户习惯）
+      this.showMainApp();
+      return;
+    }
+
+    // 主动登录 / 注册：先到首页，3 秒 toast 后切到主应用
+    this.showHomePage();
+    const enterApp = () => {
+      if (this._loginRedirectTimer) { clearTimeout(this._loginRedirectTimer); this._loginRedirectTimer = null; }
+      this.showMainApp();
+    };
+    const message = (window.i18n && window.i18n.t) ? window.i18n.t('home.toast.loginSuccess') : '登录成功，正在进入应用…';
+    const actionLabel = (window.i18n && window.i18n.t) ? window.i18n.t('home.toast.enterNow') : '立即进入';
+    this.showToast(message, { duration: 3000, actionLabel: actionLabel, action: enterApp });
+    this._loginRedirectTimer = setTimeout(enterApp, 3000);
   }
 
   // ============================================================
@@ -167,7 +299,7 @@ class App {
     const bar = document.getElementById('cloud-error-bar');
     const msgEl = document.getElementById('cloud-error-message');
     if (!bar) return;
-    if (msgEl) msgEl.textContent = msg || '未知错误';
+    if (msgEl) msgEl.textContent = msg || this._i18n('app.modal.unknownError', '未知错误');
     bar.classList.remove('hidden');
     // lucide 图标在 bar 内，确保渲染
     if (window.lucide && lucide.createIcons) lucide.createIcons();
@@ -188,7 +320,7 @@ class App {
     if (fab) {
       fab.style.display = enabled ? 'flex' : 'none';
       fab.disabled = !enabled;
-      fab.title = enabled ? '添加记录' : '云端连接失败，无法添加记录';
+      fab.title = enabled ? this._i18n('app.fab.add', '添加记录') : this._i18n('app.fab.cantAdd', '云端连接失败，无法添加记录');
     }
   }
 
@@ -203,7 +335,7 @@ class App {
   async loadTimelines() {
     if (!authManager.isLoggedIn() || !supabaseManager.isConfigured()) {
       this.updateTimelineSelector();
-      return { success: false, error: 'Supabase 未配置' };
+      return { success: false, error: this._i18n('app.cloud.notConfigured', 'Supabase 未配置') };
     }
 
     let lastErr = null;
@@ -297,9 +429,9 @@ class App {
   }
 
   _findTimelineName(id) {
-    if (!id) return '未选择';
+    if (!id) return this._i18n('app.timeline.unselected', '未选择');
     const t = this.timelines.find(x => x.id === id);
-    return t ? t.name : '未选择';
+    return t ? t.name : this._i18n('app.timeline.unselected', '未选择');
   }
 
   updateTimelineLabel(name) {
@@ -323,18 +455,18 @@ class App {
   updateCloudStatusIcon() {
     const el = document.getElementById('cloud-status');
     if (!el) return;
-    let iconName = 'cloud', label = '未知', cls = '';
+    let iconName = 'cloud', label = this._i18n('app.cloud.unknown', '未知'), cls = '';
 
     if (!supabaseManager.isConfigured()) {
-      iconName = 'alert-triangle'; label = 'Supabase 未配置'; cls = 'is-error';
+      iconName = 'alert-triangle'; label = this._i18n('app.cloud.notConfigured', 'Supabase 未配置'); cls = 'is-error';
     } else if (this.cloudSyncStatus === 'error') {
-      iconName = 'alert-triangle'; label = '云端错误: ' + (this.cloudErrorMessage || '未知'); cls = 'is-error';
+      iconName = 'alert-triangle'; label = this._i18n('app.cloud.error', '云端错误: ') + (this.cloudErrorMessage || this._i18n('app.cloud.unknown', '未知')); cls = 'is-error';
     } else if (!this.isOnline) {
-      iconName = 'cloud-off'; label = '离线'; cls = 'is-offline';
+      iconName = 'cloud-off'; label = this._i18n('app.cloud.offline', '离线'); cls = 'is-offline';
     } else if (this.syncInProgress) {
-      iconName = 'refresh-cw'; label = '同步中'; cls = 'is-syncing';
+      iconName = 'refresh-cw'; label = this._i18n('app.cloud.syncing', '同步中'); cls = 'is-syncing';
     } else {
-      iconName = 'cloud'; label = '云端已连接'; cls = 'is-ok';
+      iconName = 'cloud'; label = this._i18n('app.cloud.connected', '云端已连接'); cls = 'is-ok';
     }
 
     el.className = 'vx-cloud-status' + (cls ? ' ' + cls : '');
@@ -358,7 +490,7 @@ class App {
     // 下面是仅在调试 DOM 存在时才会执行的旧逻辑（理论上不会触发）
     const status = supabaseManager.getConfigStatus();
     const isLoggedIn = authManager.isLoggedIn();
-    const username = authManager.getUsername() || '未登录';
+    const username = authManager.getUsername() || this._i18n('app.user.unlogged', '未登录');
     const sessionOk = !!authManager.session;
     const cloudOk = status.isValid;
 
@@ -396,7 +528,7 @@ class App {
     if (banner) {
       if (!cloudOk) {
         banner.classList.remove('hidden');
-        banner.textContent = '云端服务暂不可用，请稍后再试或联系管理员。';
+        banner.textContent = this._i18n('app.cloud.broken', '云端服务暂不可用，请稍后再试或联系管理员。');
       } else {
         banner.classList.add('hidden');
       }
@@ -496,6 +628,50 @@ class App {
     const mobileFab = document.getElementById('mobile-fab');
     if (mobileFab) mobileFab.addEventListener('click', () => this.openModal());
 
+    // ============ 首页 / 登录页 / 顶栏 事件 ============
+    // 首页 → 登录页
+    const goToAuthHandler = (e) => { if (e) e.preventDefault(); this.goToAuth(); };
+    const ctaStart = document.getElementById('site-cta-start');
+    if (ctaStart) ctaStart.addEventListener('click', goToAuthHandler);
+    const heroCtaPrimary = document.getElementById('home-hero-cta-primary');
+    if (heroCtaPrimary) heroCtaPrimary.addEventListener('click', goToAuthHandler);
+    const ctaButton = document.getElementById('home-cta-button');
+    if (ctaButton) ctaButton.addEventListener('click', goToAuthHandler);
+
+    // 登录页 → 首页
+    const backHome = document.getElementById('site-back-home');
+    if (backHome) backHome.addEventListener('click', (e) => { e.preventDefault(); this.showHomePage(); });
+
+    // 登录页 → 首页（auth-back-home：在 auth 页表单内）
+    const authBackHome = document.getElementById('auth-back-home');
+    if (authBackHome) authBackHome.addEventListener('click', (e) => { e.preventDefault(); this.showHomePage(); });
+
+    // Logo（首页 / 登录页）→ 滚到 Hero 顶部（首页有效）
+    const headerLogo = document.getElementById('site-header-logo');
+    if (headerLogo) {
+      headerLogo.addEventListener('click', (e) => {
+        e.preventDefault();
+        this.showHomePage();
+        try { document.getElementById('home-hero').scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (err) { /* ignore */ }
+      });
+    }
+
+    // 语言切换：单按钮（首页 + 主应用共用）
+    const toggleLang = () => {
+      if (!window.i18n) return;
+      const current = window.i18n.getLanguage();
+      const next = current === 'zh-CN' ? 'en' : 'zh-CN';
+      window.i18n.setLanguage(next);
+      this._updateLangToggle();
+      // 触发主应用重渲染（若已登录）
+      this._refreshAppOnLangChange();
+    };
+    const langBtn = document.getElementById('site-lang-toggle');
+    if (langBtn) langBtn.addEventListener('click', toggleLang);
+    const appLangBtn = document.getElementById('app-lang-toggle');
+    if (appLangBtn) appLangBtn.addEventListener('click', toggleLang);
+    this._updateLangToggle();
+
     // 记录模态框
     document.getElementById('cancel-btn').addEventListener('click', () => this.closeModal());
     document.getElementById('save-btn').addEventListener('click', () => this.saveRecord());
@@ -575,19 +751,19 @@ class App {
       cloudStatusBtn.addEventListener('click', async (e) => {
         e.stopPropagation();
         if (!authManager.isLoggedIn() || !this.currentTimelineId) {
-          this.showToast('请先登录并选择时间轴', 'warning');
+          this.showToast(this._i18n('app.toast.loginFirst', '请先登录并选择时间轴'), 'warning');
           return;
         }
         if (this.syncInProgress) {
-          this.showToast('正在同步中，请稍候', 'info');
+          this.showToast(this._i18n('app.toast.syncing', '正在同步中，请稍候'), 'info');
           return;
         }
-        this.showToast('正在从云端刷新…', 'info');
+        this.showToast(this._i18n('app.cloud.refreshing', '正在从云端刷新…'), 'info');
         try {
           await this.syncFromCloud();
-          this.showToast('云端数据已同步', 'success');
+          this.showToast(this._i18n('app.cloud.refreshed', '云端数据已同步'), 'success');
         } catch (err) {
-          this.showToast('刷新失败: ' + (err.message || err), 'error');
+          this.showToast(this._i18n('app.cloud.refreshFailed', '刷新失败: ') + (err.message || err), 'error');
         }
       });
     }
@@ -631,19 +807,19 @@ class App {
       mobileCloudRefresh.addEventListener('click', async () => {
         this.closeMobileDrawer();
         if (!authManager.isLoggedIn() || !this.currentTimelineId) {
-          this.showToast('请先登录并选择时间轴', 'warning');
+          this.showToast(this._i18n('app.toast.loginFirst', '请先登录并选择时间轴'), 'warning');
           return;
         }
         if (this.syncInProgress) {
-          this.showToast('正在同步中，请稍候', 'info');
+          this.showToast(this._i18n('app.toast.syncing', '正在同步中，请稍候'), 'info');
           return;
         }
-        this.showToast('正在从云端刷新…', 'info');
+        this.showToast(this._i18n('app.cloud.refreshing', '正在从云端刷新…'), 'info');
         try {
           await this.syncFromCloud();
-          this.showToast('云端数据已同步', 'success');
+          this.showToast(this._i18n('app.cloud.refreshed', '云端数据已同步'), 'success');
         } catch (err) {
-          this.showToast('刷新失败: ' + (err.message || err), 'error');
+          this.showToast(this._i18n('app.cloud.refreshFailed', '刷新失败: ') + (err.message || err), 'error');
         }
       });
     }
@@ -679,14 +855,41 @@ class App {
     if (retryBtn) {
       retryBtn.addEventListener('click', async () => {
         this._clearCloudError();
-        this._setCloudError('正在重试…');
+        this._setCloudError(this._i18n('app.toast.retrying', '正在重试…'));
         try {
           await this.onLoginSuccess();
         } catch (e) {
-          this._setCloudError('重试失败: ' + (e.message || e));
+          this._setCloudError(this._i18n('app.cloud.retryFailed', '重试失败: ') + (e.message || e));
         }
       });
     }
+
+    // FAQ 手风琴：开一关一（容器整体位置稳定）
+    // 注意：重构成 button + div 模式（不用 <details>），避免浏览器默认 toggle 行为
+    // 用 requestAnimationFrame 把 class 切换推迟到下一帧，避免点击瞬间的 micro-stutter
+    const faqItems = document.querySelectorAll('.vx-faq-item');
+    faqItems.forEach(item => {
+      const button = item.querySelector('.vx-faq-summary');
+      if (!button) return;
+      button.addEventListener('click', () => {
+        const isOpen = item.classList.contains('is-open');
+        // 互斥：先关所有
+        faqItems.forEach(other => {
+          if (other.classList.contains('is-open')) {
+            other.classList.remove('is-open');
+            const otherBtn = other.querySelector('.vx-faq-summary');
+            if (otherBtn) otherBtn.setAttribute('aria-expanded', 'false');
+          }
+        });
+        // 用 rAF 把状态变更推迟到下一帧，让点击反馈（按下）和过渡（动画）解耦
+        requestAnimationFrame(() => {
+          if (!isOpen) {
+            item.classList.add('is-open');
+            button.setAttribute('aria-expanded', 'true');
+          }
+        });
+      });
+    });
   }
 
   // ============================================================
@@ -803,6 +1006,10 @@ class App {
   // ============================================================
   // 登录/注册/登出
   // ============================================================
+  _i18n(key, fallback) {
+    return (window.i18n && window.i18n.t) ? window.i18n.t(key) : fallback;
+  }
+
   async handleLogin() {
     const usernameInput = document.getElementById('auth-username');
     const passwordInput = document.getElementById('auth-password');
@@ -812,15 +1019,16 @@ class App {
     errorEl.textContent = '';
 
     if (!supabaseManager.isConfigured()) {
-      errorEl.textContent = 'Supabase 未配置。请检查 Vercel 环境变量并重新部署。';
+      errorEl.textContent = this._i18n('auth.error.notConfigured', '云端未配置，请联系管理员');
       this.renderDiagnosticBar();
       return;
     }
-    if (!username) { errorEl.textContent = '请输入用户名'; return; }
-    if (!password) { errorEl.textContent = '请输入密码'; return; }
+    if (!username) { errorEl.textContent = this._i18n('auth.error.usernameRequired', '请输入用户名'); return; }
+    if (!password) { errorEl.textContent = this._i18n('auth.error.passwordRequired', '请输入密码'); return; }
 
     const btn = document.getElementById('auth-login-btn');
-    await this._withAuthButtonLoading(btn, '登录', async () => {
+    const label = this._i18n('auth.login', '登录');
+    await this._withAuthButtonLoading(btn, label, async () => {
       try {
         await authManager.login(username, password);
         await this.onLoginSuccess();
@@ -840,15 +1048,16 @@ class App {
     errorEl.textContent = '';
 
     if (!supabaseManager.isConfigured()) {
-      errorEl.textContent = 'Supabase 未配置。请检查 Vercel 环境变量并重新部署。';
+      errorEl.textContent = this._i18n('auth.error.notConfigured', '云端未配置，请联系管理员');
       this.renderDiagnosticBar();
       return;
     }
-    if (!username) { errorEl.textContent = '请输入用户名'; return; }
-    if (!password || password.length < 6) { errorEl.textContent = '密码长度至少 6 位'; return; }
+    if (!username) { errorEl.textContent = this._i18n('auth.error.usernameRequired', '请输入用户名'); return; }
+    if (!password || password.length < 6) { errorEl.textContent = this._i18n('auth.error.shortPassword', '密码长度至少 6 位'); return; }
 
     const btn = document.getElementById('auth-register-btn');
-    await this._withAuthButtonLoading(btn, '注册', async () => {
+    const label = this._i18n('auth.register', '注册');
+    await this._withAuthButtonLoading(btn, label, async () => {
       try {
         await authManager.register(username, password);
         await this.onLoginSuccess();
@@ -871,7 +1080,7 @@ class App {
     if (btn.disabled) return;            // 防止双击
     const original = btn.innerHTML;
     btn.disabled = true;
-    btn.innerHTML = `<span class="vx-spinner vx-spinner-sm" aria-hidden="true"></span><span>${label}中…</span>`;
+    btn.innerHTML = `<span class="vx-spinner vx-spinner-sm" aria-hidden="true"></span><span>${label}…</span>`;
     try {
       await fn();
     } finally {
@@ -887,7 +1096,8 @@ class App {
     this.currentTimelineId = null;
     this._saveStoredTimelineId(null);
     this.timelines = [];
-    this.showAuthPage();
+    // 登出 → 回到首页（不直接回登录页，用户需主动点击首页 CTA）
+    this.showHomePage();
     document.getElementById('auth-username').value = '';
     document.getElementById('auth-password').value = '';
     document.getElementById('auth-error').textContent = '';
@@ -977,7 +1187,7 @@ class App {
         await this.renderView();
       }
     } catch (e) {
-      alert(e.message || '加入失败');
+      alert(e.message || this._i18n('app.team.joinFail', '加入失败'));
     }
 
     codeInput.value = '';
@@ -988,21 +1198,21 @@ class App {
     const current = this.timelines.find(t => t.id === this.currentTimelineId);
     if (!current || current.type !== 'team') {
       // 不再静默 return —— 给用户明确反馈
-      this.showToast('请先在时间轴下拉中选择一个赛队', 'warning');
+      this.showToast(this._i18n('app.team.selectTeam', '请先在时间轴下拉中选择一个赛队'), 'warning');
       return;
     }
 
     document.getElementById('invite-code-display').textContent = current.invite_code || '---';
 
     const membersList = document.getElementById('members-list');
-    membersList.innerHTML = '<div class="px-4 py-3 text-sm text-fg/60">加载中…</div>';
+    membersList.innerHTML = `<div class="px-4 py-3 text-sm text-fg/60">${this._i18n('app.empty.loading', '加载中…')}</div>`;
 
     try {
       const members = await cloudDBManager.getTimelineMembers(this.currentTimelineId);
       const isOwner = current.owner_id === authManager.getCurrentUser()?.id;
 
       if (!members || members.length === 0) {
-        membersList.innerHTML = '<div class="px-4 py-3 text-sm text-fg/60">暂无成员</div>';
+        membersList.innerHTML = `<div class="px-4 py-3 text-sm text-fg/60">${this._i18n('app.team.noMembers', '暂无成员')}</div>`;
       } else {
         // 拥有者置顶，其余按 username 升序保持稳定
         const sortedMembers = [...members].sort((a, b) => {
@@ -1010,14 +1220,17 @@ class App {
           if (a.role !== 'owner' && b.role === 'owner') return 1;
           return (a.users?.username || '').localeCompare(b.users?.username || '');
         });
+        const ownerLabel = this._i18n('app.team.roleOwner', '所有者');
+        const memberLabel = this._i18n('app.team.roleMember', '成员');
+        const removeLabel = this._i18n('app.action.delete', '删除');
         membersList.innerHTML = sortedMembers.map(member => `
           <div class="flex justify-between items-center px-4 py-3 border-b-2 border-border last:border-b-0">
             <div class="flex flex-col gap-0.5">
-              <span class="font-semibold text-sm">${this._escapeHtml(member.users?.username || '未知')}</span>
-              <span class="text-xs font-semibold uppercase tracking-wider text-fg/60">${member.role === 'owner' ? '所有者' : '成员'}</span>
+              <span class="font-semibold text-sm">${this._escapeHtml(member.users?.username || this._i18n('app.user.unknown', '未知'))}</span>
+              <span class="text-xs font-semibold uppercase tracking-wider text-fg/60">${member.role === 'owner' ? ownerLabel : memberLabel}</span>
             </div>
             ${isOwner && member.role !== 'owner' ? `
-              <button class="vx-member-remove-btn h-8 px-3 bg-canvas border-2 border-border rounded-md text-xs font-semibold uppercase tracking-wider text-fg hover:border-danger hover:text-danger transition-all duration-200" data-user-id="${member.user_id}">移除</button>
+              <button class="vx-member-remove-btn h-8 px-3 bg-canvas border-2 border-border rounded-md text-xs font-semibold uppercase tracking-wider text-fg hover:border-danger hover:text-danger transition-all duration-200" data-user-id="${member.user_id}">${removeLabel}</button>
             ` : ''}
           </div>
         `).join('');
@@ -1031,17 +1244,17 @@ class App {
           try {
             await cloudDBManager.removeMember(this.currentTimelineId, userId);
             e.currentTarget.closest('.flex').remove();
-            this.showToast('已移除成员', 'success');
+            this.showToast(this._i18n('app.team.memberRemoved', '已移除成员'), 'success');
           } catch (err) {
             console.error(err);
-            this.showToast('移除失败: ' + (err.message || err), 'error');
+            this.showToast(this._i18n('app.team.removeFail', '移除失败: ') + (err.message || err), 'error');
           }
         });
       });
     } catch (e) {
       console.error('[VEX-Timeline] getTimelineMembers failed:', e);
-      membersList.innerHTML = `<div class="px-4 py-3 text-sm text-danger">加载失败: ${this._escapeHtml(e.message || String(e))}</div>`;
-      this.showToast('加载成员失败: ' + (e.message || e), 'error');
+      membersList.innerHTML = `<div class="px-4 py-3 text-sm text-danger">${this._i18n('app.empty.fail', '加载失败: ')}${this._escapeHtml(e.message || String(e))}</div>`;
+      this.showToast(this._i18n('app.team.membersFail', '加载成员失败: ') + (e.message || e), 'error');
     }
 
     this.openModalById('invite-modal');
@@ -1050,20 +1263,53 @@ class App {
   // ============================================================
   // Toast 提示（替代 alert / 静默 return）
   // ============================================================
-  showToast(message, type = 'info') {
+  /**
+   * 顶部 / 底部 toast
+   * @param {string} message  文案
+   * @param {string|object} [typeOrOptions]  'info' | 'success' | 'warning' | 'error'，或
+   *                                         { type, duration, actionLabel, action }
+   * @param {object} [legacyOpts] 兼容旧调用：{ duration, actionLabel, action }
+   */
+  showToast(message, typeOrOptions = 'info', legacyOpts) {
     const t = document.getElementById('vx-toast');
     if (!t) return;
+    let type = 'info';
+    let duration = 3000;
+    let actionLabel = null;
+    let action = null;
+    if (typeof typeOrOptions === 'string') {
+      type = typeOrOptions;
+      if (legacyOpts && typeof legacyOpts === 'object') {
+        duration = legacyOpts.duration || duration;
+        actionLabel = legacyOpts.actionLabel || actionLabel;
+        action = legacyOpts.action || action;
+      }
+    } else if (typeOrOptions && typeof typeOrOptions === 'object') {
+      type = typeOrOptions.type || type;
+      duration = typeOrOptions.duration || duration;
+      actionLabel = typeOrOptions.actionLabel || actionLabel;
+      action = typeOrOptions.action || action;
+    }
     const colors = {
       info:    'bg-fg text-canvas',
       success: 'bg-secondary text-canvas',
       warning: 'bg-accent text-canvas',
       error:   'bg-danger text-canvas'
     };
-    t.className = `fixed bottom-6 left-1/2 -translate-x-1/2 px-5 py-3 rounded-md text-sm font-semibold z-[200] shadow-none ${colors[type] || colors.info}`;
-    t.textContent = message;
+    t.className = `fixed bottom-6 left-1/2 -translate-x-1/2 px-5 py-3 rounded-md text-sm font-semibold z-[200] shadow-none flex items-center gap-3 ${colors[type] || colors.info}`;
+    if (actionLabel && typeof action === 'function') {
+      t.innerHTML = `<span></span><button type="button" class="vx-toast-action"></button>`;
+      t.querySelector('span').textContent = message;
+      const btn = t.querySelector('button.vx-toast-action');
+      btn.textContent = actionLabel;
+      btn.style.cssText = 'background:rgba(255,255,255,0.18);padding:0.25rem 0.625rem;border-radius:4px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;font-size:0.6875rem;cursor:pointer;border:0;color:inherit;';
+      btn.addEventListener('click', () => { try { action(); } catch (e) { console.warn('[VEX-Timeline] toast action failed:', e); } });
+    } else {
+      t.textContent = message;
+    }
     t.classList.remove('hidden');
     clearTimeout(this._toastTimer);
-    this._toastTimer = setTimeout(() => t.classList.add('hidden'), 3000);
+    this._toastTimer = setTimeout(() => t.classList.add('hidden'), duration);
   }
 
   copyInviteCode() {
@@ -1123,7 +1369,7 @@ class App {
     const imageInput = document.getElementById('record-image');
 
     if (record) {
-      modalTitle.textContent = '编辑记录';
+      modalTitle.textContent = this._i18n('app.modal.editTitle', '编辑记录');
       dateInput.value = record.date;
       timeInput.value = record.time || '';
       titleInput.value = record.title;
@@ -1139,7 +1385,7 @@ class App {
         previewImg.src = '';
       }
     } else {
-      modalTitle.textContent = '添加记录';
+      modalTitle.textContent = this._i18n('app.modal.addTitle', '添加记录');
       dateInput.value = this.formatDate(new Date());
       timeInput.value = this.formatTime(new Date());
       titleInput.value = '';
@@ -1179,8 +1425,8 @@ class App {
     const importance = activeImportanceBtn ? activeImportanceBtn.dataset.importance : 'medium';
     let imageUrl = this.tempImageData;
 
-    if (!title) { alert('请输入标题'); return; }
-    if (!date)  { alert('请选择日期'); return; }
+    if (!title) { alert(this._i18n('app.modal.titleReq', '请输入标题')); return; }
+    if (!date)  { alert(this._i18n('app.modal.dateReq', '请选择日期')); return; }
 
     // Round 5：图片上传到 Supabase Storage（避免 base64 超过列长度导致丢失）
     if (imageUrl && imageUrl.startsWith('data:')) {
@@ -1235,7 +1481,7 @@ class App {
   }
 
   async deleteRecord(id) {
-    if (!confirm('确定要删除这条记录吗？')) return;
+    if (!confirm(this._i18n('app.modal.confirmDelete', '确定要删除这条记录吗？'))) return;
     const record = this.records.find(r => r.id === id);
     await dbManager.deleteRecord(id);
     if (authManager.isLoggedIn() && supabaseManager.isConfigured() && this.currentTimelineId && record) {
@@ -1268,14 +1514,35 @@ class App {
   }
 
   formatDateLabel(date) {
-    const months = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
+    const months = [
+      this._i18n('app.month.1', '1月'),
+      this._i18n('app.month.2', '2月'),
+      this._i18n('app.month.3', '3月'),
+      this._i18n('app.month.4', '4月'),
+      this._i18n('app.month.5', '5月'),
+      this._i18n('app.month.6', '6月'),
+      this._i18n('app.month.7', '7月'),
+      this._i18n('app.month.8', '8月'),
+      this._i18n('app.month.9', '9月'),
+      this._i18n('app.month.10', '10月'),
+      this._i18n('app.month.11', '11月'),
+      this._i18n('app.month.12', '12月')
+    ];
     return `${date.getFullYear()}年 ${months[date.getMonth()]}`;
   }
 
   formatDateDisplay(dateStr) {
     const [year, month, day] = dateStr.split('-');
     const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
-    const days = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+    const days = [
+      this._i18n('app.day.full.sun', '周日'),
+      this._i18n('app.day.full.mon', '周一'),
+      this._i18n('app.day.full.tue', '周二'),
+      this._i18n('app.day.full.wed', '周三'),
+      this._i18n('app.day.full.thu', '周四'),
+      this._i18n('app.day.full.fri', '周五'),
+      this._i18n('app.day.full.sat', '周六')
+    ];
     return `${year}年${month}月${day}日 ${days[date.getDay()]}`;
   }
 
@@ -1325,7 +1592,7 @@ class App {
 
     // Round 4：取消本地时间轴，统一走云端路径
     if (!this.currentTimelineId) {
-      calendar.innerHTML = '<div class="vx-empty" style="grid-column: 1 / -1;">请先选择时间轴</div>';
+      calendar.innerHTML = `<div class="vx-empty" style="grid-column: 1 / -1;">${this._i18n('app.empty.timeline', '请先选择时间轴')}</div>`;
       return;
     }
 
@@ -1361,7 +1628,15 @@ class App {
 
     const todayStr = this.formatDate(new Date());
 
-    const days = ['日', '一', '二', '三', '四', '五', '六'];
+    const days = [
+      this._i18n('app.day.sun', '日'),
+      this._i18n('app.day.mon', '一'),
+      this._i18n('app.day.tue', '二'),
+      this._i18n('app.day.wed', '三'),
+      this._i18n('app.day.thu', '四'),
+      this._i18n('app.day.fri', '五'),
+      this._i18n('app.day.sat', '六')
+    ];
     let headerHTML = days.map(d =>
       `<div class="px-2 py-3 text-center text-xs font-semibold uppercase tracking-wider text-fg/60 bg-muted border-b-2 border-border">${d}</div>`
     ).join('');
@@ -1444,7 +1719,7 @@ class App {
     const dayRecords = allRecords.filter(r => r.date === dateStr);
 
     if (dayRecords.length === 0) {
-      content.innerHTML = `<div class="vx-empty">暂无记录</div>`;
+      content.innerHTML = `<div class="vx-empty">${this._i18n('app.empty.records', '暂无记录')}</div>`;
     } else {
       dayRecords.sort((a, b) => (a.time || '00:00').localeCompare(b.time || '00:00'));
       let html = '';
@@ -1487,7 +1762,7 @@ class App {
 
   showLoadingState() {
     const timeline = document.getElementById('timeline');
-    timeline.innerHTML = `<div class="vx-empty">加载中…</div>`;
+    timeline.innerHTML = `<div class="vx-empty">${this._i18n('app.empty.loading', '加载中…')}</div>`;
   }
 
   async renderTimeline() {
@@ -1502,7 +1777,7 @@ class App {
     }
 
     if (filteredRecords.length === 0) {
-      timeline.innerHTML = `<div class="vx-empty">暂无记录</div>`;
+      timeline.innerHTML = `<div class="vx-empty">${this._i18n('app.empty.records', '暂无记录')}</div>`;
       return;
     }
 
@@ -1517,7 +1792,11 @@ class App {
       medium: 'circle-dot',
       low:    'check-circle'
     };
-    const importanceLabel = { high: '高', medium: '中', low: '低' };
+    const importanceLabel = {
+      high:   this._i18n('app.importance.high', '高'),
+      medium: this._i18n('app.importance.medium', '中'),
+      low:    this._i18n('app.importance.low', '低')
+    };
 
     // Round 5：按 date desc, time desc 排序
     const sortedRecords = [...filteredRecords].sort((a, b) => {

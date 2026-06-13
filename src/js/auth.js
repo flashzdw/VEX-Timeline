@@ -137,17 +137,17 @@ class AuthManager {
 
   async register(username, password) {
     if (!supabaseManager.isConfigured()) {
-      throw 'Supabase 未配置。请检查 Vercel 环境变量并重新部署。';
+      throw (window.i18n ? window.i18n.t('auth.error.notConfigured') : '云端未配置，请联系管理员');
     }
     username = username.trim();
     if (username.length < 2 || username.length > 20) {
-      throw '用户名长度需在2-20个字符之间';
+      throw (window.i18n ? window.i18n.t('auth.error.usernameLength') : '用户名长度需在2-20个字符之间');
     }
     if (!/^[a-zA-Z0-9_]+$/.test(username)) {
-      throw '用户名只能包含字母、数字和下划线';
+      throw (window.i18n ? window.i18n.t('auth.error.usernameFormat') : '用户名只能包含字母、数字和下划线');
     }
     if (!password || password.length < 6) {
-      throw '密码长度至少6位';
+      throw (window.i18n ? window.i18n.t('auth.error.shortPassword') : '密码长度至少6位');
     }
 
     const supabase = supabaseManager.getClient();
@@ -163,13 +163,13 @@ class AuthManager {
 
     if (error) {
       if (error.message?.includes('already') || error.message?.includes('registered')) {
-        throw '用户名已被占用';
+        throw (window.i18n ? window.i18n.t('auth.error.taken') : '用户名已被占用');
       }
       throw error.message;
     }
 
     if (!data.session) {
-      throw '注册成功，请等待邮箱确认后再登录。你可在 Supabase 设置中关闭邮箱验证。';
+      throw (window.i18n ? window.i18n.t('auth.error.emailConfirm') : '注册成功，请等待邮箱确认后再登录。你可在 Supabase 设置中关闭邮箱验证。');
     }
 
     this.session = data.session;
@@ -179,14 +179,14 @@ class AuthManager {
 
   async login(username, password) {
     if (!supabaseManager.isConfigured()) {
-      throw 'Supabase 未配置。请检查 Vercel 环境变量并重新部署。';
+      throw (window.i18n ? window.i18n.t('auth.error.notConfigured') : '云端未配置，请联系管理员');
     }
     username = username.trim();
     if (!username) {
-      throw '请输入用户名';
+      throw (window.i18n ? window.i18n.t('auth.error.usernameRequired') : '请输入用户名');
     }
     if (!password) {
-      throw '请输入密码';
+      throw (window.i18n ? window.i18n.t('auth.error.passwordRequired') : '请输入密码');
     }
 
     const supabase = supabaseManager.getClient();
@@ -199,10 +199,10 @@ class AuthManager {
 
     if (error) {
       if (error.message?.includes('Invalid login')) {
-        throw '用户名或密码错误';
+        throw (window.i18n ? window.i18n.t('auth.error.invalid') : '用户名或密码错误');
       }
       if (error.status === 400 || error.message?.includes('Email not confirmed')) {
-        throw '请先在 Supabase 控制台确认邮箱（Settings → Auth → 关闭 Enable email confirmations）';
+        throw (window.i18n ? window.i18n.t('auth.error.emailConfirm') : '请先在 Supabase 控制台确认邮箱（Settings → Auth → 关闭 Enable email confirmations）');
       }
       throw error.message;
     }
