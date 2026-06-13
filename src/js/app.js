@@ -865,13 +865,25 @@ class App {
     }
 
     // FAQ 手风琴：开一关一（容器整体位置稳定）
+    // 注意：重构成 button + div 模式（不用 <details>），避免浏览器默认 toggle 行为
     const faqItems = document.querySelectorAll('.vx-faq-item');
     faqItems.forEach(item => {
-      item.addEventListener('toggle', () => {
-        if (item.open) {
-          faqItems.forEach(other => {
-            if (other !== item && other.open) other.open = false;
-          });
+      const button = item.querySelector('.vx-faq-summary');
+      if (!button) return;
+      button.addEventListener('click', () => {
+        const isOpen = item.classList.contains('is-open');
+        // 互斥：先关所有
+        faqItems.forEach(other => {
+          if (other.classList.contains('is-open')) {
+            other.classList.remove('is-open');
+            const otherBtn = other.querySelector('.vx-faq-summary');
+            if (otherBtn) otherBtn.setAttribute('aria-expanded', 'false');
+          }
+        });
+        // 再决定当前是开还是关
+        if (!isOpen) {
+          item.classList.add('is-open');
+          button.setAttribute('aria-expanded', 'true');
         }
       });
     });

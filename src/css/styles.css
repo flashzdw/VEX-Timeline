@@ -941,14 +941,12 @@ body[data-scene="app"] .vx-site-header { display: none !important; }
 .vx-triangle { clip-path: polygon(50% 0%, 0% 100%, 100% 100%); }
 
 /* ============================================================
-   FAQ 折叠项
-   - border-2 分隔（DESIGN.md §六例外）
-   - 用 grid-template-rows: 0fr → 1fr 实现高度过渡（现代 CSS 方案）
-   - 缓动采用 easeOutExpo 变种 cubic-bezier(0.16, 1, 0.3, 1)：
-     起步快、收尾慢，模拟「被轻轻拉出 / 推回」的手感，
-     避免默认 ease-in-out 的「先停顿 → 冲一下 → 再停顿」机械感
-   - 加号旋转用 0.3s、内容用 0.4s，制造「图标先到位 → 内容再展开」的时间层次
-   - 高度 + opacity 双属性同步动画，避免内容"突然可见"
+   FAQ 折叠项（重构为 button + div 模式，参考 React/Framer Motion 实现）
+   - 不用 <details>，避免浏览器对 summary 默认点击处理带来的微小延迟
+   - 加号旋转 0.3s、内容展开 0.4s，制造「图标先到位 → 内容再展开」的层次
+   - grid-template-rows: 0fr → 1fr 实现 auto 高度过渡（现代 CSS 技巧）
+   - 高度 + opacity 双属性同步：内容「渐渐出现」而非「突然可见」
+   - 缓动 cubic-bezier(0.16, 1, 0.3, 1)：easeOutExpo 变种，丝滑无机械感
    ============================================================ */
 .vx-faq-item {
   border-bottom: 2px solid var(--color-border);
@@ -956,33 +954,48 @@ body[data-scene="app"] .vx-site-header { display: none !important; }
   contain: layout;
 }
 .vx-faq-item:last-child { border-bottom: 0; }
-.vx-faq-item summary::-webkit-details-marker { display: none; }
-.vx-faq-item summary { list-style: none; }
+
+/* 折叠项 button：reset 默认 button 样式 */
 .vx-faq-summary {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
+  width: 100%;
   padding: 1rem 1.25rem;
+  background: transparent;
+  border: 0;
+  text-align: left;
+  font: inherit;
+  color: inherit;
   cursor: pointer;
   /* 防止文字变化时 summary 高度跳动（不同语言字符宽度不同） */
   min-height: 64px;
   transition: background-color 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .vx-faq-summary:hover { background-color: var(--color-muted); }
+.vx-faq-summary:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: -2px;
+}
 
 /* + → × 图标旋转：略快于内容（0.3s vs 0.4s），制造层次 */
-.vx-faq-item .vx-faq-summary > i {
-  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+.vx-faq-chevron {
+  display: inline-block;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.vx-faq-item.is-open .vx-faq-chevron {
+  transform: rotate(45deg);
 }
 
 /* 答案外层 grid 容器：从 0fr 平滑过渡到 1fr */
 .vx-faq-grid-wrap {
   display: grid;
   grid-template-rows: 0fr;
+  will-change: grid-template-rows;
   transition: grid-template-rows 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
-.vx-faq-item[open] > .vx-faq-grid-wrap {
+.vx-faq-item.is-open > .vx-faq-grid-wrap {
   grid-template-rows: 1fr;
 }
 
@@ -992,11 +1005,12 @@ body[data-scene="app"] .vx-site-header { display: none !important; }
   min-height: 0;
   padding-bottom: 0;
   opacity: 0;
+  will-change: padding-bottom, opacity;
   /* height + opacity 双属性同步，让内容"渐渐出现"而非"突然可见" */
   transition: padding-bottom 0.4s cubic-bezier(0.16, 1, 0.3, 1),
               opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
-.vx-faq-item[open] > .vx-faq-grid-wrap > .vx-faq-answer {
+.vx-faq-item.is-open > .vx-faq-grid-wrap > .vx-faq-answer {
   padding-bottom: 1.25rem;
   opacity: 1;
 }

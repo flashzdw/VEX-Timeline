@@ -226,7 +226,7 @@
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
                     <!-- 卡片 1：时间轴记录（蓝） -->
-                    <div class="group vx-feature-card bg-primary/10 relative overflow-visible">
+                    <div class="group vx-feature-card bg-muted relative overflow-visible">
                         <div class="h-14 w-14 bg-primary text-canvas rounded-md flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-200">
                             <i data-lucide="list" class="w-7 h-7"></i>
                         </div>
@@ -234,7 +234,7 @@
                         <p class="text-sm font-medium text-fg/70 leading-relaxed" data-i18n="home.features.item1.desc">按天记录每一次调试、改车、讨论，回看完整备赛路径。</p>
                     </div>
                     <!-- 卡片 2：月历总览（绿） -->
-                    <div class="group vx-feature-card bg-secondary/10 relative overflow-visible">
+                    <div class="group vx-feature-card bg-muted relative overflow-visible">
                         <div class="h-14 w-14 bg-secondary text-canvas rounded-md flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-200">
                             <i data-lucide="calendar" class="w-7 h-7"></i>
                         </div>
@@ -242,7 +242,7 @@
                         <p class="text-sm font-medium text-fg/70 leading-relaxed" data-i18n="home.features.item2.desc">一眼看到哪天有记录、哪天缺席，整月节奏尽在掌握。</p>
                     </div>
                     <!-- 卡片 3：个人与赛队（琥珀） -->
-                    <div class="group vx-feature-card bg-accent/10 relative overflow-visible">
+                    <div class="group vx-feature-card bg-muted relative overflow-visible">
                         <div class="h-14 w-14 bg-accent text-canvas rounded-md flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-200">
                             <i data-lucide="users" class="w-7 h-7"></i>
                         </div>
@@ -306,42 +306,42 @@
                 </div>
 
                 <div class="flex flex-col gap-0 border-2 border-border rounded-lg overflow-hidden bg-canvas">
-                    <details class="group vx-faq-item" open>
-                        <summary class="vx-faq-summary">
+                    <div class="vx-faq-item is-open">
+                        <button type="button" class="vx-faq-summary" aria-expanded="true">
                             <span class="font-extrabold text-base sm:text-lg text-fg" data-i18n="home.faq.q1">离线能用吗？</span>
-                            <i data-lucide="plus" class="w-5 h-5 text-fg/60 group-open:rotate-45 transition-transform duration-200"></i>
-                        </summary>
-                        <div class="vx-faq-grid-wrap">
+                            <i data-lucide="plus" class="w-5 h-5 text-fg/60 vx-faq-chevron"></i>
+                        </button>
+                        <div class="vx-faq-grid-wrap" role="region">
                             <div class="vx-faq-answer px-5 sm:px-6 text-sm sm:text-base font-medium text-fg/70 leading-relaxed" data-i18n="home.faq.a1">可以。数据会缓存到本地 IndexedDB，恢复网络后自动同步。</div>
                         </div>
-                    </details>
-                    <details class="group vx-faq-item">
-                        <summary class="vx-faq-summary">
+                    </div>
+                    <div class="vx-faq-item">
+                        <button type="button" class="vx-faq-summary" aria-expanded="false">
                             <span class="font-extrabold text-base sm:text-lg text-fg" data-i18n="home.faq.q2">数据安全吗？</span>
-                            <i data-lucide="plus" class="w-5 h-5 text-fg/60 group-open:rotate-45 transition-transform duration-200"></i>
-                        </summary>
-                        <div class="vx-faq-grid-wrap">
+                            <i data-lucide="plus" class="w-5 h-5 text-fg/60 vx-faq-chevron"></i>
+                        </button>
+                        <div class="vx-faq-grid-wrap" role="region">
                             <div class="vx-faq-answer px-5 sm:px-6 text-sm sm:text-base font-medium text-fg/70 leading-relaxed" data-i18n="home.faq.a2">所有数据通过 Supabase 加密传输与存储；RLS 策略保证只有队友能看到赛队内容。</div>
                         </div>
-                    </details>
-                    <details class="group vx-faq-item">
-                        <summary class="vx-faq-summary">
+                    </div>
+                    <div class="vx-faq-item">
+                        <button type="button" class="vx-faq-summary" aria-expanded="false">
                             <span class="font-extrabold text-base sm:text-lg text-fg" data-i18n="home.faq.q3">是否收费？</span>
-                            <i data-lucide="plus" class="w-5 h-5 text-fg/60 group-open:rotate-45 transition-transform duration-200"></i>
-                        </summary>
-                        <div class="vx-faq-grid-wrap">
+                            <i data-lucide="plus" class="w-5 h-5 text-fg/60 vx-faq-chevron"></i>
+                        </button>
+                        <div class="vx-faq-grid-wrap" role="region">
                             <div class="vx-faq-answer px-5 sm:px-6 text-sm sm:text-base font-medium text-fg/70 leading-relaxed" data-i18n="home.faq.a3">完全免费，源码 MIT 协议。</div>
                         </div>
-                    </details>
-                    <details class="group vx-faq-item">
-                        <summary class="vx-faq-summary">
+                    </div>
+                    <div class="vx-faq-item">
+                        <button type="button" class="vx-faq-summary" aria-expanded="false">
                             <span class="font-extrabold text-base sm:text-lg text-fg" data-i18n="home.faq.q4">怎么邀请队友？</span>
-                            <i data-lucide="plus" class="w-5 h-5 text-fg/60 group-open:rotate-45 transition-transform duration-200"></i>
-                        </summary>
-                        <div class="vx-faq-grid-wrap">
+                            <i data-lucide="plus" class="w-5 h-5 text-fg/60 vx-faq-chevron"></i>
+                        </button>
+                        <div class="vx-faq-grid-wrap" role="region">
                             <div class="vx-faq-answer px-5 sm:px-6 text-sm sm:text-base font-medium text-fg/70 leading-relaxed" data-i18n="home.faq.a4">创建赛队时间轴后会生成 6 位邀请码，队友输入即可加入。</div>
                         </div>
-                    </details>
+                    </div>
                 </div>
             </div>
         </section>
