@@ -1464,7 +1464,9 @@ class App {
     const surnameWrap = document.getElementById('profile-surname-only-wrap');
 
     // 昵称：已存在 → 整段隐藏（提示用户在赛队里以这个昵称显示）
-    if (u?.nickname) {
+    // 兜底：老用户没有 nickname 字段时（迁移前注册的），用 username 当昵称
+    const hasNickname = !!(u?.nickname || u?.username);
+    if (hasNickname) {
       if (nicknameSection) {
         nicknameSection.classList.add('hidden');
       }
@@ -1550,7 +1552,7 @@ class App {
 
     const nickname = wantNickname
       ? (document.getElementById('profile-nickname')?.value || '').trim()
-      : (authManager.getCurrentUser()?.nickname || '');
+      : (authManager.getCurrentUser()?.nickname || authManager.getCurrentUser()?.username || '');
     const realName = wantRealName
       ? (document.getElementById('profile-real-name')?.value || '').trim()
       : (authManager.getCurrentUser()?.real_name || '');
