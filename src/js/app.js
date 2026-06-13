@@ -1489,25 +1489,18 @@ class App {
     };
 
     // 让当前选中的按钮立刻在视觉上高亮
+    // 不用 classList.toggle 切换 Tailwind 类（移动 WebKit 会把 transition 卡住，
+    // 切完 class 按钮仍显示旧态，需点空白处才重绘）。
+    // 改用 [data-active] 属性 + CSS 兜底，class 完全不参与视觉。
     const paintSelected = () => {
       const sel = this[stateKey];
       const setActive = (btn, isActive) => {
         if (!btn) return;
-        btn.classList.toggle('bg-primary', isActive);
-        btn.classList.toggle('text-canvas', isActive);
-        btn.classList.toggle('bg-muted', !isActive);
-        btn.classList.toggle('text-fg/60', !isActive);
-        btn.classList.toggle('border-2', isActive);
-        btn.classList.toggle('border-primary', isActive);
+        btn.dataset.active = isActive ? 'true' : 'false';
       };
       setActive(studentBtn, sel === 'student');
       setActive(teacherBtn, sel === 'teacher');
       setActive(parentBtn,  sel === 'parent');
-      // 移动端 WebKit 偶尔会延迟 class 触发的重绘（点旁边空白才刷新），
-      // 这里强制同步 reflow，保证 class 切换立即可见
-      void studentBtn?.offsetWidth;
-      void teacherBtn?.offsetWidth;
-      void parentBtn?.offsetWidth;
       syncRealNameField(sel);
     };
     // 给三个按钮都绑 click

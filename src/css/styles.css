@@ -434,6 +434,28 @@ body {
 }
 
 /* ============================================================
+   身份选择器兜底（auth / profile / settings 三个 scope 共用）
+   问题：移动端 WebKit 偶尔把 Tailwind 的 transition-all 卡住，
+         切 class 时背景/字色停留在旧态，需点空白处才重绘。
+   解决：CSS 直接用 [data-active] + !important 决定视觉，
+         JS 同步 dataset.active 即可，不再依赖 class 切换。
+   ============================================================ */
+[id$="-identity-student"][data-active="true"],
+[id$="-identity-teacher"][data-active="true"],
+[id$="-identity-parent"][data-active="true"] {
+  background-color: var(--color-primary) !important;
+  color: var(--color-bg) !important;
+  border: 2px solid var(--color-primary) !important;
+}
+[id$="-identity-student"][data-active="false"],
+[id$="-identity-teacher"][data-active="false"],
+[id$="-identity-parent"][data-active="false"] {
+  background-color: var(--color-muted) !important;
+  color: var(--color-fg-muted) !important;
+  border: 2px solid transparent !important;
+}
+
+/* ============================================================
    月历单元
    使用单边边框（仅 right + bottom），避免相邻 cell 边框叠加为 4px。
    最右一列与最后一行由 :nth-child / .vx-calendar-row-last 处理。
