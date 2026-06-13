@@ -772,12 +772,15 @@
                     <form id="settings-password-form" class="flex flex-col gap-3 h-full">
                         <input id="settings-old-password" type="password" minlength="6" autocomplete="current-password"
                                placeholder="旧密码"
+                               data-i18n-placeholder="app.user.oldPassword"
                                class="h-12 px-4 bg-muted text-fg text-base rounded-md border-0 outline-none font-medium focus:bg-canvas focus:border-2 focus:border-primary transition-all duration-200">
                         <input id="settings-new-password" type="password" minlength="6" autocomplete="new-password"
                                placeholder="新密码"
+                               data-i18n-placeholder="app.user.newPassword"
                                class="h-12 px-4 bg-muted text-fg text-base rounded-md border-0 outline-none font-medium focus:bg-canvas focus:border-2 focus:border-primary transition-all duration-200">
                         <input id="settings-confirm-password" type="password" minlength="6" autocomplete="new-password"
                                placeholder="确认新密码"
+                               data-i18n-placeholder="app.user.confirmNewPassword"
                                class="h-12 px-4 bg-muted text-fg text-base rounded-md border-0 outline-none font-medium focus:bg-canvas focus:border-2 focus:border-primary transition-all duration-200">
                         <p class="settings-password-error min-h-[1.25rem] text-sm font-medium text-primary"></p>
                         <div class="mt-auto flex gap-3">
@@ -1225,10 +1228,6 @@
                 <button data-team-action="manage" id="mobile-manage-team-btn" type="button"
                         class="hidden h-12 border-4 border-fg text-fg rounded-md font-semibold tracking-wider uppercase text-sm flex items-center justify-center gap-2 hover:bg-fg hover:text-canvas transition-all duration-200">
                     <i data-lucide="settings" class="w-4 h-4"></i><span data-i18n="app.team.manage">管理赛队</span>
-                </button>
-                <button id="mobile-menu-close-btn" type="button"
-                        class="h-12 border-4 border-muted text-fg/60 rounded-md font-semibold tracking-wider uppercase text-sm flex items-center justify-center gap-2 hover:bg-muted transition-all duration-200">
-                    <i data-lucide="x" class="w-4 h-4"></i><span data-i18n="app.team.close">关闭</span>
                 </button>
             </div>
         </div>

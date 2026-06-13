@@ -973,10 +973,10 @@ class App {
       });
     }
 
-    // 登出（桌面 + 移动）
-    document.getElementById('logout-btn').addEventListener('click', () => this.handleLogout());
+    // 登出（桌面 + 移动）— 传当前按钮以便加 loading 旋转态
+    document.getElementById('logout-btn').addEventListener('click', (e) => this.handleLogout(e.currentTarget));
     const mobileLogout = document.getElementById('mobile-logout-btn');
-    if (mobileLogout) mobileLogout.addEventListener('click', () => this.handleLogout());
+    if (mobileLogout) mobileLogout.addEventListener('click', (e) => this.handleLogout(e.currentTarget));
 
     // 时间轴下拉（自定义）
     const tlBtn = document.getElementById('timeline-select-btn');
@@ -1081,11 +1081,7 @@ class App {
       if (!inMenu) this.closeAllMenus();
     });
 
-    // 移动端"关闭"按钮：关闭抽屉
-    const mobileMenuClose = document.getElementById('mobile-menu-close-btn');
-    if (mobileMenuClose) {
-      mobileMenuClose.addEventListener('click', () => this.closeMobileDrawer());
-    }
+    // 移动端"关闭"已删除：右上角 #mobile-drawer-close 即可关闭抽屉
 
     // 赛队模态框
     document.getElementById('cancel-team-btn').addEventListener('click', () => this.closeModalById('create-team-modal'));
@@ -1723,32 +1719,37 @@ class App {
     }
   }
 
-  async handleLogout() {
-    // Round 5：停止自动刷新（避免内存泄漏 + 登出后继续拉取）
-    this._stopAutoRefresh();
-    await authManager.logout();
-    this.currentTimelineId = null;
-    this._saveStoredTimelineId(null);
-    this.timelines = [];
-    // 登出 → 回到首页（不直接回登录页，用户需主动点击首页 CTA）
-    this.showHomePage();
-    // 清空两个表单的字段与错误信息
-    ['auth-username-login', 'auth-password-login', 'auth-username-register',
-     'auth-password-register', 'auth-nickname', 'auth-real-name'].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.value = '';
+  async handleLogout(btn) {
+    // btn 是触发登出的按钮（桌面 #logout-btn 或 移动 #mobile-logout-btn）；
+    // 登出网络请求较慢，加 spinner 旋转态与登录/注册按钮一致。
+    const label = this._i18n('app.user.loggingOut', '登出中');
+    await this._withAuthButtonLoading(btn, label, async () => {
+      // Round 5：停止自动刷新（避免内存泄漏 + 登出后继续拉取）
+      this._stopAutoRefresh();
+      await authManager.logout();
+      this.currentTimelineId = null;
+      this._saveStoredTimelineId(null);
+      this.timelines = [];
+      // 登出 → 回到首页（不直接回登录页，用户需主动点击首页 CTA）
+      this.showHomePage();
+      // 清空两个表单的字段与错误信息
+      ['auth-username-login', 'auth-password-login', 'auth-username-register',
+       'auth-password-register', 'auth-nickname', 'auth-real-name'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+      });
+      const err1 = document.getElementById('auth-error-login');
+      const err2 = document.getElementById('auth-error-register');
+      if (err1) err1.textContent = '';
+      if (err2) err2.textContent = '';
+      // 切回登录视图
+      this.switchAuthView('login');
+      this._setAddEnabled(true);
+      this.cloudSyncStatus = 'unknown';
+      this.cloudErrorMessage = '';
+      this.updateCloudStatusIcon();
+      this.renderDiagnosticBar();
     });
-    const err1 = document.getElementById('auth-error-login');
-    const err2 = document.getElementById('auth-error-register');
-    if (err1) err1.textContent = '';
-    if (err2) err2.textContent = '';
-    // 切回登录视图
-    this.switchAuthView('login');
-    this._setAddEnabled(true);
-    this.cloudSyncStatus = 'unknown';
-    this.cloudErrorMessage = '';
-    this.updateCloudStatusIcon();
-    this.renderDiagnosticBar();
   }
 
   // ============================================================
@@ -1814,7 +1815,9 @@ class App {
       basicForm.__bound = true;
       basicForm.addEventListener('submit', (e) => {
         e.preventDefault();
-        this._handleSettingsBasicSubmit();
+        // 把 submit 按钮传给 handler，让 _withAuthButtonLoading 加 spinner
+        const submitBtn = basicForm.querySelector('button[type="submit"]');
+        this._handleSettingsBasicSubmit(submitBtn);
       });
     }
     const usernameForm = document.getElementById('settings-username-form');
@@ -1822,7 +1825,8 @@ class App {
       usernameForm.__bound = true;
       usernameForm.addEventListener('submit', (e) => {
         e.preventDefault();
-        this._handleSettingsUsernameSubmit();
+        const submitBtn = usernameForm.querySelector('button[type="submit"]');
+        this._handleSettingsUsernameSubmit(submitBtn);
       });
     }
     const passwordForm = document.getElementById('settings-password-form');
@@ -1830,7 +1834,8 @@ class App {
       passwordForm.__bound = true;
       passwordForm.addEventListener('submit', (e) => {
         e.preventDefault();
-        this._handleSettingsPasswordSubmit();
+        const submitBtn = passwordForm.querySelector('button[type="submit"]');
+        this._handleSettingsPasswordSubmit(submitBtn);
       });
     }
 
@@ -1904,8 +1909,9 @@ class App {
   /**
    * 提交：基本信息（真实姓名 + 身份）
    * 复用 auth.completeProfile，避开业务规则（家长>=2字符、老师仅填姓等）
+   * submitBtn 用于 _withAuthButtonLoading 加 spinner（这些保存操作都涉及网络，较慢）
    */
-  async _handleSettingsBasicSubmit() {
+  async _handleSettingsBasicSubmit(submitBtn) {
     const errEl = document.querySelector('#settings-basic-form .settings-error');
     if (errEl) errEl.textContent = '';
     const realName = (document.getElementById('settings-real-name')?.value || '').trim();
@@ -1916,34 +1922,38 @@ class App {
     const u = authManager.getCurrentUser();
     if (!u) return;
 
-    try {
-      // username 已等于 nickname（合并），所以 nickname 字段直接传 username
-      await authManager.completeProfile({
-        nickname: u.username || '',
-        realName,
-        nameOnlySurname: surnameOnly,
-        identity,
-      });
-      // 刷新顶栏 / 用户菜单 / 主视图（赛队成员身份胶囊会跟着更新）
-      this.updateUserMenu();
-      if (typeof this.renderView === 'function') this.renderView();
-      // 关弹窗
-      const modal = document.getElementById('settings-modal');
-      if (modal) modal.classList.remove('active');
-      if (typeof this.showToast === 'function') {
-        this.showToast(this._i18n('app.user.basicInfoSaved', '基本信息已更新'));
+    const label = this._i18n('app.user.saving', '保存中');
+    await this._withAuthButtonLoading(submitBtn, label, async () => {
+      try {
+        // username 已等于 nickname（合并），所以 nickname 字段直接传 username
+        await authManager.completeProfile({
+          nickname: u.username || '',
+          realName,
+          nameOnlySurname: surnameOnly,
+          identity,
+        });
+        // 刷新顶栏 / 用户菜单 / 主视图（赛队成员身份胶囊会跟着更新）
+        this.updateUserMenu();
+        if (typeof this.renderView === 'function') this.renderView();
+        // 关弹窗
+        const modal = document.getElementById('settings-modal');
+        if (modal) modal.classList.remove('active');
+        if (typeof this.showToast === 'function') {
+          this.showToast(this._i18n('app.user.basicInfoSaved', '基本信息已更新'));
+        }
+      } catch (e) {
+        if (errEl) errEl.textContent = (e && e.message) ? e.message : String(e);
       }
-    } catch (e) {
-      if (errEl) errEl.textContent = (e && e.message) ? e.message : String(e);
-    }
+    });
   }
 
   /**
    * 提交：改用户名
    * username 实际存放在 auth.users.email（"xxx@vex-timeline.local"）
    * 流程：唯一性检查 → updateUser({ email }) → 同步 public.users.username
+   * submitBtn 用于 _withAuthButtonLoading 加 spinner
    */
-  async _handleSettingsUsernameSubmit() {
+  async _handleSettingsUsernameSubmit(submitBtn) {
     const errEl = document.querySelector('#settings-username-form .settings-username-error');
     if (errEl) errEl.textContent = '';
     const newUsername = (document.getElementById('settings-username')?.value || '').trim();
@@ -1960,56 +1970,60 @@ class App {
       return;
     }
 
-    try {
-      const supabase = (window.supabaseManager && window.supabaseManager.getClient)
-        ? window.supabaseManager.getClient()
-        : null;
-      if (!supabase) {
-        if (errEl) errEl.textContent = 'Supabase 未配置';
-        return;
-      }
-      // 1) 唯一性检查
-      const { data: existing, error: chkErr } = await supabase
-        .from('users')
-        .select('id')
-        .eq('username', newUsername)
-        .neq('id', u.id)
-        .maybeSingle();
-      if (chkErr) throw chkErr;
-      if (existing) {
-        if (errEl) errEl.textContent = this._i18n('auth.error.taken', '用户名已被占用');
-        return;
-      }
-      // 2) 改 auth.users.email
-      const { error: updErr } = await supabase.auth.updateUser({
-        email: newUsername + '@vex-timeline.local',
-      });
-      if (updErr) throw updErr;
-      // 3) 同步 public.users.username
-      const { error: syncErr } = await supabase
-        .from('users')
-        .update({ username: newUsername })
-        .eq('id', u.id);
-      if (syncErr) throw syncErr;
+    const label = this._i18n('app.user.updating', '更新中');
+    await this._withAuthButtonLoading(submitBtn, label, async () => {
+      try {
+        const supabase = (window.supabaseManager && window.supabaseManager.getClient)
+          ? window.supabaseManager.getClient()
+          : null;
+        if (!supabase) {
+          if (errEl) errEl.textContent = 'Supabase 未配置';
+          return;
+        }
+        // 1) 唯一性检查
+        const { data: existing, error: chkErr } = await supabase
+          .from('users')
+          .select('id')
+          .eq('username', newUsername)
+          .neq('id', u.id)
+          .maybeSingle();
+        if (chkErr) throw chkErr;
+        if (existing) {
+          if (errEl) errEl.textContent = this._i18n('auth.error.taken', '用户名已被占用');
+          return;
+        }
+        // 2) 改 auth.users.email
+        const { error: updErr } = await supabase.auth.updateUser({
+          email: newUsername + '@vex-timeline.local',
+        });
+        if (updErr) throw updErr;
+        // 3) 同步 public.users.username
+        const { error: syncErr } = await supabase
+          .from('users')
+          .update({ username: newUsername })
+          .eq('id', u.id);
+        if (syncErr) throw syncErr;
 
-      // 4) 重新加载 profile + 刷新 UI
-      if (typeof authManager._loadUserProfile === 'function') {
-        await authManager._loadUserProfile(u.id);
+        // 4) 重新加载 profile + 刷新 UI
+        if (typeof authManager._loadUserProfile === 'function') {
+          await authManager._loadUserProfile(u.id);
+        }
+        this.updateUserMenu();
+        if (typeof this.renderView === 'function') this.renderView();
+        if (typeof this.showToast === 'function') {
+          this.showToast(this._i18n('app.user.usernameSaved', '用户名已更新，下次登录请用新用户名'));
+        }
+      } catch (e) {
+        if (errEl) errEl.textContent = (e && e.message) ? e.message : String(e);
       }
-      this.updateUserMenu();
-      if (typeof this.renderView === 'function') this.renderView();
-      if (typeof this.showToast === 'function') {
-        this.showToast(this._i18n('app.user.usernameSaved', '用户名已更新，下次登录请用新用户名'));
-      }
-    } catch (e) {
-      if (errEl) errEl.textContent = (e && e.message) ? e.message : String(e);
-    }
+    });
   }
 
   /**
    * 提交：改密码（先验证旧密码，再 updateUser({ password })）
+   * submitBtn 用于 _withAuthButtonLoading 加 spinner
    */
-  async _handleSettingsPasswordSubmit() {
+  async _handleSettingsPasswordSubmit(submitBtn) {
     const errEl = document.querySelector('#settings-password-form .settings-password-error');
     if (errEl) errEl.textContent = '';
     const oldPw = document.getElementById('settings-old-password')?.value || '';
@@ -2032,38 +2046,41 @@ class App {
       return;
     }
 
-    try {
-      const supabase = (window.supabaseManager && window.supabaseManager.getClient)
-        ? window.supabaseManager.getClient()
-        : null;
-      if (!supabase) {
-        if (errEl) errEl.textContent = 'Supabase 未配置';
-        return;
-      }
-      // 1) 旧密码验证（signInWithPassword 在已登录 session 下不刷新 token）
-      const { error: signInErr } = await supabase.auth.signInWithPassword({
-        email: (u.username || '') + '@vex-timeline.local',
-        password: oldPw,
-      });
-      if (signInErr) {
-        if (errEl) errEl.textContent = this._i18n('app.user.oldPasswordWrong', '旧密码错误');
-        return;
-      }
-      // 2) 改密码
-      const { error: pwErr } = await supabase.auth.updateUser({ password: newPw });
-      if (pwErr) throw pwErr;
+    const label = this._i18n('app.user.changingPassword', '更改密码中');
+    await this._withAuthButtonLoading(submitBtn, label, async () => {
+      try {
+        const supabase = (window.supabaseManager && window.supabaseManager.getClient)
+          ? window.supabaseManager.getClient()
+          : null;
+        if (!supabase) {
+          if (errEl) errEl.textContent = 'Supabase 未配置';
+          return;
+        }
+        // 1) 旧密码验证（signInWithPassword 在已登录 session 下不刷新 token）
+        const { error: signInErr } = await supabase.auth.signInWithPassword({
+          email: (u.username || '') + '@vex-timeline.local',
+          password: oldPw,
+        });
+        if (signInErr) {
+          if (errEl) errEl.textContent = this._i18n('app.user.oldPasswordWrong', '旧密码错误');
+          return;
+        }
+        // 2) 改密码
+        const { error: pwErr } = await supabase.auth.updateUser({ password: newPw });
+        if (pwErr) throw pwErr;
 
-      // 3) 清空三个密码输入框（避免留在 DOM 里被 XSS 抓）
-      ['settings-old-password', 'settings-new-password', 'settings-confirm-password'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.value = '';
-      });
-      if (typeof this.showToast === 'function') {
-        this.showToast(this._i18n('app.user.passwordSaved', '密码已更新'));
+        // 3) 清空三个密码输入框（避免留在 DOM 里被 XSS 抓）
+        ['settings-old-password', 'settings-new-password', 'settings-confirm-password'].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.value = '';
+        });
+        if (typeof this.showToast === 'function') {
+          this.showToast(this._i18n('app.user.passwordSaved', '密码已更新'));
+        }
+      } catch (e) {
+        if (errEl) errEl.textContent = (e && e.message) ? e.message : String(e);
       }
-    } catch (e) {
-      if (errEl) errEl.textContent = (e && e.message) ? e.message : String(e);
-    }
+    });
   }
 
   openModalById(id) {
