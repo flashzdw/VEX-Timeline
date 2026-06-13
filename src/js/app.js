@@ -1872,45 +1872,6 @@ class App {
     modal.classList.add('active');
     if (window.i18n) window.i18n.apply();
     if (window.lucide && lucide.createIcons) lucide.createIcons();
-
-    // 8) 锁定 body 高度 = 三个 panel 中最高的那个，避免切 tab 时弹窗跳动
-    this._lockSettingsBodyHeight();
-  }
-
-  /**
-   * 测量三个 settings panel 的最大 scrollHeight，设给 body 容器的 min-height。
-   * 必须在所有 panel 都能参与布局的时机调用（即 layout 完成、内容稳定后）。
-   */
-  _lockSettingsBodyHeight() {
-    const modal = document.getElementById('settings-modal');
-    if (!modal) return;
-    const body = modal.querySelector('.p-8.max-h-\\[70vh\\]');
-    if (!body) return;
-    const panels = modal.querySelectorAll('[data-settings-panel]');
-    if (!panels.length) return;
-    let maxH = 0;
-    panels.forEach(panel => {
-      // 临时把 panel 拉出来测量 scrollHeight（隐藏的 panel offsetHeight = 0）
-      const wasHidden = panel.classList.contains('hidden');
-      if (wasHidden) panel.classList.remove('hidden');
-      const prevStyles = {
-        position: panel.style.position,
-        visibility: panel.style.visibility,
-        left: panel.style.left,
-      };
-      panel.style.position = 'absolute';
-      panel.style.visibility = 'hidden';
-      panel.style.left = '-9999px';
-      const h = panel.scrollHeight;
-      panel.style.position = prevStyles.position;
-      panel.style.visibility = prevStyles.visibility;
-      panel.style.left = prevStyles.left;
-      if (wasHidden) panel.classList.add('hidden');
-      if (h > maxH) maxH = h;
-    });
-    if (maxH > 0) {
-      body.style.minHeight = maxH + 'px';
-    }
   }
 
   /**
@@ -1931,10 +1892,12 @@ class App {
       btn.classList.toggle('border-transparent', !isActive);
     });
 
-    // 2) 显示对应 panel，隐藏其他
+    // 2) 显示对应 panel，隐藏其他（用 vx-settings-panel-hidden 类，
+    //    保留 layout 占位 — body 是 grid + 三 panel 同 cell，高度永远 = 最高 panel 高度，
+    //    切 tab 时弹窗总高度不会跳动）
     document.querySelectorAll('[data-settings-panel]').forEach(panel => {
       const shouldShow = panel.dataset.settingsPanel === tabKey;
-      panel.classList.toggle('hidden', !shouldShow);
+      panel.classList.toggle('vx-settings-panel-hidden', !shouldShow);
     });
   }
 

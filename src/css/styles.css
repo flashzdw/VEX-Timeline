@@ -202,6 +202,14 @@ body {
 }
 .vx-member-row:last-child { border-bottom: none; }
 
+/* ============================================================
+   个人设置弹窗：三个 panel 等高
+   - body 容器用 grid 布局，三个 section 都放在 row 1 / col 1
+   - 隐藏用 .vx-settings-panel-hidden（visibility:hidden），保留 layout 占位
+   - cell 高度 = 最高 panel 高度，切 tab 时 modal 总高度不变
+   ============================================================ */
+.vx-settings-panel-hidden { visibility: hidden; pointer-events: none; }
+
 .vx-member-name {
   flex: 1;
   min-width: 0;
