@@ -272,7 +272,7 @@ body {
 .vx-role-select {
   height: 32px;
   padding: 0 1.75rem 0 0.5rem;            /* 右侧加 1.75rem 给系统倒三角留位 */
-  background-color: var(--color-canvas, #fff);
+  background-color: var(--color-bg);             /* 跟随主题：亮 #FFF / 暗 #0F172A；之前用未定义的 --color-canvas fallback #fff，暗黑模式下白底浅字看不清 */
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   font-size: 12px;
@@ -1096,14 +1096,14 @@ body[data-scene="app"]  #site-header {
   flex-shrink: 0;
 }
 .vx-lang-toggle:hover {
-  background-color: var(--color-canvas);
+  background-color: var(--color-bg);
   border-color: var(--color-primary);
   color: var(--color-primary);
 }
 .vx-lang-toggle:active { transform: scale(0.97); }
 .vx-lang-toggle:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
 /* 主应用顶栏复用同款 */
-.vx-lang-toggle--app { background-color: var(--color-canvas); }
+.vx-lang-toggle--app { background-color: var(--color-bg); }
 
 /* 切语瞬间的视觉反馈：淡化 + 旋转环（用 ::after 避免影响原有文字） */
 .vx-lang-toggle { position: relative; overflow: hidden; }

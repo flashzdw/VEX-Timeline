@@ -1503,6 +1503,11 @@ class App {
       setActive(studentBtn, sel === 'student');
       setActive(teacherBtn, sel === 'teacher');
       setActive(parentBtn,  sel === 'parent');
+      // 移动端 WebKit 偶尔会延迟 class 触发的重绘（点旁边空白才刷新），
+      // 这里强制同步 reflow，保证 class 切换立即可见
+      void studentBtn?.offsetWidth;
+      void teacherBtn?.offsetWidth;
+      void parentBtn?.offsetWidth;
       syncRealNameField(sel);
     };
     // 给三个按钮都绑 click
