@@ -680,6 +680,99 @@
     </div>
 
     <!-- ============================================================
+         个人设置（账号管理）
+         - 桌面下拉菜单 / 移动端汉堡菜单入口都指向这里
+         - 三个独立表单：基本信息 / 用户名 / 更改密码，互不影响
+         ============================================================ -->
+    <div id="settings-modal" class="vx-modal-overlay">
+        <div class="vx-modal max-w-lg">
+            <div class="bg-primary text-canvas px-8 py-6 flex items-center justify-between">
+                <h2 class="font-extrabold text-2xl tracking-[-0.02em] uppercase" data-i18n="app.user.settings">个人设置</h2>
+                <i data-lucide="settings" class="w-6 h-6"></i>
+            </div>
+            <div class="p-8 flex flex-col gap-8 max-h-[80vh] overflow-y-auto">
+                <!-- 卡片 A：基本信息（真实姓名 + 身份） -->
+                <section>
+                    <h3 class="text-sm font-bold uppercase tracking-wider text-fg/60 mb-3" data-i18n="app.user.basicInfo">基本信息</h3>
+                    <form id="settings-basic-form" class="flex flex-col gap-4">
+                        <div class="flex flex-col gap-2">
+                            <label id="settings-real-name-label" class="text-xs font-semibold uppercase tracking-wider text-fg/60" for="settings-real-name" data-i18n="auth.realName">真实姓名</label>
+                            <input id="settings-real-name" type="text" maxlength="20" autocomplete="off"
+                                   placeholder="输入真实姓名"
+                                   class="h-12 px-4 bg-muted text-fg text-base rounded-md border-0 outline-none font-medium focus:bg-canvas focus:border-2 focus:border-primary transition-all duration-200">
+                            <p id="settings-real-name-hint" class="hidden text-xs text-fg/50 -mt-1" data-i18n="auth.realName.parent.hint">系统会自动在后面添加"家长"</p>
+                        </div>
+                        <div class="flex flex-col gap-2">
+                            <span class="text-xs font-semibold uppercase tracking-wider text-fg/60" data-i18n="auth.identity">身份</span>
+                            <div class="vx-identity-grid grid grid-cols-3 gap-2">
+                                <button type="button" id="settings-identity-student"
+                                        class="h-12 rounded-md text-sm font-semibold tracking-wider uppercase bg-muted text-fg/60 hover:bg-canvas hover:border-2 hover:border-primary transition-all duration-200"
+                                        data-i18n="auth.identity.student">学生</button>
+                                <button type="button" id="settings-identity-teacher"
+                                        class="h-12 rounded-md text-sm font-semibold tracking-wider uppercase bg-muted text-fg/60 hover:bg-canvas hover:border-2 hover:border-primary transition-all duration-200"
+                                        data-i18n="auth.identity.teacher">老师</button>
+                                <button type="button" id="settings-identity-parent"
+                                        class="h-12 rounded-md text-sm font-semibold tracking-wider uppercase bg-muted text-fg/60 hover:bg-canvas hover:border-2 hover:border-primary transition-all duration-200"
+                                        data-i18n="auth.identity.parent">家长</button>
+                            </div>
+                        </div>
+                        <label id="settings-surname-only-wrap" class="hidden items-center gap-2 cursor-pointer select-none pl-1">
+                            <input id="settings-surname-only" type="checkbox" checked class="w-4 h-4 accent-primary">
+                            <span class="text-xs font-semibold uppercase tracking-wider text-fg/80" data-i18n="auth.identity.teacher.surnameOnly">仅填姓（推荐）</span>
+                        </label>
+                        <p class="settings-error min-h-[1.25rem] text-sm font-medium text-primary"></p>
+                        <button type="submit"
+                                class="h-12 bg-primary text-canvas rounded-md font-semibold tracking-wider uppercase text-sm flex items-center justify-center gap-2 hover:bg-primary-hover hover:scale-[1.02] transition-all duration-200">
+                            <i data-lucide="save" class="w-4 h-4"></i><span data-i18n="app.action.save">保存</span>
+                        </button>
+                    </form>
+                </section>
+
+                <div class="h-px bg-border"></div>
+
+                <!-- 卡片 B：用户名 -->
+                <section>
+                    <h3 class="text-sm font-bold uppercase tracking-wider text-fg/60 mb-3" data-i18n="app.user.username">用户名</h3>
+                    <form id="settings-username-form" class="flex flex-col gap-3">
+                        <input id="settings-username" type="text" minlength="3" maxlength="20" autocomplete="username"
+                               placeholder="输入新用户名"
+                               class="h-12 px-4 bg-muted text-fg text-base rounded-md border-0 outline-none font-medium focus:bg-canvas focus:border-2 focus:border-primary transition-all duration-200">
+                        <p class="text-xs text-fg/50" data-i18n="app.user.usernameHint">修改后下次登录需用新用户名</p>
+                        <p class="settings-username-error min-h-[1.25rem] text-sm font-medium text-primary"></p>
+                        <button type="submit"
+                                class="h-12 bg-primary text-canvas rounded-md font-semibold tracking-wider uppercase text-sm flex items-center justify-center gap-2 hover:bg-primary-hover hover:scale-[1.02] transition-all duration-200">
+                            <i data-lucide="refresh-cw" class="w-4 h-4"></i><span data-i18n="app.action.update">更新</span>
+                        </button>
+                    </form>
+                </section>
+
+                <div class="h-px bg-border"></div>
+
+                <!-- 卡片 C：更改密码 -->
+                <section>
+                    <h3 class="text-sm font-bold uppercase tracking-wider text-fg/60 mb-3" data-i18n="app.user.changePassword">更改密码</h3>
+                    <form id="settings-password-form" class="flex flex-col gap-3">
+                        <input id="settings-old-password" type="password" minlength="6" autocomplete="current-password"
+                               placeholder="旧密码"
+                               class="h-12 px-4 bg-muted text-fg text-base rounded-md border-0 outline-none font-medium focus:bg-canvas focus:border-2 focus:border-primary transition-all duration-200">
+                        <input id="settings-new-password" type="password" minlength="6" autocomplete="new-password"
+                               placeholder="新密码"
+                               class="h-12 px-4 bg-muted text-fg text-base rounded-md border-0 outline-none font-medium focus:bg-canvas focus:border-2 focus:border-primary transition-all duration-200">
+                        <input id="settings-confirm-password" type="password" minlength="6" autocomplete="new-password"
+                               placeholder="确认新密码"
+                               class="h-12 px-4 bg-muted text-fg text-base rounded-md border-0 outline-none font-medium focus:bg-canvas focus:border-2 focus:border-primary transition-all duration-200">
+                        <p class="settings-password-error min-h-[1.25rem] text-sm font-medium text-primary"></p>
+                        <button type="submit"
+                                class="h-12 bg-primary text-canvas rounded-md font-semibold tracking-wider uppercase text-sm flex items-center justify-center gap-2 hover:bg-primary-hover hover:scale-[1.02] transition-all duration-200">
+                            <i data-lucide="key" class="w-4 h-4"></i><span data-i18n="app.user.changePassword">更改密码</span>
+                        </button>
+                    </form>
+                </section>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================
          PROFILE COMPLETION "NUDGE" MODAL  「稍后」按钮的俏皮劝导弹窗
          - 不是真的关闭，而是告诉用户这几项对他的赛队身份很重要
          - 体验上比禁用"稍后"按钮更友好，也更有"有性格的网站"的感觉
@@ -761,6 +854,10 @@
                         </button>
                         <div id="user-menu" class="vx-user-menu">
                             <div class="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-fg/60" id="user-menu-name" data-i18n="app.user.account">账号</div>
+                            <div class="h-px bg-border my-1"></div>
+                            <button type="button" data-user-action="settings">
+                                <i data-lucide="settings" class="w-4 h-4"></i><span data-i18n="app.user.settings">个人设置</span>
+                            </button>
                             <div class="h-px bg-border my-1"></div>
                             <button type="button" data-team-action="create">
                                 <i data-lucide="users" class="w-4 h-4"></i><span data-i18n="app.team.create">创建赛队</span>
@@ -1090,6 +1187,10 @@
         <div class="mb-6">
             <div class="text-xs font-semibold uppercase tracking-wider text-fg/60 mb-2" data-i18n="app.drawer.teams">赛队</div>
             <div class="flex flex-col gap-2">
+                <button data-user-action="settings" type="button"
+                        class="h-12 border-4 border-primary text-primary rounded-md font-semibold tracking-wider uppercase text-sm flex items-center justify-center gap-2 hover:bg-primary hover:text-canvas transition-all duration-200">
+                    <i data-lucide="settings" class="w-4 h-4"></i><span data-i18n="app.user.settings">个人设置</span>
+                </button>
                 <button data-team-action="create" type="button"
                         class="h-12 bg-secondary text-canvas rounded-md font-semibold tracking-wider uppercase text-sm flex items-center justify-center gap-2 hover:scale-105 transition-all duration-200">
                     <i data-lucide="users" class="w-4 h-4"></i><span data-i18n="app.team.create">创建赛队</span>

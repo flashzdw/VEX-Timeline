@@ -1026,6 +1026,15 @@ class App {
         this.handleTeamAction(action);
         this.closeAllMenus();
         this.closeMobileDrawer();
+        return;
+      }
+      // 用户操作（个人设置等"非赛队"的账号操作）
+      const userBtn = e.target.closest('[data-user-action]');
+      if (userBtn) {
+        const action = userBtn.dataset.userAction;
+        if (action === 'settings') this.openSettingsModal();
+        this.closeAllMenus();
+        this.closeMobileDrawer();
       }
     });
 
@@ -1417,22 +1426,36 @@ class App {
   // ============================================================
   _authIdentity = 'student';     // 注册表单当前选中的身份（默认学生）
   _profileIdentity = 'student';  // 补全资料弹窗当前选中的身份（默认学生）
+  _settingsIdentity = 'student'; // 个人设置弹窗当前选中的身份（默认学生）
 
   /**
    * 绑定身份选择器（学生 / 老师 / 家长）
-   * @param {'auth'|'profile'} scope
+   * @param {'auth'|'profile'|'settings'} scope
+   *   - 'auth'     : 注册表单（_authIdentity）
+   *   - 'profile'  : profile-completion 弹窗（_profileIdentity）
+   *   - 'settings' : 个人设置弹窗（_settingsIdentity）
    */
   _bindIdentityPicker(scope) {
-    const prefix = scope === 'auth' ? 'auth-identity' : 'profile-identity';
-    const stateKey = scope === 'auth' ? '_authIdentity' : '_profileIdentity';
+    // scope → 元素 id 前缀 + 状态键
+    const SCOPES = {
+      auth:     { prefix: 'auth-identity',     stateKey: '_authIdentity',     surnameWrap: 'auth-surname-only-wrap',     surnameCb: 'auth-surname-only',     realNameLabel: 'auth-real-name-label',     realNameInput: 'auth-real-name',     realNameHint: 'auth-real-name-hint'     },
+      profile:  { prefix: 'profile-identity',  stateKey: '_profileIdentity',  surnameWrap: 'profile-surname-only-wrap',  surnameCb: 'profile-surname-only',  realNameLabel: 'profile-real-name-label',  realNameInput: 'profile-real-name',  realNameHint: 'profile-real-name-hint'  },
+      settings: { prefix: 'settings-identity', stateKey: '_settingsIdentity', surnameWrap: 'settings-surname-only-wrap', surnameCb: 'settings-surname-only', realNameLabel: 'settings-real-name-label', realNameInput: 'settings-real-name', realNameHint: 'settings-real-name-hint' },
+    };
+    const cfg = SCOPES[scope];
+    if (!cfg) {
+      // 未知 scope 静默跳过（避免抛错打断 init）
+      return;
+    }
+    const { prefix, stateKey } = cfg;
     const studentBtn = document.getElementById(`${prefix}-student`);
     const teacherBtn = document.getElementById(`${prefix}-teacher`);
     const parentBtn  = document.getElementById(`${prefix}-parent`);
-    const surnameWrap = document.getElementById(scope === 'auth' ? 'auth-surname-only-wrap' : 'profile-surname-only-wrap');
-    const surnameCheckbox = document.getElementById(scope === 'auth' ? 'auth-surname-only' : 'profile-surname-only');
-    const realNameLabel = document.getElementById(scope === 'auth' ? 'auth-real-name-label' : 'profile-real-name-label');
-    const realNameInput = document.getElementById(scope === 'auth' ? 'auth-real-name' : 'profile-real-name');
-    const realNameHint  = document.getElementById(scope === 'auth' ? 'auth-real-name-hint' : 'profile-real-name-hint');
+    const surnameWrap = document.getElementById(cfg.surnameWrap);
+    const surnameCheckbox = document.getElementById(cfg.surnameCb);
+    const realNameLabel = document.getElementById(cfg.realNameLabel);
+    const realNameInput = document.getElementById(cfg.realNameInput);
+    const realNameHint  = document.getElementById(cfg.realNameHint);
 
     const buttons = { student: studentBtn, teacher: teacherBtn, parent: parentBtn };
 
@@ -1488,6 +1511,9 @@ class App {
     // 给三个按钮都绑 click
     Object.entries(buttons).forEach(([key, btn]) => {
       if (!btn) return;
+      // 避免重复绑定（用户连续打开 settings modal 不会重复累加 listener）
+      if (btn.__identityBound) return;
+      btn.__identityBound = true;
       btn.addEventListener('click', () => {
         this[stateKey] = key;
         if (key === 'student' && surnameCheckbox) surnameCheckbox.checked = false;
@@ -1756,6 +1782,236 @@ class App {
     if (action === 'create') this.openModalById('create-team-modal');
     else if (action === 'join') this.openModalById('join-team-modal');
     else if (action === 'manage') this.handleManageTeam();
+  }
+
+  // ============================================================
+  // 个人设置：账号管理弹窗
+  // 入口：顶栏下拉菜单 / 移动端汉堡菜单里的 "data-user-action='settings'"
+  // 内容：基本信息（真实姓名 / 身份）/ 用户名 / 更改密码 —— 三个独立表单
+  // ============================================================
+  openSettingsModal() {
+    const modal = document.getElementById('settings-modal');
+    if (!modal) return;
+    const u = authManager.getCurrentUser();
+    if (!u) return;
+
+    // 1) 预填基本信息
+    const realInput = document.getElementById('settings-real-name');
+    if (realInput) realInput.value = u.real_name || '';
+    const surnameCheckbox = document.getElementById('settings-surname-only');
+    if (surnameCheckbox) surnameCheckbox.checked = !!u.name_only_surname;
+    const usernameInput = document.getElementById('settings-username');
+    if (usernameInput) usernameInput.value = u.username || '';
+
+    // 2) 身份选择器：复用 _bindIdentityPicker 的 'settings' scope
+    this._settingsIdentity = u.identity || 'student';
+    this._bindIdentityPicker('settings');
+
+    // 3) 绑定三个表单的 submit（避免重复绑定）
+    const basicForm = document.getElementById('settings-basic-form');
+    if (basicForm && !basicForm.__bound) {
+      basicForm.__bound = true;
+      basicForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        this._handleSettingsBasicSubmit();
+      });
+    }
+    const usernameForm = document.getElementById('settings-username-form');
+    if (usernameForm && !usernameForm.__bound) {
+      usernameForm.__bound = true;
+      usernameForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        this._handleSettingsUsernameSubmit();
+      });
+    }
+    const passwordForm = document.getElementById('settings-password-form');
+    if (passwordForm && !passwordForm.__bound) {
+      passwordForm.__bound = true;
+      passwordForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        this._handleSettingsPasswordSubmit();
+      });
+    }
+
+    // 4) 清空错误提示 / 密码框
+    const clearErr = (sel) => { const el = document.querySelector(sel); if (el) el.textContent = ''; };
+    clearErr('#settings-basic-form .settings-error');
+    clearErr('#settings-username-form .settings-username-error');
+    clearErr('#settings-password-form .settings-password-error');
+    ['settings-old-password', 'settings-new-password', 'settings-confirm-password'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+
+    // 5) 打开弹窗 + i18n 重新渲染 + 注入 lucide icons
+    modal.classList.add('active');
+    if (window.i18n) window.i18n.apply();
+    if (window.lucide && lucide.createIcons) lucide.createIcons();
+  }
+
+  /**
+   * 提交：基本信息（真实姓名 + 身份）
+   * 复用 auth.completeProfile，避开业务规则（家长>=2字符、老师仅填姓等）
+   */
+  async _handleSettingsBasicSubmit() {
+    const errEl = document.querySelector('#settings-basic-form .settings-error');
+    if (errEl) errEl.textContent = '';
+    const realName = (document.getElementById('settings-real-name')?.value || '').trim();
+    const surnameOnly = this._settingsIdentity === 'parent'
+      ? false
+      : !!document.getElementById('settings-surname-only')?.checked;
+    const identity = this._settingsIdentity;
+    const u = authManager.getCurrentUser();
+    if (!u) return;
+
+    try {
+      // username 已等于 nickname（合并），所以 nickname 字段直接传 username
+      await authManager.completeProfile({
+        nickname: u.username || '',
+        realName,
+        nameOnlySurname: surnameOnly,
+        identity,
+      });
+      // 刷新顶栏 / 用户菜单 / 主视图（赛队成员身份胶囊会跟着更新）
+      this.updateUserMenu();
+      if (typeof this.renderView === 'function') this.renderView();
+      // 关弹窗
+      const modal = document.getElementById('settings-modal');
+      if (modal) modal.classList.remove('active');
+      if (typeof this.showToast === 'function') {
+        this.showToast(this._i18n('app.user.basicInfoSaved', '基本信息已更新'));
+      }
+    } catch (e) {
+      if (errEl) errEl.textContent = (e && e.message) ? e.message : String(e);
+    }
+  }
+
+  /**
+   * 提交：改用户名
+   * username 实际存放在 auth.users.email（"xxx@vex-timeline.local"）
+   * 流程：唯一性检查 → updateUser({ email }) → 同步 public.users.username
+   */
+  async _handleSettingsUsernameSubmit() {
+    const errEl = document.querySelector('#settings-username-form .settings-username-error');
+    if (errEl) errEl.textContent = '';
+    const newUsername = (document.getElementById('settings-username')?.value || '').trim();
+    const u = authManager.getCurrentUser();
+    if (!u) return;
+
+    // 校验
+    if (!/^[a-zA-Z0-9_-]{3,20}$/.test(newUsername)) {
+      if (errEl) errEl.textContent = this._i18n('app.user.usernameInvalid', '用户名只能是 3-20 位字母/数字/_-');
+      return;
+    }
+    if (newUsername === u.username) {
+      if (errEl) errEl.textContent = this._i18n('app.user.usernameUnchanged', '用户名未变化');
+      return;
+    }
+
+    try {
+      const supabase = (window.supabaseManager && window.supabaseManager.getClient)
+        ? window.supabaseManager.getClient()
+        : null;
+      if (!supabase) {
+        if (errEl) errEl.textContent = 'Supabase 未配置';
+        return;
+      }
+      // 1) 唯一性检查
+      const { data: existing, error: chkErr } = await supabase
+        .from('users')
+        .select('id')
+        .eq('username', newUsername)
+        .neq('id', u.id)
+        .maybeSingle();
+      if (chkErr) throw chkErr;
+      if (existing) {
+        if (errEl) errEl.textContent = this._i18n('auth.error.taken', '用户名已被占用');
+        return;
+      }
+      // 2) 改 auth.users.email
+      const { error: updErr } = await supabase.auth.updateUser({
+        email: newUsername + '@vex-timeline.local',
+      });
+      if (updErr) throw updErr;
+      // 3) 同步 public.users.username
+      const { error: syncErr } = await supabase
+        .from('users')
+        .update({ username: newUsername })
+        .eq('id', u.id);
+      if (syncErr) throw syncErr;
+
+      // 4) 重新加载 profile + 刷新 UI
+      if (typeof authManager._loadUserProfile === 'function') {
+        await authManager._loadUserProfile(u.id);
+      }
+      this.updateUserMenu();
+      if (typeof this.renderView === 'function') this.renderView();
+      if (typeof this.showToast === 'function') {
+        this.showToast(this._i18n('app.user.usernameSaved', '用户名已更新，下次登录请用新用户名'));
+      }
+    } catch (e) {
+      if (errEl) errEl.textContent = (e && e.message) ? e.message : String(e);
+    }
+  }
+
+  /**
+   * 提交：改密码（先验证旧密码，再 updateUser({ password })）
+   */
+  async _handleSettingsPasswordSubmit() {
+    const errEl = document.querySelector('#settings-password-form .settings-password-error');
+    if (errEl) errEl.textContent = '';
+    const oldPw = document.getElementById('settings-old-password')?.value || '';
+    const newPw = document.getElementById('settings-new-password')?.value || '';
+    const confirmPw = document.getElementById('settings-confirm-password')?.value || '';
+    const u = authManager.getCurrentUser();
+    if (!u) return;
+
+    // 校验
+    if (oldPw.length < 6 || newPw.length < 6) {
+      if (errEl) errEl.textContent = this._i18n('auth.error.shortPassword', '密码至少 6 位');
+      return;
+    }
+    if (newPw !== confirmPw) {
+      if (errEl) errEl.textContent = this._i18n('auth.error.passwordMismatch', '两次输入的新密码不一致');
+      return;
+    }
+    if (oldPw === newPw) {
+      if (errEl) errEl.textContent = this._i18n('auth.error.passwordUnchanged', '新密码不能与旧密码相同');
+      return;
+    }
+
+    try {
+      const supabase = (window.supabaseManager && window.supabaseManager.getClient)
+        ? window.supabaseManager.getClient()
+        : null;
+      if (!supabase) {
+        if (errEl) errEl.textContent = 'Supabase 未配置';
+        return;
+      }
+      // 1) 旧密码验证（signInWithPassword 在已登录 session 下不刷新 token）
+      const { error: signInErr } = await supabase.auth.signInWithPassword({
+        email: (u.username || '') + '@vex-timeline.local',
+        password: oldPw,
+      });
+      if (signInErr) {
+        if (errEl) errEl.textContent = this._i18n('app.user.oldPasswordWrong', '旧密码错误');
+        return;
+      }
+      // 2) 改密码
+      const { error: pwErr } = await supabase.auth.updateUser({ password: newPw });
+      if (pwErr) throw pwErr;
+
+      // 3) 清空三个密码输入框（避免留在 DOM 里被 XSS 抓）
+      ['settings-old-password', 'settings-new-password', 'settings-confirm-password'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+      });
+      if (typeof this.showToast === 'function') {
+        this.showToast(this._i18n('app.user.passwordSaved', '密码已更新'));
+      }
+    } catch (e) {
+      if (errEl) errEl.textContent = (e && e.message) ? e.message : String(e);
+    }
   }
 
   openModalById(id) {
