@@ -12,15 +12,15 @@ const dom = new JSDOM(html, { url: 'http://localhost:8080/', pretendToBeVisual: 
 const { window } = dom;
 const doc = window.document;
 
-// 1. 各 section 都用 id 包裹
-const sections = ['profile-nickname-section', 'profile-real-name-section', 'profile-identity-section'];
+// 1. 各 section 都用 id 包裹（昵称 section 已废弃：用户名 = 昵称，单独不再展示）
+const sections = ['profile-real-name-section', 'profile-identity-section'];
 sections.forEach(id => {
   if (!doc.getElementById(id)) {
     console.log('FAIL missing section:', id);
     process.exit(1);
   }
 });
-console.log('OK: profile sections are wrapped with ids');
+console.log('OK: profile sections are wrapped with ids (nickname 合并到 username)');
 
 // 2. 劝导弹窗存在
 const nudgeModal = doc.getElementById('profile-nudge-modal');
@@ -59,7 +59,6 @@ const required = [
   'openProfileNudgeModal',
   'closeProfileNudgeModal',
   'handleProfileCompletionSkip',
-  'profile-nickname-section',
   'profile-real-name-section',
   'profile-identity-section',
   'getFullDisplayName',
@@ -117,5 +116,40 @@ if (!/parent/i.test(mig008) || !/complete_profile/i.test(mig008)) {
   process.exit(1);
 }
 console.log('OK: 008_add_parent_identity.sql exists with parent handling');
+
+// 13. 注册表单：nickname 输入框应已删除（用户名 = 昵称）
+if (htmlText.includes('id="auth-nickname"')) {
+  console.log('FAIL: register form should not have a separate auth-nickname field');
+  process.exit(1);
+}
+console.log('OK: register form merged username/nickname into one field');
+
+// 14. handleRegister 应把 nickname 设成 username
+if (!appJs.includes('nickname: username')) {
+  console.log('FAIL: handleRegister should set nickname = username');
+  process.exit(1);
+}
+console.log('OK: handleRegister sets nickname = username');
+
+// 15. handleProfileCompletionSubmit 应使用 username 当 nickname
+if (!appJs.includes("authManager.getCurrentUser()?.username || authManager.getCurrentUser()?.nickname")) {
+  console.log('FAIL: handleProfileCompletionSubmit should fall back to username as nickname');
+  process.exit(1);
+}
+console.log('OK: handleProfileCompletionSubmit uses username as nickname');
+
+// 16. updateUserMenu 防御性调用 updateManageButton
+if (!/updateUserMenu\(\)\s*\{[\s\S]{0,600}this\.updateManageButton\(\)/.test(appJs)) {
+  console.log('FAIL: updateUserMenu should defensively call updateManageButton');
+  process.exit(1);
+}
+console.log('OK: updateUserMenu defensively calls updateManageButton');
+
+// 17. 老师切换时默认勾选"仅填姓"
+if (!/if \(selected === 'teacher'\)[\s\S]{0,300}surnameCheckbox\.checked = true/.test(appJs)) {
+  console.log('FAIL: switching to teacher should auto-check surname-only');
+  process.exit(1);
+}
+console.log('OK: teacher identity auto-checks surname-only by default');
 
 console.log('\n=== UI POLISH REFACTOR PASSED ===');

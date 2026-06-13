@@ -1,29 +1,41 @@
-// 验证"老用户没 nickname 字段时，弹窗应自动隐藏昵称 section"这一行为。
-// 由于 app.js 的 App 类只暴露在模块作用域（不挂 window），无法直接 new，
-// 这里只做静态源码校验：openProfileCompletionModal 里的 hide 逻辑是否
-// 把"u?.nickname || u?.username"作为隐藏条件之一。
+// 验证"老用户没 nickname 字段时"的行为：用户名 = 昵称，
+// 弹窗应该把 nickname section 永远移除（不再询问昵称），
+// handleProfileCompletionSubmit 用 username 当 nickname 兜底。
 const fs = require('fs');
 const path = require('path');
 
 const appJs = fs.readFileSync(path.join(__dirname, 'src/js/app.js'), 'utf-8');
+const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf-8');
 
-// 1) 源码里必须存在 username 兜底
-const pattern = /hasNickname\s*=\s*!!\(u\?\.nickname\s*\|\|\s*u\?\.username\)/;
-if (!pattern.test(appJs)) {
-  console.log('FAIL: app.js should fall back to u.username when u.nickname is empty');
+// 1) HTML 不应再出现 profile-nickname-section
+if (/id="profile-nickname-section"/.test(html)) {
+  console.log('FAIL: profile-nickname-section should be removed (username = nickname)');
   process.exit(1);
 }
-console.log('OK: openProfileCompletionModal falls back to u.username');
+console.log('OK: profile-nickname-section removed (用户名 = 昵称)');
 
-// 2) 提交逻辑里也要兜底 username
-const submitPattern = /authManager\.getCurrentUser\(\)\?\.nickname\s*\|\|\s*authManager\.getCurrentUser\(\)\?\.username/;
-if (!submitPattern.test(appJs)) {
-  console.log('FAIL: handleProfileCompletionSubmit should fall back to username for hidden nickname');
+// 2) 也不应有 auth-nickname 输入框（注册表单）
+if (/id="auth-nickname"/.test(html)) {
+  console.log('FAIL: auth-nickname should be removed (username = nickname)');
   process.exit(1);
 }
-console.log('OK: handleProfileCompletionSubmit falls back to username');
+console.log('OK: auth-nickname removed');
 
-// 3) 迁移 007 必须存在
+// 3) openProfileCompletionModal 不应再引用 nickname section
+if (/openProfileCompletionModal[\s\S]{0,2000}profile-nickname-section/.test(appJs)) {
+  console.log('FAIL: openProfileCompletionModal should not reference profile-nickname-section');
+  process.exit(1);
+}
+console.log('OK: openProfileCompletionModal no longer references nickname section');
+
+// 4) handleProfileCompletionSubmit 用 username 兜底 nickname
+if (!/handleProfileCompletionSubmit[\s\S]{0,1500}authManager\.getCurrentUser\(\)\?\.username\s*\|\|\s*authManager\.getCurrentUser\(\)\?\.nickname/.test(appJs)) {
+  console.log('FAIL: handleProfileCompletionSubmit should fall back to username as nickname');
+  process.exit(1);
+}
+console.log('OK: handleProfileCompletionSubmit uses username as nickname fallback');
+
+// 5) 迁移 007 仍存在（兜底老数据库：nickname 同步为 username）
 const migrationPath = path.join(__dirname, 'supabase/migrations/007_backfill_nickname_from_username.sql');
 if (!fs.existsSync(migrationPath)) {
   console.log('FAIL: 007_backfill_nickname_from_username.sql missing');

@@ -562,13 +562,14 @@
 
                 <!-- ============================================================
                      注册视图（默认隐藏）
+                     注：用户名 = 昵称（display name），只用一个字段
                      ============================================================ -->
                 <form id="auth-form-register" class="hidden flex flex-col gap-4" autocomplete="off">
                     <div class="flex flex-col gap-2">
                         <label class="text-xs font-semibold uppercase tracking-wider text-fg/60" for="auth-username-register" data-i18n="auth.username">用户名</label>
                         <input id="auth-username-register" type="text" maxlength="20" autocomplete="off"
                                data-i18n-placeholder="auth.username.ph"
-                               placeholder="输入用户名"
+                               placeholder="输入用户名（同时作为昵称）"
                                class="h-12 px-4 bg-muted text-fg text-base rounded-md border-0 outline-none font-medium focus:bg-canvas focus:border-2 focus:border-primary transition-all duration-200">
                     </div>
                     <div class="flex flex-col gap-2">
@@ -576,13 +577,6 @@
                         <input id="auth-password-register" type="password" autocomplete="off"
                                data-i18n-placeholder="auth.password.ph"
                                placeholder="输入密码"
-                               class="h-12 px-4 bg-muted text-fg text-base rounded-md border-0 outline-none font-medium focus:bg-canvas focus:border-2 focus:border-primary transition-all duration-200">
-                    </div>
-                    <div class="flex flex-col gap-2">
-                        <label class="text-xs font-semibold uppercase tracking-wider text-fg/60" for="auth-nickname" data-i18n="auth.nickname">昵称</label>
-                        <input id="auth-nickname" type="text" maxlength="20" autocomplete="off"
-                               data-i18n-placeholder="auth.nickname.ph"
-                               placeholder="输入昵称（用于显示）"
                                class="h-12 px-4 bg-muted text-fg text-base rounded-md border-0 outline-none font-medium focus:bg-canvas focus:border-2 focus:border-primary transition-all duration-200">
                     </div>
                     <div class="flex flex-col gap-2">
@@ -642,14 +636,7 @@
                 <p class="mt-2 text-sm font-medium opacity-90" data-i18n="auth.completion.desc">为了在赛队中更好地协作，请补全以下信息。</p>
             </div>
             <form id="profile-completion-form" class="p-8 flex flex-col gap-4" autocomplete="off">
-                <!-- 昵称：已存在时整段隐藏 -->
-                <div id="profile-nickname-section" class="flex flex-col gap-2">
-                    <label class="text-xs font-semibold uppercase tracking-wider text-fg/60" for="profile-nickname" data-i18n="auth.nickname">昵称</label>
-                    <input id="profile-nickname" type="text" maxlength="20" autocomplete="off"
-                           data-i18n-placeholder="auth.nickname.ph"
-                           placeholder="输入昵称（用于显示）"
-                           class="h-12 px-4 bg-muted text-fg text-base rounded-md border-0 outline-none font-medium focus:bg-canvas focus:border-2 focus:border-primary transition-all duration-200">
-                </div>
+                <!-- 昵称：已废弃（用户名 = 昵称，nickname 永远 = username，本 section 永远不显示） -->
                 <!-- 真实姓名：已存在时整段隐藏 -->
                 <div id="profile-real-name-section" class="flex flex-col gap-2">
                     <label id="profile-real-name-label" class="text-xs font-semibold uppercase tracking-wider text-fg/60" for="profile-real-name" data-i18n="auth.realName">真实姓名</label>

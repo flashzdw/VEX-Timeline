@@ -524,6 +524,7 @@ class App {
 
   /**
    * 用户菜单 / 顶栏信息刷新
+   * 顺便刷新"管理赛队"按钮可见性（个人时间轴下绝对不显示）
    */
   updateUserMenu() {
     const u = authManager.getCurrentUser();
@@ -535,6 +536,8 @@ class App {
     if (userNameEl) userNameEl.textContent = shortName;
     const userMenuNameEl = document.getElementById('user-menu-name');
     if (userMenuNameEl) userMenuNameEl.textContent = fullName;
+    // 防御性：每次刷新菜单时同步管理赛队按钮可见性
+    this.updateManageButton();
   }
 
   updateManageButton() {
@@ -1340,7 +1343,8 @@ class App {
     if (!password || password.length < 6) { if (errorEl) errorEl.textContent = this._i18n('auth.error.shortPassword', '密码长度至少 6 位'); return; }
 
     const profile = {
-      nickname: (document.getElementById('auth-nickname')?.value || '').trim(),
+      // 用户名 = 昵称（display name），不再单独收集
+      nickname: username,
       realName: (document.getElementById('auth-real-name')?.value || '').trim(),
       // 家长不享受"仅填姓"（填的是孩子全名），强制关闭
       nameOnlySurname: this._authIdentity === 'parent'
@@ -1447,6 +1451,8 @@ class App {
           if (selected === 'teacher') {
             surnameWrap.classList.remove('hidden');
             surnameWrap.classList.add('flex');
+            // 老师账号注册时：默认勾选"仅填姓"（隐私更友好，也是推荐项）
+            if (surnameCheckbox) surnameCheckbox.checked = true;
           } else {
             surnameWrap.classList.add('hidden');
             surnameWrap.classList.remove('flex');
@@ -1513,27 +1519,13 @@ class App {
     const u = authManager.getCurrentUser();
 
     // 1) 根据已有数据隐藏已存在的字段：
-    //    - 若用户已经有昵称，隐藏昵称输入框（不允许覆盖）
-    //    - 同理：真实姓名 / 身份
-    //    - 避免老用户被强迫重新输入"老版本没问过但其实不存在"的内容
-    const nicknameSection = document.getElementById('profile-nickname-section');
+    //    - 昵称已合并到用户名（永远不显示输入框）
+    //    - 真实姓名 / 身份：已有 → 整段隐藏
     const realNameSection = document.getElementById('profile-real-name-section');
     const identitySection = document.getElementById('profile-identity-section');
-    const nickInput = document.getElementById('profile-nickname');
     const realInput = document.getElementById('profile-real-name');
     const surnameCheckbox = document.getElementById('profile-surname-only');
     const surnameWrap = document.getElementById('profile-surname-only-wrap');
-
-    // 昵称：已存在 → 整段隐藏（提示用户在赛队里以这个昵称显示）
-    // 兜底：老用户没有 nickname 字段时（迁移前注册的），用 username 当昵称
-    const hasNickname = !!(u?.nickname || u?.username);
-    if (hasNickname) {
-      if (nicknameSection) {
-        nicknameSection.classList.add('hidden');
-      }
-    } else {
-      if (nicknameSection) nicknameSection.classList.remove('hidden');
-    }
 
     // 真实姓名：已存在 → 整段隐藏
     if (u?.real_name) {
@@ -1603,31 +1595,25 @@ class App {
   async handleProfileCompletionSubmit() {
     const errorEl = document.getElementById('profile-completion-error');
     if (errorEl) errorEl.textContent = '';
-    // 仅取"显示中"的字段值；已隐藏的字段（用户已有数据）保持原值不变
-    const nicknameSection = document.getElementById('profile-nickname-section');
+    // 昵称已经合并到用户名（username），不需要用户再填
+    // 真实姓名 / 身份 section：已存在时整段隐藏，未存在时显示
     const realNameSection = document.getElementById('profile-real-name-section');
     const identitySection = document.getElementById('profile-identity-section');
-    const wantNickname = nicknameSection && !nicknameSection.classList.contains('hidden');
     const wantRealName = realNameSection && !realNameSection.classList.contains('hidden');
     const wantIdentity = identitySection && !identitySection.classList.contains('hidden');
 
-    const nickname = wantNickname
-      ? (document.getElementById('profile-nickname')?.value || '').trim()
-      : (authManager.getCurrentUser()?.nickname || authManager.getCurrentUser()?.username || '');
+    // nickname 永远 = username（用户级显示名）
+    const nickname = authManager.getCurrentUser()?.username || authManager.getCurrentUser()?.nickname || '';
     const realName = wantRealName
       ? (document.getElementById('profile-real-name')?.value || '').trim()
       : (authManager.getCurrentUser()?.real_name || '');
     // 家长强制关闭 surname-only（不享受"仅填姓"逻辑）
+    const identity = wantIdentity ? this._profileIdentity : (authManager.getCurrentUser()?.identity || '');
     const surnameOnly = identity === 'parent'
       ? false
       : !!document.getElementById('profile-surname-only')?.checked;
-    const identity = wantIdentity ? this._profileIdentity : (authManager.getCurrentUser()?.identity || '');
 
     // 只校验"需要补全"的字段
-    if (wantNickname && !nickname) {
-      if (errorEl) errorEl.textContent = this._i18n('auth.error.nicknameRequired', '请填写昵称');
-      return;
-    }
     if (wantRealName && !realName) {
       if (errorEl) errorEl.textContent = this._i18n('auth.error.realNameRequired', '请填写真实姓名');
       return;
