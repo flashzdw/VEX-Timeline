@@ -1867,13 +1867,13 @@ class App {
             : '';
           const isOwnerRow = member.role === 'owner';
           const currentRoleLabel = roleLabel[member.role] || member.role;
+          // 角色胶囊：每个成员名后都展示（owner 永远显示，不可管理时也显示，可管理时仍显示 — 与下拉并存）
+          const roleTag = `<span class="vx-member-role-tag vx-member-role-tag--${member.role}">${this._escapeHtml(currentRoleLabel)}</span>`;
           const roleSelectHtml = (canManage && !isOwnerRow) ? `
             <select class="vx-role-select" data-user-id="${member.user_id}">
               ${ROLE_OPTIONS.map(r => `<option value="${r}" ${r === member.role ? 'selected' : ''}>${this._escapeHtml(roleLabel[r] || r)}</option>`).join('')}
             </select>
-          ` : `
-            <span class="text-xs font-semibold uppercase tracking-wider text-fg/60">${this._escapeHtml(currentRoleLabel)}</span>
-          `;
+          ` : '';
           const removeBtnHtml = (canManage && !isOwnerRow) ? `
             <button class="vx-member-remove-btn" data-user-id="${member.user_id}" title="${this._escapeHtml(this._i18n('app.action.delete', '删除'))}" aria-label="${this._escapeHtml(this._i18n('app.action.delete', '删除'))}">
               <i data-lucide="x" class="w-4 h-4"></i>
@@ -1881,7 +1881,7 @@ class App {
           ` : '';
           return `
             <div class="vx-member-row">
-              <div class="vx-member-name">${displayName}${identityTag}</div>
+              <div class="vx-member-name">${displayName}${identityTag}${roleTag}</div>
               ${roleSelectHtml}
               ${removeBtnHtml}
             </div>
@@ -1970,13 +1970,13 @@ class App {
           : '';
         const isOwnerRow = member.role === 'owner';
         const currentRoleLabel = roleLabel[member.role] || member.role;
+        // 角色胶囊：每个成员名后都展示（owner 永远显示；可管理时与下拉并存；不可管理时单独显示）
+        const roleTag = `<span class="vx-member-role-tag vx-member-role-tag--${member.role}">${this._escapeHtml(currentRoleLabel)}</span>`;
         const roleSelectHtml = (canManage && !isOwnerRow) ? `
           <select class="vx-role-select" data-user-id="${member.user_id}">
             ${ROLE_OPTIONS.map(r => `<option value="${r}" ${r === member.role ? 'selected' : ''}>${this._escapeHtml(roleLabel[r] || r)}</option>`).join('')}
           </select>
-        ` : `
-          <span class="text-xs font-semibold uppercase tracking-wider text-fg/60">${this._escapeHtml(currentRoleLabel)}</span>
-        `;
+        ` : '';
         const removeBtnHtml = (canManage && !isOwnerRow) ? `
           <button class="vx-member-remove-btn" data-user-id="${member.user_id}" title="${this._escapeHtml(this._i18n('app.action.delete', '删除'))}" aria-label="${this._escapeHtml(this._i18n('app.action.delete', '删除'))}">
             <i data-lucide="x" class="w-4 h-4"></i>
@@ -1984,7 +1984,7 @@ class App {
         ` : '';
         return `
           <div class="vx-member-row">
-            <div class="vx-member-name">${displayName}${identityTag}</div>
+            <div class="vx-member-name">${displayName}${identityTag}${roleTag}</div>
             ${roleSelectHtml}
             ${removeBtnHtml}
           </div>
@@ -2678,16 +2678,6 @@ class App {
         this.deleteRecord(id);
       });
     });
-  }
-
-  canEditRecord(record) {
-    if (!this.currentTimelineId) return false;
-    if (!authManager.isLoggedIn()) return true;
-    const current = this.timelines.find(t => t.id === this.currentTimelineId);
-    if (!current) return true;
-    if (current.owner_id === authManager.getCurrentUser()?.id) return true;
-    if (record.user_id === authManager.getCurrentUser()?.id) return true;
-    return false;
   }
 
   // ============================================================

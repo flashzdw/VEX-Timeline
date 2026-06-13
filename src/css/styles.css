@@ -23,8 +23,10 @@
   --color-secondary: #10B981;
   --color-accent: #F59E0B;
   --color-muted: #F3F4F6;
+
   --color-border: #E5E7EB;
   --color-danger: #EF4444;
+  --color-role-captain: #8B5CF6;     /* violet-500 - 队长 */
 
   --radius-md: 6px;
   --radius-lg: 8px;
@@ -73,6 +75,7 @@ html { scrollbar-gutter: stable; }
     --color-muted: #1E293B;           /* slate-800 */
     --color-border: #334155;          /* slate-700 */
     --color-danger: #F87171;          /* red-400 */
+    --color-role-captain: #A78BFA;    /* violet-400 - 队长（深色模式） */
 
     --color-fg-muted: rgba(241, 245, 249, 0.78);  /* 0.6 → 0.78：提升深色下时间戳/正文次级文字的对比度（时间轴时间已多次反馈看不清） */
     --color-modal-overlay: rgba(0, 0, 0, 0.75);
@@ -229,6 +232,34 @@ body {
 .vx-member-name .vx-member-identity-tag--student { background: var(--color-primary); color: #fff; }
 .vx-member-name .vx-member-identity-tag--teacher { background: var(--color-accent); color: #fff; }
 .vx-member-name .vx-member-identity-tag--parent  { background: var(--color-secondary); color: #fff; }
+
+/* ----- 成员角色胶囊（赛队级二级权限：owner/captain/teacher/member/visitor） -----
+   与身份胶囊并排展示，视觉上完全统一（rounded-full + 20px + 10px uppercase）。
+   配色策略：每角色一种独立色，便于一眼区分。
+     owner    → 红（独占感）
+     captain  → 紫（独有）
+     teacher  → 琥珀
+     member   → 蓝（主色）
+     visitor  → 灰（中性） */
+.vx-member-name .vx-member-role-tag {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  margin-left: 0.35rem;
+  padding: 0 8px;
+  border-radius: 9999px;
+  font-size: 10px;
+  line-height: 1;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  vertical-align: middle;
+}
+.vx-member-name .vx-member-role-tag--owner    { background: var(--color-danger);        color: #fff; }
+.vx-member-name .vx-member-role-tag--captain  { background: var(--color-role-captain);  color: #fff; }
+.vx-member-name .vx-member-role-tag--teacher  { background: var(--color-accent);        color: #fff; }
+.vx-member-name .vx-member-role-tag--member   { background: var(--color-primary);       color: #fff; }
+.vx-member-name .vx-member-role-tag--visitor  { background: var(--color-muted);         color: var(--color-fg); }
 
 .vx-role-select {
   height: 32px;
