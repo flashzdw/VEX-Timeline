@@ -594,13 +594,16 @@
                     </div>
                     <div class="flex flex-col gap-2">
                         <span class="text-xs font-semibold uppercase tracking-wider text-fg/60" data-i18n="auth.identity">身份</span>
-                        <div class="grid grid-cols-2 gap-2">
+                        <div class="vx-identity-grid grid grid-cols-3 gap-2">
                             <button type="button" data-identity="student" id="auth-identity-student"
                                     class="h-12 rounded-md text-sm font-semibold tracking-wider uppercase bg-muted text-fg/60 hover:bg-canvas hover:border-2 hover:border-primary transition-all duration-200"
                                     data-i18n="auth.identity.student">学生</button>
                             <button type="button" data-identity="teacher" id="auth-identity-teacher"
                                     class="h-12 rounded-md text-sm font-semibold tracking-wider uppercase bg-muted text-fg/60 hover:bg-canvas hover:border-2 hover:border-primary transition-all duration-200"
                                     data-i18n="auth.identity.teacher">老师</button>
+                            <button type="button" data-identity="parent" id="auth-identity-parent"
+                                    class="h-12 rounded-md text-sm font-semibold tracking-wider uppercase bg-muted text-fg/60 hover:bg-canvas hover:border-2 hover:border-primary transition-all duration-200"
+                                    data-i18n="auth.identity.parent">家长</button>
                         </div>
                     </div>
                     <label id="auth-surname-only-wrap" class="hidden items-center gap-2 cursor-pointer select-none pl-1">
@@ -657,13 +660,16 @@
                 <!-- 身份：已存在时整段隐藏 -->
                 <div id="profile-identity-section" class="flex flex-col gap-2">
                     <span class="text-xs font-semibold uppercase tracking-wider text-fg/60" data-i18n="auth.identity">身份</span>
-                    <div class="grid grid-cols-2 gap-2">
+                    <div class="vx-identity-grid grid grid-cols-3 gap-2">
                         <button type="button" data-profile-identity="student" id="profile-identity-student"
                                 class="h-12 rounded-md text-sm font-semibold tracking-wider uppercase bg-muted text-fg/60 hover:bg-canvas hover:border-2 hover:border-primary transition-all duration-200"
                                 data-i18n="auth.identity.student">学生</button>
                         <button type="button" data-profile-identity="teacher" id="profile-identity-teacher"
                                 class="h-12 rounded-md text-sm font-semibold tracking-wider uppercase bg-muted text-fg/60 hover:bg-canvas hover:border-2 hover:border-primary transition-all duration-200"
                                 data-i18n="auth.identity.teacher">老师</button>
+                        <button type="button" data-profile-identity="parent" id="profile-identity-parent"
+                                class="h-12 rounded-md text-sm font-semibold tracking-wider uppercase bg-muted text-fg/60 hover:bg-canvas hover:border-2 hover:border-primary transition-all duration-200"
+                                data-i18n="auth.identity.parent">家长</button>
                     </div>
                 </div>
                 <label id="profile-surname-only-wrap" class="hidden items-center gap-2 cursor-pointer select-none pl-1">

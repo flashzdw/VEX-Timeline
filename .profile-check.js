@@ -46,7 +46,7 @@ console.log('OK: auth surname-only checked by default');
 
 // 6. i18n 新增键
 const i18nText = fs.readFileSync(path.join(__dirname, 'src/js/i18n.js'), 'utf-8');
-const newKeys = ['auth.nudge.title', 'auth.nudge.body', 'auth.nudge.ok'];
+const newKeys = ['auth.nudge.title', 'auth.nudge.body', 'auth.nudge.ok', 'auth.identity.parent'];
 const missing = newKeys.filter(k => !i18nText.includes(`'${k}'`));
 if (missing.length) { console.log('FAIL i18n missing:', missing); process.exit(1); }
 console.log('OK: nudge i18n keys present');
@@ -61,7 +61,11 @@ const required = [
   'handleProfileCompletionSkip',
   'profile-nickname-section',
   'profile-real-name-section',
-  'profile-identity-section'
+  'profile-identity-section',
+  'getFullDisplayName',
+  'getFullDisplayName(a.users || {}).localeCompare',
+  'parentBtn',
+  'getFullDisplayName(user)',
 ];
 const missingApp = required.filter(s => !appJs.includes(s));
 if (missingApp.length) { console.log('FAIL app.js missing:', missingApp); process.exit(1); }
@@ -74,4 +78,44 @@ if (!appJs.includes('初始绘制一次（让默认的"学生"在视觉上高亮
 }
 console.log('OK: identity picker paints default state on init');
 
-console.log('\n=== PROFILE COMPLETION REFACTOR PASSED ===');
+// 9. 验证三种身份按钮都在
+const htmlText = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf-8');
+for (const id of ['auth-identity-student', 'auth-identity-teacher', 'auth-identity-parent',
+                  'profile-identity-student', 'profile-identity-teacher', 'profile-identity-parent']) {
+  if (!htmlText.includes(`id="${id}"`)) {
+    console.log('FAIL: missing button in index.html:', id);
+    process.exit(1);
+  }
+}
+console.log('OK: 3 identity buttons (student/teacher/parent) in auth + profile forms');
+
+// 10. 验证 identity grid 用了 3 列
+if (!/vx-identity-grid[^"]*grid-cols-3/.test(htmlText)) {
+  console.log('FAIL: identity grid should use grid-cols-3');
+  process.exit(1);
+}
+console.log('OK: identity grid uses grid-cols-3');
+
+// 11. 验证 CSS 防抽动 + select 倒三角
+const cssText = fs.readFileSync(path.join(__dirname, 'src/css/styles.css'), 'utf-8');
+if (!/html\s*\{\s*scrollbar-gutter:\s*stable/.test(cssText)) {
+  console.log('FAIL: styles.css should set html { scrollbar-gutter: stable }');
+  process.exit(1);
+}
+console.log('OK: html scrollbar-gutter: stable (prevents lang-switch shift)');
+
+if (!/\.vx-role-select[\s\S]{0,400}padding:\s*0\s+1\.75rem/.test(cssText)) {
+  console.log('FAIL: .vx-role-select should have padding-right: 1.75rem');
+  process.exit(1);
+}
+console.log('OK: .vx-role-select has padding-right: 1.75rem (chevron padding)');
+
+// 12. 验证迁移 008 存在且有 parent 校验
+const mig008 = fs.readFileSync(path.join(__dirname, 'supabase/migrations/008_add_parent_identity.sql'), 'utf-8');
+if (!/parent/i.test(mig008) || !/complete_profile/i.test(mig008)) {
+  console.log('FAIL: 008 migration should mention parent + complete_profile');
+  process.exit(1);
+}
+console.log('OK: 008_add_parent_identity.sql exists with parent handling');
+
+console.log('\n=== UI POLISH REFACTOR PASSED ===');

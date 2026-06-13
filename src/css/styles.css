@@ -48,6 +48,17 @@
 }
 
 /* ============================================================
+   全局：滚动条 gutter 固定 → 切换中英文时滚动条不出现/消失
+   彻底解决"切语言时整页左右抽动"的问题
+   ============================================================ */
+html { scrollbar-gutter: stable; }
+
+/* 极窄屏（< 360px）下身份三按钮改单列，避免文字被压扁 */
+@media (max-width: 360px) {
+  .vx-identity-grid { grid-template-columns: 1fr !important; }
+}
+
+/* ============================================================
    深色模式：自动跟随浏览器 prefers-color-scheme
    色板基于 slate，与现有 flat 设计调性契合；primary/secondary/accent 在深色下提亮一档以保对比度
    ============================================================ */
@@ -193,31 +204,36 @@ body {
   min-width: 0;
   font-weight: 600;
   font-size: 14px;
+  line-height: 32px;            /* 显式锁定行高 = select 高度，确保标签与文字垂直居中 */
   color: var(--color-fg);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .vx-member-name .vx-member-identity-tag {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  height: 20px;                /* 标签自身高度固定 */
   margin-left: 0.5rem;
-  padding: 1px 6px;
+  padding: 0 8px;
   border-radius: 9999px;
   font-size: 10px;
+  line-height: 1;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   background: var(--color-muted);
   color: var(--color-fg-muted);
-  vertical-align: middle;
+  vertical-align: middle;      /* 在固定 line-height 容器内即可对齐 */
 }
 .vx-member-name .vx-member-identity-tag--student { background: var(--color-primary); color: #fff; }
 .vx-member-name .vx-member-identity-tag--teacher { background: var(--color-accent); color: #fff; }
+.vx-member-name .vx-member-identity-tag--parent  { background: var(--color-secondary); color: #fff; }
 
 .vx-role-select {
   height: 32px;
-  padding: 0 0.5rem;
-  background: var(--color-canvas, #fff);
+  padding: 0 1.75rem 0 0.5rem;            /* 右侧加 1.75rem 给系统倒三角留位 */
+  background-color: var(--color-canvas, #fff);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   font-size: 12px;
@@ -227,6 +243,12 @@ body {
   color: var(--color-fg);
   outline: none;
   cursor: pointer;
+  appearance: none;                       /* 移除系统默认外观以确保 padding 生效 */
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236B7280' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'/%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 0.5rem center;   /* 倒三角位置：右内 8px */
+  background-size: 12px 12px;
   transition: border-color 0.15s ease;
 }
 .vx-role-select:hover { border-color: var(--color-primary); }
@@ -1035,6 +1057,19 @@ body[data-scene="app"]  #site-header {
 .vx-lang-toggle:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
 /* 主应用顶栏复用同款 */
 .vx-lang-toggle--app { background-color: var(--color-canvas); }
+
+/* 切语瞬间的视觉反馈：淡化 + 旋转环（用 ::after 避免影响原有文字） */
+.vx-lang-toggle { position: relative; overflow: hidden; }
+.vx-lang-toggle.is-loading { opacity: 0.5; pointer-events: none; }
+.vx-lang-toggle.is-loading::after {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  border: 2px solid transparent;
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: vx-spin 0.6s linear infinite;
+}
 
 /* ============================================================
    首页 Hero 产品 UI 预览（左侧文字 + 右侧 mockup 卡片）

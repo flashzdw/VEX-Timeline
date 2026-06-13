@@ -172,21 +172,21 @@ class AuthManager {
     if (!realName) {
       throw (window.i18n ? window.i18n.t('auth.error.realNameRequired') : '请填写真实姓名');
     }
-    if (identity !== 'student' && identity !== 'teacher') {
-      throw (window.i18n ? window.i18n.t('auth.error.identityRequired') : '请选择身份（学生/老师）');
+    if (identity !== 'student' && identity !== 'teacher' && identity !== 'parent') {
+      throw (window.i18n ? window.i18n.t('auth.error.identityRequired') : '请选择身份（学生/老师/家长）');
     }
     if (identity === 'student') {
       if (realName.length < 2) {
         throw (window.i18n ? window.i18n.t('auth.error.realNameStudentTooShort') : '学生姓名至少 2 个字符');
       }
     }
-    if (identity === 'teacher') {
+    if (identity === 'teacher' || identity === 'parent') {
       if (nameOnlySurname) {
         if (realName.length !== 1) {
-          throw (window.i18n ? window.i18n.t('auth.error.realNameTeacherSurname') : '老师仅填姓时，姓名必须是 1 个字符');
+          throw (window.i18n ? window.i18n.t('auth.error.realNameTeacherSurname') : '仅填姓时，姓名必须是 1 个字符');
         }
       } else if (realName.length < 2) {
-        throw (window.i18n ? window.i18n.t('auth.error.realNameTeacherTooShort') : '老师姓名至少 2 个字符');
+        throw (window.i18n ? window.i18n.t('auth.error.realNameTeacherTooShort') : '姓名至少 2 个字符');
       }
     }
 
@@ -299,7 +299,7 @@ class AuthManager {
 
     if (!nickname) throw new Error('请填写昵称');
     if (!realName) throw new Error('请填写真实姓名');
-    if (identity !== 'student' && identity !== 'teacher') throw new Error('请选择身份');
+    if (identity !== 'student' && identity !== 'teacher' && identity !== 'parent') throw new Error('请选择身份');
 
     const { error } = await supabase.rpc('complete_profile', {
       p_nickname: nickname,

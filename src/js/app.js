@@ -492,19 +492,29 @@ class App {
   }
 
   /**
-   * 显示名解析：真实姓名 > 昵称 > 用户名
-   * 老师仅填姓时：身份为老师 → "X 老师"；其他情形 "X"
-   * 家长/访客情形不在此处处理（用户级身份只有 student / teacher）
+   * 短显示名：仅昵称（用于头像、顶栏 user-name）
+   * 优先级：nickname > username
    * @param {object|null} u  users 行（或 { username, nickname, real_name, name_only_surname, identity }）
    */
   getDisplayName(u) {
     if (!u) return 'User';
-    if (u.real_name) {
-      if (u.name_only_surname && u.identity === 'teacher') return `${u.real_name}老师`;
-      return u.real_name;
+    return u.nickname || u.username || 'User';
+  }
+
+  /**
+   * 长显示名：昵称（真实姓名），用于成员列表 / 下拉菜单头部
+   * - 老师仅填姓时：昵称（X 老师）
+   * - 其他情形：昵称（真实姓名）
+   * - 真实姓名为空时：退化为只显示昵称
+   */
+  getFullDisplayName(u) {
+    if (!u) return 'User';
+    const nick = u.nickname || u.username || 'User';
+    if (!u.real_name) return nick;
+    if (u.name_only_surname && u.identity === 'teacher') {
+      return `${nick}（${u.real_name}老师）`;
     }
-    if (u.nickname) return u.nickname;
-    return u.username || 'User';
+    return `${nick}（${u.real_name}）`;
   }
 
   /**
@@ -512,11 +522,14 @@ class App {
    */
   updateUserMenu() {
     const u = authManager.getCurrentUser();
-    const name = this.getDisplayName(u);
+    // 顶栏短名（仅昵称）
+    const shortName = this.getDisplayName(u);
+    // 下拉里长名（昵称 + 真实姓名）
+    const fullName = this.getFullDisplayName(u);
     const userNameEl = document.getElementById('user-name');
-    if (userNameEl) userNameEl.textContent = name;
+    if (userNameEl) userNameEl.textContent = shortName;
     const userMenuNameEl = document.getElementById('user-menu-name');
-    if (userMenuNameEl) userMenuNameEl.textContent = name;
+    if (userMenuNameEl) userMenuNameEl.textContent = fullName;
   }
 
   updateManageButton() {
@@ -802,14 +815,30 @@ class App {
     }
 
     // 语言切换：单按钮（首页 + 主应用共用）
+    // 防抽动：切语前先给按钮加 is-loading 类，rAF 后再 setLanguage
+    //        （配合 CSS 的 html { scrollbar-gutter: stable } 彻底解决横移）
     const toggleLang = () => {
       if (!window.i18n) return;
       const current = window.i18n.getLanguage();
       const next = current === 'zh-CN' ? 'en' : 'zh-CN';
-      window.i18n.setLanguage(next);
-      this._updateLangToggle();
-      // 触发主应用重渲染（若已登录）
-      this._refreshAppOnLangChange();
+      const btn = document.activeElement;
+      const isLangBtn = btn && (btn.id === 'site-lang-toggle' || btn.id === 'app-lang-toggle');
+      if (isLangBtn) {
+        btn.classList.add('is-loading');
+        btn.disabled = true;
+      }
+      // 推迟到下一帧让样式先生效，避免与抽动竞争
+      requestAnimationFrame(() => {
+        window.i18n.setLanguage(next);
+        this._updateLangToggle();
+        this._refreshAppOnLangChange();
+        if (isLangBtn) {
+          setTimeout(() => {
+            btn.classList.remove('is-loading');
+            btn.disabled = false;
+          }, 120);
+        }
+      });
     };
     const langBtn = document.getElementById('site-lang-toggle');
     if (langBtn) langBtn.addEventListener('click', toggleLang);
@@ -1365,23 +1394,26 @@ class App {
   }
 
   // ============================================================
-  // 一级权限：身份选择器（学生 / 老师）
+  // 一级权限：身份选择器（学生 / 老师 / 家长）
   // - 默认选中「学生」：绝大多数用户是学生，少点一下 = 提升效率
   // ============================================================
   _authIdentity = 'student';     // 注册表单当前选中的身份（默认学生）
   _profileIdentity = 'student';  // 补全资料弹窗当前选中的身份（默认学生）
 
   /**
-   * 绑定身份选择器（学生 / 老师）
+   * 绑定身份选择器（学生 / 老师 / 家长）
    * @param {'auth'|'profile'} scope
    */
   _bindIdentityPicker(scope) {
-    const attr = scope === 'auth' ? 'data-identity' : 'data-profile-identity';
+    const prefix = scope === 'auth' ? 'auth-identity' : 'profile-identity';
     const stateKey = scope === 'auth' ? '_authIdentity' : '_profileIdentity';
-    const studentBtn = document.getElementById(scope === 'auth' ? 'auth-identity-student' : 'profile-identity-student');
-    const teacherBtn = document.getElementById(scope === 'auth' ? 'auth-identity-teacher' : 'profile-identity-teacher');
+    const studentBtn = document.getElementById(`${prefix}-student`);
+    const teacherBtn = document.getElementById(`${prefix}-teacher`);
+    const parentBtn  = document.getElementById(`${prefix}-parent`);
     const surnameWrap = document.getElementById(scope === 'auth' ? 'auth-surname-only-wrap' : 'profile-surname-only-wrap');
     const surnameCheckbox = document.getElementById(scope === 'auth' ? 'auth-surname-only' : 'profile-surname-only');
+
+    const buttons = { student: studentBtn, teacher: teacherBtn, parent: parentBtn };
 
     // 让「学生」按钮立刻在视觉上高亮（默认状态）
     const paintSelected = () => {
@@ -1397,8 +1429,10 @@ class App {
       };
       setActive(studentBtn, sel === 'student');
       setActive(teacherBtn, sel === 'teacher');
+      setActive(parentBtn,  sel === 'parent');
       if (surnameWrap) {
-        if (sel === 'teacher') {
+        // 老师 / 家长都支持"仅填姓"（1 字符）
+        if (sel === 'teacher' || sel === 'parent') {
           surnameWrap.classList.remove('hidden');
           surnameWrap.classList.add('flex');
         } else {
@@ -1408,19 +1442,15 @@ class App {
         }
       }
     };
-    if (studentBtn) {
-      studentBtn.addEventListener('click', () => {
-        this[stateKey] = 'student';
-        if (surnameCheckbox) surnameCheckbox.checked = false;
+    // 给三个按钮都绑 click
+    Object.entries(buttons).forEach(([key, btn]) => {
+      if (!btn) return;
+      btn.addEventListener('click', () => {
+        this[stateKey] = key;
+        if (key === 'student' && surnameCheckbox) surnameCheckbox.checked = false;
         paintSelected();
       });
-    }
-    if (teacherBtn) {
-      teacherBtn.addEventListener('click', () => {
-        this[stateKey] = 'teacher';
-        paintSelected();
-      });
-    }
+    });
     // 初始绘制一次（让默认的"学生"在视觉上高亮）
     paintSelected();
   }
@@ -1753,9 +1783,9 @@ class App {
   async handleManageTeam() {
     const current = this.timelines.find(t => t.id === this.currentTimelineId);
     if (!current || current.type !== 'team') {
-      // 不再弹"请切换到赛队"——管理赛队按钮在个人时间轴下根本不显示
-      // 这里仍是兜底：万一某种 race condition 进入此函数
-      this.showToast(this._i18n('app.team.selectTeam', '请先在时间轴下拉中选择一个赛队'), 'warning');
+      // 个人时间轴下管理赛队按钮已经被 updateManageButton 隐藏，这里是兜底：
+      // 极端 race condition 进入此函数时直接 return，不再弹 toast
+      // （避免给个人时间轴下的用户弹出"请切换到赛队"等无意义提示）
       return;
     }
 
@@ -1786,7 +1816,7 @@ class App {
         const sortedMembers = [...members].sort((a, b) => {
           if (a.role === 'owner' && b.role !== 'owner') return -1;
           if (a.role !== 'owner' && b.role === 'owner') return 1;
-          return this.getDisplayName(a.users || {}).localeCompare(this.getDisplayName(b.users || {}));
+          return this.getFullDisplayName(a.users || {}).localeCompare(this.getFullDisplayName(b.users || {}));
         });
         const roleLabel = {
           owner: this._i18n('app.team.roleOwner', '所有者'),
@@ -1799,9 +1829,9 @@ class App {
 
         membersList.innerHTML = sortedMembers.map(member => {
           const user = member.users || {};
-          const displayName = this._escapeHtml(this.getDisplayName(user));
+          const displayName = this._escapeHtml(this.getFullDisplayName(user));
           const identityTag = user.identity
-            ? `<span class="vx-member-identity-tag vx-member-identity-tag--${user.identity}">${user.identity === 'student' ? this._i18n('auth.identity.student', '学生') : this._i18n('auth.identity.teacher', '老师')}</span>`
+            ? `<span class="vx-member-identity-tag vx-member-identity-tag--${user.identity}">${user.identity === 'student' ? this._i18n('auth.identity.student', '学生') : user.identity === 'teacher' ? this._i18n('auth.identity.teacher', '老师') : this._i18n('auth.identity.parent', '家长')}</span>`
             : '';
           const isOwnerRow = member.role === 'owner';
           const currentRoleLabel = roleLabel[member.role] || member.role;
@@ -1890,7 +1920,7 @@ class App {
       const sortedMembers = [...members].sort((a, b) => {
         if (a.role === 'owner' && b.role !== 'owner') return -1;
         if (a.role !== 'owner' && b.role === 'owner') return 1;
-        return this.getDisplayName(a.users || {}).localeCompare(this.getDisplayName(b.users || {}));
+        return this.getFullDisplayName(a.users || {}).localeCompare(this.getFullDisplayName(b.users || {}));
       });
       const roleLabel = {
         owner: this._i18n('app.team.roleOwner', '所有者'),
@@ -1902,9 +1932,9 @@ class App {
       const ROLE_OPTIONS = ['captain', 'teacher', 'member', 'visitor'];
       membersList.innerHTML = sortedMembers.map(member => {
         const user = member.users || {};
-        const displayName = this._escapeHtml(this.getDisplayName(user));
+        const displayName = this._escapeHtml(this.getFullDisplayName(user));
         const identityTag = user.identity
-          ? `<span class="vx-member-identity-tag vx-member-identity-tag--${user.identity}">${user.identity === 'student' ? this._i18n('auth.identity.student', '学生') : this._i18n('auth.identity.teacher', '老师')}</span>`
+          ? `<span class="vx-member-identity-tag vx-member-identity-tag--${user.identity}">${user.identity === 'student' ? this._i18n('auth.identity.student', '学生') : user.identity === 'teacher' ? this._i18n('auth.identity.teacher', '老师') : this._i18n('auth.identity.parent', '家长')}</span>`
           : '';
         const isOwnerRow = member.role === 'owner';
         const currentRoleLabel = roleLabel[member.role] || member.role;
