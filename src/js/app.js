@@ -13,6 +13,7 @@ class App {
     this.editingRecord = null;
     this.currentFilter = 'all';
     this.tempImageData = null;
+    this.tempImageFileName = null;  // 新建场景下用户当前选中的文件 name；编辑模式 / 未选时为 null
     this.currentTimelineId = this._loadStoredTimelineId() || null;
     this.timelines = [];
     this.isOnline = navigator.onLine;
@@ -200,6 +201,8 @@ class App {
       // 一次，导致 label 被覆盖成「未选择/Unselected」。这里再调一次 updateTimelineSelector()
       // 把它写回当前时间轴的（已翻译过的）名字。
       try { this.updateTimelineSelector(); } catch (e) { /* noop */ }
+      // 同步：record-image-name 也要按当前语言重渲（file.name 不动，没图时回退到「未选择」/「No file chosen」）
+      try { this._updateRecordImageName(); } catch (e) { /* noop */ }
     }
   }
 
@@ -708,6 +711,14 @@ class App {
 
     document.getElementById('record-image').addEventListener('change', (e) => this.handleImageUpload(e));
     document.getElementById('remove-image-btn').addEventListener('click', () => this.removeImage());
+
+    // 自定义「选择文件」按钮 → 触发隐藏的原生 <input type="file">
+    const imgTrigger = document.getElementById('record-image-trigger');
+    if (imgTrigger) {
+      imgTrigger.addEventListener('click', () => {
+        document.getElementById('record-image').click();
+      });
+    }
 
     // 过滤器
     document.querySelectorAll('#filter-bar [data-filter]').forEach(btn => {
@@ -1346,6 +1357,8 @@ class App {
   handleImageUpload(e) {
     const file = e.target.files[0];
     if (!file) return;
+    this.tempImageFileName = file.name;
+    this._updateRecordImageName();
     const reader = new FileReader();
     reader.onload = (event) => {
       this.tempImageData = event.target.result;
@@ -1359,12 +1372,33 @@ class App {
 
   removeImage() {
     this.tempImageData = null;
+    this.tempImageFileName = null;
     const preview = document.getElementById('image-preview');
     const previewImg = document.getElementById('preview-img');
     const imageInput = document.getElementById('record-image');
     preview.classList.add('hidden');
     previewImg.src = '';
     imageInput.value = '';
+    this._updateRecordImageName();
+  }
+
+  /**
+   * 维护「record-image-name」文本：
+   * - 选了本地文件：显示 file.name（用户最关心的）
+   * - 编辑模式（云端/IndexedDB 已有图，但拿不到原 file.name）：显示「已选择图片/Image selected」占位
+   * - 都没图：显示「未选择任何文件/No file chosen」占位
+   * - 切语言时由 _refreshAppOnLangChange 之后再次调用，按当前语言重渲
+   */
+  _updateRecordImageName() {
+    const span = document.getElementById('record-image-name');
+    if (!span) return;
+    if (this.tempImageFileName) {
+      span.textContent = this.tempImageFileName;
+    } else if (this.tempImageData) {
+      span.textContent = this._i18n('app.modal.fileSelected', '已选择图片');
+    } else {
+      span.textContent = this._i18n('app.modal.noFile', '未选择任何文件');
+    }
   }
 
   // ============================================================
@@ -1373,6 +1407,7 @@ class App {
   openModal(record = null) {
     this.editingRecord = record;
     this.tempImageData = null;
+    this.tempImageFileName = null;  // 每次开 modal 都重置：旧文件选择不再有效
     const modal = document.getElementById('record-modal');
     const modalTitle = document.getElementById('modal-title');
     const dateInput = document.getElementById('record-date');
@@ -1412,6 +1447,7 @@ class App {
     }
 
     imageInput.value = '';
+    this._updateRecordImageName();  // 把文件名校为「未选择」/「已选择图片」/file.name
     modal.classList.add('active');
     setTimeout(() => titleInput.focus(), 50);
   }
@@ -1419,6 +1455,7 @@ class App {
   closeModal() {
     this.editingRecord = null;
     this.tempImageData = null;
+    this.tempImageFileName = null;
     const modal = document.getElementById('record-modal');
     modal.classList.remove('active');
   }

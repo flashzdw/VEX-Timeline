@@ -1,8 +1,9 @@
 // Bump CACHE_NAME version whenever JS/CSS changes are deployed.
 // This forces the new service worker to skip the old cache and refetch everything.
-// v39: 修复自定义域名上 i18n 键被原样显示的问题 —— 旧 SW 缓存里没有 home.hero.mockup.* 键
-//      同时把样式从 text-fg/50（未定义）改回 text-fg/60
-const CACHE_NAME = 'vex-timeline-cache-v39';
+// v40: 修复添加文件按钮的 i18n + 选了文件却仍显示「未选择任何文件」的问题
+//      - 用自定义按钮 + 文件名 span 替换原生 <input type="file"> 视觉
+//      - 新增 app.modal.noFile / app.modal.fileSelected
+const CACHE_NAME = 'vex-timeline-cache-v40';
 
 // Only cache the static shell — NEVER cache JS files (auth.js, app.js, config.js, etc.)
 // because they change with each deploy and JS bugs in cached files can break the app.
