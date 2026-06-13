@@ -944,11 +944,12 @@ body[data-scene="app"] .vx-site-header { display: none !important; }
    FAQ 折叠项（重构为 button + div 模式，参考 React/Framer Motion 实现）
    - 不用 <details>，避免浏览器对 summary 默认点击处理带来的微小延迟
    - 加号旋转 0.3s、内容展开 0.4s，制造「图标先到位 → 内容再展开」的层次
-   - grid-template-rows: 0fr → 1fr 实现 auto 高度过渡（现代 CSS 技巧）
-   - 高度 + opacity 双属性同步：内容「渐渐出现」而非「突然可见」
    - 缓动 cubic-bezier(0.16, 1, 0.3, 1)：easeOutExpo 变种，丝滑无机械感
    - 外层 .vx-faq-list 强制 GPU 层 (translateZ(0)) + will-change: contents
      把 FAQ 高度变化的布局 reflow 隔离在自身合成层里，最大程度减少下方板块的抽搐
+   - 现代浏览器 (Chrome 129+ / Safari 17.4+) 用 interpolate-size + height: 0→auto
+     比 grid-template-rows 更平滑（直接对 auto 高度插值，不依赖 fr 单位）
+   - 旧浏览器降级到 grid-template-rows 方案，仍可工作
    ============================================================ */
 .vx-faq-list {
   /* 强制 GPU 合成层：FAQ 内部高度变化时，下方板块无需重排 */
@@ -996,31 +997,64 @@ body[data-scene="app"] .vx-site-header { display: none !important; }
   transform: rotate(45deg);
 }
 
-/* 答案外层 grid 容器：从 0fr 平滑过渡到 1fr */
-.vx-faq-grid-wrap {
-  display: grid;
-  grid-template-rows: 0fr;
-  will-change: grid-template-rows;
-  transition: grid-template-rows 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-}
-.vx-faq-item.is-open > .vx-faq-grid-wrap {
-  grid-template-rows: 1fr;
+/* ============================================================
+   答案容器：现代浏览器优先用 interpolate-size + height: 0→auto
+   旧浏览器降级到 grid-template-rows: 0fr→1fr
+   ============================================================ */
+@supports (interpolate-size: allow-keywords) {
+  :root { interpolate-size: allow-keywords; }
+
+  .vx-faq-grid-wrap {
+    height: 0;
+    overflow: hidden;
+    will-change: height;
+    transition: height 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .vx-faq-item.is-open > .vx-faq-grid-wrap {
+    height: auto;
+  }
+
+  .vx-faq-grid-wrap > .vx-faq-answer {
+    overflow: hidden;
+    /* 上下 padding 一致 (1.25rem)：让答案与问题、答案与下个问题边框都保持相同间距 */
+    padding-top: 1.25rem;
+    padding-bottom: 1.25rem;
+    opacity: 0;
+    will-change: opacity;
+    transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .vx-faq-item.is-open > .vx-faq-grid-wrap > .vx-faq-answer {
+    opacity: 1;
+  }
 }
 
-/* 答案内层：min-height: 0 + overflow: hidden 是 grid 0fr → 1fr 过渡生效的前提 */
-.vx-faq-grid-wrap > .vx-faq-answer {
-  overflow: hidden;
-  min-height: 0;
-  padding-bottom: 0;
-  opacity: 0;
-  will-change: padding-bottom, opacity;
-  /* height + opacity 双属性同步，让内容"渐渐出现"而非"突然可见" */
-  transition: padding-bottom 0.4s cubic-bezier(0.16, 1, 0.3, 1),
-              opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-}
-.vx-faq-item.is-open > .vx-faq-grid-wrap > .vx-faq-answer {
-  padding-bottom: 1.25rem;
-  opacity: 1;
+/* 旧浏览器降级方案：grid-template-rows 0fr→1fr */
+@supports not (interpolate-size: allow-keywords) {
+  .vx-faq-grid-wrap {
+    display: grid;
+    grid-template-rows: 0fr;
+    will-change: grid-template-rows;
+    transition: grid-template-rows 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .vx-faq-item.is-open > .vx-faq-grid-wrap {
+    grid-template-rows: 1fr;
+  }
+
+  .vx-faq-grid-wrap > .vx-faq-answer {
+    overflow: hidden;
+    min-height: 0;
+    /* 上下 padding 一致 (1.25rem) */
+    padding-top: 1.25rem;
+    padding-bottom: 0;
+    opacity: 0;
+    will-change: padding-bottom, opacity;
+    transition: padding-bottom 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+                opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .vx-faq-item.is-open > .vx-faq-grid-wrap > .vx-faq-answer {
+    padding-bottom: 1.25rem;
+    opacity: 1;
+  }
 }
 
 /* ============================================================
