@@ -580,6 +580,14 @@ body {
   transition: background-color 0.2s, color 0.2s;
 }
 
+/* 关键：上面 .vx-user-menu button 强制 display:flex 会覆盖 Tailwind .hidden。
+   个人时间轴下，updateManageButton 给按钮加 .hidden class —— 这里加 :not(.hidden)
+   保证 hidden 状态时按钮真正 display:none（不会出现在下拉里）。*/
+.vx-user-menu button.hidden,
+.vx-user-menu a.hidden {
+  display: none !important;
+}
+
 .vx-user-menu button:hover,
 .vx-user-menu a:hover {
   background-color: var(--color-muted);

@@ -93,6 +93,18 @@ if (!desktopHidden || !mobileHidden) {
 }
 console.log('OK: Bug 1 — personal timeline 下 manage-team-btn 已隐藏');
 
+// 关键：实际渲染层面（CSS 计算样式）也必须 display:none
+// 这里通过解析 styles.css 验证 CSS 规则存在（jsdom 不解析 CSSOM）
+const cssText = fs.readFileSync(path.join(__dirname, 'src/css/styles.css'), 'utf-8');
+// 必须存在 .vx-user-menu button.hidden / a.hidden 的 !important 规则，
+// 否则 Tailwind .hidden 会被 .vx-user-menu button{display:flex} 覆盖，
+// 实际渲染时按钮仍可见（用户在浏览器里看到的 bug 复现条件）
+if (!/\.vx-user-menu\s+button\.hidden[\s\S]{0,200}display:\s*none\s*!important/.test(cssText)) {
+  console.log('FAIL: CSS 缺少 .vx-user-menu button.hidden{display:none !important} 规则 — 浏览器实际渲染时按钮仍可见');
+  process.exit(1);
+}
+console.log('OK: CSS 存在 .vx-user-menu button.hidden{display:none !important} 规则');
+
 // 切到赛队时间轴，按钮应该显示
 app.currentTimelineId = 'tl-team';
 app.updateManageButton();
