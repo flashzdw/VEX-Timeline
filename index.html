@@ -165,44 +165,16 @@
              左文 + 右产品 UI 预览的左右结构
              - 左侧：定位 eyebrow / 主标题 / 价值副标题 / CTA / 特性标签
              - 右侧：真实产品 UI 卡片（顶部栏 + 过滤 + 时间轴），与主应用同款设计语言
-             - 背景：扁平几何 + 极简电路/机械轮廓 SVG，全部低透明度
+             - 背景：4 个大色块（无短线 / 无 SVG 装饰 / 无机械轮廓），保持极简
              - 严格遵守 DESIGN.md：零阴影 / 零渐变 / 零 backdrop-blur -->
         <section id="home-hero" class="relative min-h-screen flex flex-col overflow-hidden bg-primary text-canvas">
-            <!-- 装饰层（背景，全部 pointer-events-none） -->
+            <!-- 装饰层（背景，全部 pointer-events-none）
+                 仅保留 4 个大色块作为底层视觉；去掉所有短线/电路/机械轮廓等小装饰，让 Hero 更干净 -->
             <div class="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden="true">
-                <!-- 大色块（C1） -->
                 <div class="absolute -top-40 -right-40 h-[28rem] w-[28rem] rounded-full bg-white/10"></div>
                 <div class="absolute bottom-12 left-8 sm:left-16 h-44 w-44 rotate-12 bg-accent/25"></div>
                 <div class="hidden md:block absolute top-1/3 right-1/4 h-24 w-24 rotate-45 bg-secondary/30"></div>
                 <div class="hidden md:block absolute bottom-1/3 right-10 h-16 w-16 rounded-md bg-canvas/15"></div>
-
-                <!-- SVG 装饰 1：时间轴虚线轨（贯穿右侧 mockup 区域） -->
-                <svg class="hidden md:block absolute top-0 bottom-0 right-[14%] w-px h-full opacity-[0.20]" aria-hidden="true">
-                    <line x1="0" y1="0" x2="0" y2="100%" stroke="white" stroke-width="2" stroke-dasharray="6 8"/>
-                </svg>
-
-                <!-- SVG 装饰 2：电路感节点连线（右上） -->
-                <svg class="hidden lg:block absolute top-[14%] right-[6%] w-32 h-32 opacity-[0.22]" viewBox="0 0 128 128" aria-hidden="true">
-                    <path d="M 0 32 L 32 32 L 32 0 M 64 0 L 64 48 L 96 48" fill="none" stroke="white" stroke-width="2" stroke-linecap="square"/>
-                    <circle cx="32" cy="32" r="3" fill="white"/>
-                    <circle cx="64" cy="0" r="3" fill="white"/>
-                    <circle cx="96" cy="48" r="3" fill="white"/>
-                    <path d="M 96 48 L 128 48" fill="none" stroke="white" stroke-width="2" stroke-linecap="square" stroke-dasharray="3 4"/>
-                </svg>
-
-                <!-- SVG 装饰 3：机械轮廓（L 形定位标） -->
-                <svg class="hidden lg:block absolute bottom-[20%] right-[36%] w-6 h-6 opacity-30" viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="M 0 0 L 24 0 L 24 6 M 0 0 L 0 24 L 6 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="square"/>
-                </svg>
-                <svg class="hidden md:block absolute top-[22%] left-[28%] w-5 h-5 opacity-25" viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="M 0 0 L 24 0 L 24 6 M 0 0 L 0 24 L 6 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="square"/>
-                </svg>
-
-                <!-- 浮动小色块（C1 旧） -->
-                <div class="absolute top-20 right-1/3 h-16 w-16 rotate-45 bg-secondary/20"></div>
-                <div class="absolute top-1/2 left-10 hidden lg:block h-24 w-24 rounded-md bg-canvas/10"></div>
-                <div class="hidden md:block absolute bottom-20 right-1/3 h-2 w-40 bg-accent/40"></div>
-                <div class="absolute top-1/4 left-1/4 h-6 w-6 rounded-full bg-canvas/20"></div>
             </div>
 
             <!-- 主体内容 -->
@@ -274,7 +246,7 @@
                                 <div class="vx-hero-mockup-body">
                                     <!-- 过滤栏（与主应用同款） -->
                                     <div class="vx-hero-mockup-filter">
-                                        <span class="text-[10px] font-semibold uppercase tracking-wider text-fg/50 mr-1" data-i18n="home.hero.mockup.filter.label">重要性</span>
+                                        <span class="text-[10px] font-semibold uppercase tracking-wider text-fg/80 mr-1" data-i18n="home.hero.mockup.filter.label">重要性</span>
                                         <span class="vx-hero-pill vx-hero-pill--active" data-i18n="home.hero.mockup.filter.all">全部</span>
                                         <span class="vx-hero-pill" data-i18n="home.hero.mockup.filter.high">高</span>
                                         <span class="vx-hero-pill" data-i18n="home.hero.mockup.filter.medium">中</span>

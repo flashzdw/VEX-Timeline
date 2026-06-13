@@ -977,16 +977,15 @@ body[data-scene="app"]  #site-header {
   padding: 16px 18px 18px 18px;
 }
 
-/* 过滤栏 pills（与主应用 filter bar 同款） */
+/* 过滤栏 pills（与主应用 filter bar 同款）
+   - 去掉之前的 bg-muted 卡片背景，让「重要性」标签直接落在白底上，对比度更清晰
+   - 仅靠 gap 拉开元素间距，视觉更轻盈 */
 .vx-hero-mockup-filter {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 6px;
-  margin-bottom: 16px;
-  padding: 8px 10px;
-  background-color: var(--color-muted);
-  border-radius: 6px;
+  margin-bottom: 14px;
 }
 
 .vx-hero-pill {
