@@ -1975,7 +1975,7 @@ class App {
           ? window.supabaseManager.getClient()
           : null;
         if (!supabase) {
-          if (errEl) errEl.textContent = 'Supabase 未配置';
+          if (errEl) errEl.textContent = this._i18n('app.cloud.notConfigured', 'Supabase 未配置');
           return;
         }
         // 1) 唯一性检查
@@ -2051,7 +2051,7 @@ class App {
           ? window.supabaseManager.getClient()
           : null;
         if (!supabase) {
-          if (errEl) errEl.textContent = 'Supabase 未配置';
+          if (errEl) errEl.textContent = this._i18n('app.cloud.notConfigured', 'Supabase 未配置');
           return;
         }
         // 1) 旧密码验证（signInWithPassword 在已登录 session 下不刷新 token）
