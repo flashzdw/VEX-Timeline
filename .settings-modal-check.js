@@ -2,8 +2,10 @@
 //   1) 桌面/移动端下拉入口存在
 //   2) openSettingsModal() 成功打开 + 3 个表单都在
 //   3) 预填：real_name / username / identity 来自 authManager.getCurrentUser()
-//   4) 关闭后可重开
-//   5) 不触发云端请求
+//   4) 顶部 tab 切换：3 个 tab，激活态正确，panel 互斥显示
+//   5) 关闭后能重开（不抛错）
+//   6) 打开弹窗不触发云端请求
+//   7) submit handler 走 completeProfile
 const { JSDOM } = require('jsdom');
 const fs = require('fs');
 const path = require('path');
@@ -202,6 +204,55 @@ if (!surnameCb.checked) {
   process.exit(1);
 }
 console.log('OK: 切到 teacher 时 surname-only-wrap 显示 + 默认勾选');
+
+// ============================================================
+// 4b) 顶部 tab 切换：3 个 tab 互斥，激活态切换正确
+// ============================================================
+console.log('\n--- 4b) 顶部 tab 切换 ---');
+const tabNav = doc.getElementById('settings-tab-nav');
+if (!tabNav) { console.log('FAIL: #settings-tab-nav 缺失'); process.exit(1); }
+const tabBtns = tabNav.querySelectorAll('[data-settings-tab]');
+console.log('tab 数量:', tabBtns.length);
+if (tabBtns.length !== 3) { console.log('FAIL: 应有 3 个 tab, 实际 ' + tabBtns.length); process.exit(1); }
+console.log('OK: 3 个 tab 存在');
+
+// 默认状态：basic tab 激活，其他两个 inactive
+const basicTab = tabNav.querySelector('[data-settings-tab="basic"]');
+const usernameTab = tabNav.querySelector('[data-settings-tab="username"]');
+const passwordTab = tabNav.querySelector('[data-settings-tab="password"]');
+if (!basicTab.classList.contains('is-active')) { console.log('FAIL: 默认 basic tab 应激活'); process.exit(1); }
+console.log('OK: 默认 basic tab 激活');
+
+// 默认 panel 状态
+const basicPanel = doc.querySelector('[data-settings-panel="basic"]');
+const usernamePanel = doc.querySelector('[data-settings-panel="username"]');
+const passwordPanel = doc.querySelector('[data-settings-panel="password"]');
+if (basicPanel.classList.contains('hidden')) { console.log('FAIL: basic panel 默认应显示'); process.exit(1); }
+if (!usernamePanel.classList.contains('hidden')) { console.log('FAIL: username panel 默认应隐藏'); process.exit(1); }
+if (!passwordPanel.classList.contains('hidden')) { console.log('FAIL: password panel 默认应隐藏'); process.exit(1); }
+console.log('OK: 默认 basic panel 显示，其他两个隐藏');
+
+// 切到 username tab
+usernameTab.click();
+if (!usernameTab.classList.contains('is-active')) { console.log('FAIL: 切到 username tab 后未激活'); process.exit(1); }
+if (basicTab.classList.contains('is-active')) { console.log('FAIL: basic tab 应取消激活'); process.exit(1); }
+if (!basicPanel.classList.contains('hidden')) { console.log('FAIL: basic panel 应隐藏'); process.exit(1); }
+if (usernamePanel.classList.contains('hidden')) { console.log('FAIL: username panel 应显示'); process.exit(1); }
+console.log('OK: 切到 username — tab 视觉态 + panel 互斥都正确');
+
+// 切到 password tab
+passwordTab.click();
+if (!passwordTab.classList.contains('is-active')) { console.log('FAIL: 切到 password tab 后未激活'); process.exit(1); }
+if (usernameTab.classList.contains('is-active')) { console.log('FAIL: username tab 应取消激活'); process.exit(1); }
+if (passwordPanel.classList.contains('hidden')) { console.log('FAIL: password panel 应显示'); process.exit(1); }
+if (!usernamePanel.classList.contains('hidden')) { console.log('FAIL: username panel 应隐藏'); process.exit(1); }
+console.log('OK: 切到 password — tab 视觉态 + panel 互斥都正确');
+
+// 切回 basic tab
+basicTab.click();
+if (!basicTab.classList.contains('is-active')) { console.log('FAIL: 切回 basic tab 后未激活'); process.exit(1); }
+if (basicPanel.classList.contains('hidden')) { console.log('FAIL: basic panel 应重新显示'); process.exit(1); }
+console.log('OK: 切回 basic — panel 正确重显');
 
 // ============================================================
 // 5) 关闭 + 重开（不抛错，不重复绑定）

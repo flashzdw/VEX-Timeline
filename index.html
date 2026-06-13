@@ -690,10 +690,24 @@
                 <h2 class="font-extrabold text-2xl tracking-[-0.02em] uppercase" data-i18n="app.user.settings">个人设置</h2>
                 <i data-lucide="settings" class="w-6 h-6"></i>
             </div>
-            <div class="p-8 flex flex-col gap-8 max-h-[80vh] overflow-y-auto">
-                <!-- 卡片 A：基本信息（真实姓名 + 身份） -->
-                <section>
-                    <h3 class="text-sm font-bold uppercase tracking-wider text-fg/60 mb-3" data-i18n="app.user.basicInfo">基本信息</h3>
+            <!-- 顶部 Tab 导航：三个并列文字 tab，底部高亮线指示 active -->
+            <nav id="settings-tab-nav" class="flex border-b-2 border-border bg-canvas">
+                <button type="button" data-settings-tab="basic"
+                        class="vx-settings-tab is-active flex-1 py-4 text-sm font-bold uppercase tracking-wider text-primary border-b-4 border-primary -mb-[2px] transition-all duration-200">
+                    <i data-lucide="user" class="w-4 h-4 inline-block mr-1.5 -mt-0.5"></i><span data-i18n="app.user.basicInfo">基本信息</span>
+                </button>
+                <button type="button" data-settings-tab="username"
+                        class="vx-settings-tab flex-1 py-4 text-sm font-bold uppercase tracking-wider text-fg/40 border-b-4 border-transparent -mb-[2px] hover:text-fg/70 transition-all duration-200">
+                    <i data-lucide="at-sign" class="w-4 h-4 inline-block mr-1.5 -mt-0.5"></i><span data-i18n="app.user.username">用户名</span>
+                </button>
+                <button type="button" data-settings-tab="password"
+                        class="vx-settings-tab flex-1 py-4 text-sm font-bold uppercase tracking-wider text-fg/40 border-b-4 border-transparent -mb-[2px] hover:text-fg/70 transition-all duration-200">
+                    <i data-lucide="key" class="w-4 h-4 inline-block mr-1.5 -mt-0.5"></i><span data-i18n="app.user.changePassword">更改密码</span>
+                </button>
+            </nav>
+            <div class="p-8 max-h-[70vh] overflow-y-auto">
+                <!-- 面板 A：基本信息（真实姓名 + 身份） -->
+                <section data-settings-panel="basic">
                     <form id="settings-basic-form" class="flex flex-col gap-4">
                         <div class="flex flex-col gap-2">
                             <label id="settings-real-name-label" class="text-xs font-semibold uppercase tracking-wider text-fg/60" for="settings-real-name" data-i18n="auth.realName">真实姓名</label>
@@ -728,11 +742,8 @@
                     </form>
                 </section>
 
-                <div class="h-px bg-border"></div>
-
-                <!-- 卡片 B：用户名 -->
-                <section>
-                    <h3 class="text-sm font-bold uppercase tracking-wider text-fg/60 mb-3" data-i18n="app.user.username">用户名</h3>
+                <!-- 面板 B：用户名 -->
+                <section data-settings-panel="username" class="hidden">
                     <form id="settings-username-form" class="flex flex-col gap-3">
                         <input id="settings-username" type="text" minlength="3" maxlength="20" autocomplete="username"
                                placeholder="输入新用户名"
@@ -746,11 +757,8 @@
                     </form>
                 </section>
 
-                <div class="h-px bg-border"></div>
-
-                <!-- 卡片 C：更改密码 -->
-                <section>
-                    <h3 class="text-sm font-bold uppercase tracking-wider text-fg/60 mb-3" data-i18n="app.user.changePassword">更改密码</h3>
+                <!-- 面板 C：更改密码 -->
+                <section data-settings-panel="password" class="hidden">
                     <form id="settings-password-form" class="flex flex-col gap-3">
                         <input id="settings-old-password" type="password" minlength="6" autocomplete="current-password"
                                placeholder="旧密码"

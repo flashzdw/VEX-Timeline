@@ -1833,7 +1833,21 @@ class App {
       });
     }
 
-    // 4) 清空错误提示 / 密码框
+    // 4) 绑定顶部 tab 切换（事件委托到 nav 容器，避免重复绑 3 个 button）
+    const tabNav = document.getElementById('settings-tab-nav');
+    if (tabNav && !tabNav.__bound) {
+      tabNav.__bound = true;
+      tabNav.addEventListener('click', (e) => {
+        const tabBtn = e.target.closest('[data-settings-tab]');
+        if (!tabBtn) return;
+        this._switchSettingsTab(tabBtn.dataset.settingsTab);
+      });
+    }
+
+    // 5) 重置到 default tab (basic)
+    this._switchSettingsTab('basic');
+
+    // 6) 清空错误提示 / 密码框
     const clearErr = (sel) => { const el = document.querySelector(sel); if (el) el.textContent = ''; };
     clearErr('#settings-basic-form .settings-error');
     clearErr('#settings-username-form .settings-username-error');
@@ -1843,10 +1857,35 @@ class App {
       if (el) el.value = '';
     });
 
-    // 5) 打开弹窗 + i18n 重新渲染 + 注入 lucide icons
+    // 7) 打开弹窗 + i18n 重新渲染 + 注入 lucide icons
     modal.classList.add('active');
     if (window.i18n) window.i18n.apply();
     if (window.lucide && lucide.createIcons) lucide.createIcons();
+  }
+
+  /**
+   * 切换 settings modal 的 tab
+   * @param {'basic'|'username'|'password'} tabKey
+   */
+  _switchSettingsTab(tabKey) {
+    const validTabs = ['basic', 'username', 'password'];
+    if (!validTabs.includes(tabKey)) return;
+
+    // 1) 更新所有 tab button 的视觉态
+    document.querySelectorAll('#settings-tab-nav [data-settings-tab]').forEach(btn => {
+      const isActive = btn.dataset.settingsTab === tabKey;
+      btn.classList.toggle('is-active', isActive);
+      btn.classList.toggle('text-primary', isActive);
+      btn.classList.toggle('border-primary', isActive);
+      btn.classList.toggle('text-fg/40', !isActive);
+      btn.classList.toggle('border-transparent', !isActive);
+    });
+
+    // 2) 显示对应 panel，隐藏其他
+    document.querySelectorAll('[data-settings-panel]').forEach(panel => {
+      const shouldShow = panel.dataset.settingsPanel === tabKey;
+      panel.classList.toggle('hidden', !shouldShow);
+    });
   }
 
   /**
