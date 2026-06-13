@@ -221,7 +221,7 @@
       'app.month.11': '11月',
       'app.month.12': '12月',
       'app.dateFormat': '{y}年{m}月{d}日 {wd}',
-      'app.dateFormat.short': '{y}年{m}月',
+      'app.dateFormat.short': '{y}年 {m}',
 
       'app.empty.timeline': '请先选择时间轴',
       'app.empty.records': '暂无记录',
