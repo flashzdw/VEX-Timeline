@@ -1,12 +1,13 @@
 {
   "name": "vex-timeline",
   "version": "1.0.0",
-  "description": "VEX-Timeline - Personal and team timeline app with cloud sync",
+  "private": true,
+  "description": "Personal & team timeline for VEX robotics build season.",
   "scripts": {
     "build": "node scripts/build-config.js",
-    "dev": "node scripts/build-config.js && python3 -m http.server 8000"
+    "build:local": "node scripts/build-config.js"
   },
-  "keywords": ["vex", "timeline"],
-  "author": "",
-  "license": "MIT"
+  "engines": {
+    "node": ">=18"
+  }
 }

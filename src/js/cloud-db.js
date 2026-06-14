@@ -113,6 +113,20 @@ class CloudDBManager {
     return data;
   }
 
+  /**
+   * 删除赛队时间轴（仅 owner 可调用；RLS 兜底）
+   * @param {string} timelineId
+   */
+  async deleteTimeline(timelineId) {
+    const client = this._getClient();
+    const { error } = await client
+      .from('timelines')
+      .delete()
+      .eq('id', timelineId);
+    if (error) throw error;
+    return { success: true };
+  }
+
   async getTimelinesForUser() {
     const client = this._getClient();
     const userId = authManager.getCurrentUser().id;
@@ -168,10 +182,54 @@ class CloudDBManager {
     const client = this._getClient();
     const { data, error } = await client
       .from('timeline_members')
-      .select('*, users(username)')
+      .select('*, users(username, nickname, real_name, name_only_surname, identity)')
       .eq('timeline_id', timelineId);
     if (error) throw error;
     return data;
+  }
+
+  /**
+   * 获取当前用户在指定时间轴的赛队角色
+   * @param {string} timelineId
+   * @returns {Promise<string|null>} 'owner' | 'captain' | 'teacher' | 'member' | 'visitor' | null
+   */
+  async getMemberRole(timelineId) {
+    const client = this._getClient();
+    const userId = authManager.getCurrentUser()?.id;
+    if (!userId) return null;
+    const { data, error } = await client
+      .from('timeline_members')
+      .select('role')
+      .eq('timeline_id', timelineId)
+      .eq('user_id', userId)
+      .maybeSingle();
+    if (error) {
+      console.warn('getMemberRole failed', error);
+      return null;
+    }
+    return data?.role || null;
+  }
+
+  /**
+   * 调整赛队成员角色（owner / captain / teacher 可调用）
+   * @param {string} timelineId
+   * @param {string} userId
+   * @param {string} newRole
+   */
+  async updateMemberRole(timelineId, userId, newRole) {
+    const client = this._getClient();
+    const allowed = ['captain', 'teacher', 'member', 'visitor'];
+    if (!allowed.includes(newRole)) {
+      throw new Error('非法角色');
+    }
+    const { error } = await client
+      .from('timeline_members')
+      .update({ role: newRole })
+      .eq('timeline_id', timelineId)
+      .eq('user_id', userId)
+      .neq('role', 'owner');
+    if (error) throw error;
+    return { success: true };
   }
 
   async joinTimelineByInviteCode(inviteCode) {

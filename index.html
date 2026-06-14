@@ -520,28 +520,32 @@
                     </div>
                 </div>
 
-                <h2 class="font-extrabold text-3xl sm:text-4xl tracking-[-0.02em] text-fg mb-2" data-i18n="auth.welcome">欢迎回来</h2>
-                <p class="text-xs sm:text-sm font-semibold uppercase tracking-wider text-fg/60 mb-6 sm:mb-8" data-i18n="auth.subtitle">登录 · 注册</p>
+                <h2 id="auth-title" class="font-extrabold text-3xl sm:text-4xl tracking-[-0.02em] text-fg mb-2" data-i18n="auth.welcome">欢迎回来</h2>
+                <p id="auth-subtitle" class="text-xs sm:text-sm font-semibold uppercase tracking-wider text-fg/60 mb-6 sm:mb-8" data-i18n="auth.subtitle.login">登录到你的账号</p>
 
                 <!-- 移动端友好提示：仅在 Supabase 未配置时显示 -->
                 <div id="diag-banner" class="hidden mb-6 p-3 bg-muted border-2 border-border rounded-md text-xs font-medium text-fg/60 text-center" data-i18n="auth.error.notConfigured">云端未配置，请联系管理员</div>
 
-                <form id="auth-form" class="flex flex-col gap-4" autocomplete="off">
+                <!-- ============================================================
+                     登录视图（默认）
+                     ============================================================ -->
+                <form id="auth-form-login" class="flex flex-col gap-4" autocomplete="off">
                     <div class="flex flex-col gap-2">
-                        <label class="text-xs font-semibold uppercase tracking-wider text-fg/60" for="auth-username" data-i18n="auth.username">用户名</label>
-                        <input id="auth-username" type="text" maxlength="20" autocomplete="off"
+                        <label class="text-xs font-semibold uppercase tracking-wider text-fg/60" for="auth-username-login" data-i18n="auth.username">用户名</label>
+                        <input id="auth-username-login" type="text" maxlength="20" autocomplete="off"
                                data-i18n-placeholder="auth.username.ph"
                                placeholder="输入用户名"
                                class="h-14 px-4 bg-muted text-fg text-base rounded-md border-0 outline-none font-medium focus:bg-canvas focus:border-2 focus:border-primary transition-all duration-200">
                     </div>
                     <div class="flex flex-col gap-2">
-                        <label class="text-xs font-semibold uppercase tracking-wider text-fg/60" for="auth-password" data-i18n="auth.password">密码</label>
-                        <input id="auth-password" type="password" autocomplete="off"
+                        <label class="text-xs font-semibold uppercase tracking-wider text-fg/60" for="auth-password-login" data-i18n="auth.password">密码</label>
+                        <input id="auth-password-login" type="password" autocomplete="off"
                                data-i18n-placeholder="auth.password.ph"
                                placeholder="输入密码"
                                class="h-14 px-4 bg-muted text-fg text-base rounded-md border-0 outline-none font-medium focus:bg-canvas focus:border-2 focus:border-primary transition-all duration-200">
                     </div>
-                    <div id="auth-error" class="min-h-[1.25rem] text-sm font-medium text-primary"></div>
+
+                    <div id="auth-error-login" class="min-h-[1.25rem] text-sm font-medium text-primary"></div>
 
                     <div class="flex flex-col gap-3 mt-2">
                         <button id="auth-login-btn" type="button"
@@ -549,13 +553,268 @@
                             <i data-lucide="log-in" class="w-5 h-5"></i>
                             <span data-i18n="auth.login">登录</span>
                         </button>
-                        <button id="auth-register-btn" type="button"
-                                class="h-14 border-4 border-fg text-fg bg-transparent rounded-md font-semibold tracking-wider uppercase text-sm flex items-center justify-center gap-2 hover:bg-fg hover:text-canvas hover:scale-[1.02] transition-all duration-200">
-                            <i data-lucide="user-plus" class="w-5 h-5"></i>
-                            <span data-i18n="auth.register">注册</span>
+                        <button id="auth-go-register-btn" type="button"
+                                class="h-12 text-fg/70 hover:text-primary text-xs font-semibold uppercase tracking-wider transition-colors duration-200">
+                            <span data-i18n="auth.goRegister">还没有账号？立即注册</span>
                         </button>
                     </div>
                 </form>
+
+                <!-- ============================================================
+                     注册视图（默认隐藏）
+                     注：用户名 = 昵称（display name），只用一个字段
+                     ============================================================ -->
+                <form id="auth-form-register" class="hidden flex flex-col gap-4" autocomplete="off">
+                    <div class="flex flex-col gap-2">
+                        <label class="text-xs font-semibold uppercase tracking-wider text-fg/60" for="auth-username-register" data-i18n="auth.username">用户名</label>
+                        <input id="auth-username-register" type="text" maxlength="20" autocomplete="off"
+                               data-i18n-placeholder="auth.username.ph"
+                               placeholder="输入用户名"
+                               class="h-12 px-4 bg-muted text-fg text-base rounded-md border-0 outline-none font-medium focus:bg-canvas focus:border-2 focus:border-primary transition-all duration-200">
+                    </div>
+                    <div class="flex flex-col gap-2">
+                        <label class="text-xs font-semibold uppercase tracking-wider text-fg/60" for="auth-password-register" data-i18n="auth.password">密码</label>
+                        <input id="auth-password-register" type="password" autocomplete="off"
+                               data-i18n-placeholder="auth.password.ph"
+                               placeholder="输入密码"
+                               class="h-12 px-4 bg-muted text-fg text-base rounded-md border-0 outline-none font-medium focus:bg-canvas focus:border-2 focus:border-primary transition-all duration-200">
+                    </div>
+                    <div class="flex flex-col gap-2">
+                        <label id="auth-real-name-label" class="text-xs font-semibold uppercase tracking-wider text-fg/60" for="auth-real-name" data-i18n="auth.realName">真实姓名</label>
+                        <input id="auth-real-name" type="text" maxlength="20" autocomplete="off"
+                               data-i18n-placeholder="auth.realName.ph"
+                               placeholder="输入真实姓名"
+                               class="h-12 px-4 bg-muted text-fg text-base rounded-md border-0 outline-none font-medium focus:bg-canvas focus:border-2 focus:border-primary transition-all duration-200">
+                        <p id="auth-real-name-hint" class="hidden text-xs text-fg/50 -mt-1" data-i18n="auth.realName.parent.hint">系统会自动在后面添加"家长"</p>
+                    </div>
+                    <div class="flex flex-col gap-2">
+                        <span class="text-xs font-semibold uppercase tracking-wider text-fg/60" data-i18n="auth.identity">身份</span>
+                        <div class="vx-identity-grid grid grid-cols-3 gap-2">
+                            <button type="button" data-identity="student" id="auth-identity-student"
+                                    class="h-12 rounded-md text-sm font-semibold tracking-wider uppercase bg-muted text-fg/60 transition-colors duration-100"
+                                    data-i18n="auth.identity.student">学生</button>
+                            <button type="button" data-identity="teacher" id="auth-identity-teacher"
+                                    class="h-12 rounded-md text-sm font-semibold tracking-wider uppercase bg-muted text-fg/60 transition-colors duration-100"
+                                    data-i18n="auth.identity.teacher">老师</button>
+                            <button type="button" data-identity="parent" id="auth-identity-parent"
+                                    class="h-12 rounded-md text-sm font-semibold tracking-wider uppercase bg-muted text-fg/60 transition-colors duration-100"
+                                    data-i18n="auth.identity.parent">家长</button>
+                        </div>
+                    </div>
+                    <label id="auth-surname-only-wrap" class="hidden items-center gap-2 cursor-pointer select-none pl-1">
+                        <input id="auth-surname-only" type="checkbox" checked class="w-4 h-4 accent-primary">
+                        <span class="text-xs font-semibold uppercase tracking-wider text-fg/80" data-i18n="auth.identity.teacher.surnameOnly">仅填姓（推荐）</span>
+                    </label>
+
+                    <div id="auth-error-register" class="min-h-[1.25rem] text-sm font-medium text-primary"></div>
+
+                    <div class="flex flex-col gap-3 mt-2">
+                        <button id="auth-register-btn" type="button"
+                                class="h-14 bg-primary text-canvas rounded-md font-semibold tracking-wider uppercase text-sm flex items-center justify-center gap-2 hover:bg-primary-hover hover:scale-[1.02] transition-all duration-200">
+                            <i data-lucide="user-plus" class="w-5 h-5"></i>
+                            <span data-i18n="auth.register">注册</span>
+                        </button>
+                        <button id="auth-go-login-btn" type="button"
+                                class="h-12 text-fg/70 hover:text-primary text-xs font-semibold uppercase tracking-wider transition-colors duration-200">
+                            <span data-i18n="auth.goLogin">已有账号？返回登录</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         PROFILE COMPLETION MODAL  老用户首次登录新版本强制弹窗
+         - 必须补全 nickname / real_name / identity 后才能继续使用
+         - 老师可勾选「仅填姓」让 real_name 接受单字符
+         ============================================================ -->
+    <div id="profile-completion-modal" class="vx-modal-overlay">
+        <div class="vx-modal max-w-md">
+            <div class="bg-accent text-canvas px-8 py-6">
+                <h2 class="font-extrabold text-2xl tracking-[-0.02em] uppercase" data-i18n="auth.completion.title">完善资料</h2>
+                <p class="mt-2 text-sm font-medium opacity-90" data-i18n="auth.completion.desc">为了在赛队中更好地协作，请补全以下信息。</p>
+            </div>
+            <form id="profile-completion-form" class="p-8 flex flex-col gap-4" autocomplete="off">
+                <!-- 昵称：已废弃（用户名 = 昵称，nickname 永远 = username，本 section 永远不显示） -->
+                <!-- 真实姓名：已存在时整段隐藏 -->
+                <div id="profile-real-name-section" class="flex flex-col gap-2">
+                    <label id="profile-real-name-label" class="text-xs font-semibold uppercase tracking-wider text-fg/60" for="profile-real-name" data-i18n="auth.realName">真实姓名</label>
+                    <input id="profile-real-name" type="text" maxlength="20" autocomplete="off"
+                           data-i18n-placeholder="auth.realName.ph"
+                           placeholder="输入真实姓名"
+                           class="h-12 px-4 bg-muted text-fg text-base rounded-md border-0 outline-none font-medium focus:bg-canvas focus:border-2 focus:border-primary transition-all duration-200">
+                    <p id="profile-real-name-hint" class="hidden text-xs text-fg/50 -mt-1" data-i18n="auth.realName.parent.hint">系统会自动在后面添加"家长"</p>
+                </div>
+                <!-- 身份：已存在时整段隐藏 -->
+                <div id="profile-identity-section" class="flex flex-col gap-2">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-fg/60" data-i18n="auth.identity">身份</span>
+                    <div class="vx-identity-grid grid grid-cols-3 gap-2">
+                        <button type="button" data-profile-identity="student" id="profile-identity-student"
+                                class="h-12 rounded-md text-sm font-semibold tracking-wider uppercase bg-muted text-fg/60 transition-colors duration-100"
+                                data-i18n="auth.identity.student">学生</button>
+                        <button type="button" data-profile-identity="teacher" id="profile-identity-teacher"
+                                class="h-12 rounded-md text-sm font-semibold tracking-wider uppercase bg-muted text-fg/60 transition-colors duration-100"
+                                data-i18n="auth.identity.teacher">老师</button>
+                        <button type="button" data-profile-identity="parent" id="profile-identity-parent"
+                                class="h-12 rounded-md text-sm font-semibold tracking-wider uppercase bg-muted text-fg/60 transition-colors duration-100"
+                                data-i18n="auth.identity.parent">家长</button>
+                    </div>
+                </div>
+                <label id="profile-surname-only-wrap" class="hidden items-center gap-2 cursor-pointer select-none pl-1">
+                    <input id="profile-surname-only" type="checkbox" checked class="w-4 h-4 accent-primary">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-fg/80" data-i18n="auth.identity.teacher.surnameOnly">仅填姓（推荐）</span>
+                </label>
+                <div id="profile-completion-error" class="min-h-[1.25rem] text-sm font-medium text-primary"></div>
+            </form>
+            <div class="bg-muted px-8 py-6 flex justify-end gap-3">
+                <button id="profile-completion-skip" type="button"
+                        class="h-12 px-6 bg-canvas border-2 border-border text-fg rounded-md font-semibold tracking-wider uppercase text-sm hover:bg-muted transition-all duration-200"
+                        data-i18n="auth.completion.skip">稍后</button>
+                <button id="profile-completion-submit" type="button"
+                        class="h-12 px-6 bg-primary text-canvas rounded-md font-semibold tracking-wider uppercase text-sm flex items-center gap-2 hover:bg-primary-hover hover:scale-105 transition-all duration-200">
+                    <i data-lucide="check" class="w-4 h-4"></i><span data-i18n="auth.completion.submit">保存</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         个人设置（账号管理）
+         - 桌面下拉菜单 / 移动端汉堡菜单入口都指向这里
+         - 三个独立表单：基本信息 / 用户名 / 更改密码，互不影响
+         ============================================================ -->
+    <div id="settings-modal" class="vx-modal-overlay">
+        <div class="vx-modal max-w-lg">
+            <div class="bg-primary text-canvas px-8 py-6 flex items-center justify-between">
+                <h2 class="font-extrabold text-2xl tracking-[-0.02em] uppercase" data-i18n="app.user.settings">个人设置</h2>
+                <i data-lucide="settings" class="w-6 h-6"></i>
+            </div>
+            <!-- 顶部 Tab 导航：三个并列文字 tab，底部高亮线指示 active -->
+            <nav id="settings-tab-nav" class="flex border-b-2 border-border bg-canvas">
+                <button type="button" data-settings-tab="basic"
+                        class="vx-settings-tab is-active flex-1 py-4 text-sm font-bold uppercase tracking-wider text-primary border-b-4 border-primary -mb-[2px] transition-all duration-200">
+                    <i data-lucide="user" class="w-4 h-4 inline-block mr-1.5 -mt-0.5"></i><span data-i18n="app.user.basicInfo">基本信息</span>
+                </button>
+                <button type="button" data-settings-tab="username"
+                        class="vx-settings-tab flex-1 py-4 text-sm font-bold uppercase tracking-wider text-fg/40 border-b-4 border-transparent -mb-[2px] hover:text-fg/70 transition-all duration-200">
+                    <i data-lucide="at-sign" class="w-4 h-4 inline-block mr-1.5 -mt-0.5"></i><span data-i18n="app.user.username">用户名</span>
+                </button>
+                <button type="button" data-settings-tab="password"
+                        class="vx-settings-tab flex-1 py-4 text-sm font-bold uppercase tracking-wider text-fg/40 border-b-4 border-transparent -mb-[2px] hover:text-fg/70 transition-all duration-200">
+                    <i data-lucide="key" class="w-4 h-4 inline-block mr-1.5 -mt-0.5"></i><span data-i18n="app.user.changePassword">更改密码</span>
+                </button>
+            </nav>
+            <div class="p-8 max-h-[70vh] overflow-y-auto grid h-[360px]">
+                <!-- 面板 A：基本信息（真实姓名 + 身份） -->
+                <section data-settings-panel="basic" class="row-start-1 col-start-1 flex flex-col h-full overflow-y-auto">
+                    <form id="settings-basic-form" class="flex flex-col gap-4 h-full">
+                        <div class="flex flex-col gap-2">
+                            <label id="settings-real-name-label" class="text-xs font-semibold uppercase tracking-wider text-fg/60" for="settings-real-name" data-i18n="auth.realName">真实姓名</label>
+                            <input id="settings-real-name" type="text" maxlength="20" autocomplete="off"
+                                   placeholder="输入真实姓名"
+                                   class="h-12 px-4 bg-muted text-fg text-base rounded-md border-0 outline-none font-medium focus:bg-canvas focus:border-2 focus:border-primary transition-all duration-200">
+                            <p id="settings-real-name-hint" class="hidden text-xs text-fg/50 -mt-1" data-i18n="auth.realName.parent.hint">系统会自动在后面添加"家长"</p>
+                        </div>
+                        <div class="flex flex-col gap-2">
+                            <span class="text-xs font-semibold uppercase tracking-wider text-fg/60" data-i18n="auth.identity">身份</span>
+                            <div class="vx-identity-grid grid grid-cols-3 gap-2">
+                                <button type="button" id="settings-identity-student"
+                                        class="h-12 rounded-md text-sm font-semibold tracking-wider uppercase bg-muted text-fg/60 transition-colors duration-100"
+                                        data-i18n="auth.identity.student">学生</button>
+                                <button type="button" id="settings-identity-teacher"
+                                        class="h-12 rounded-md text-sm font-semibold tracking-wider uppercase bg-muted text-fg/60 transition-colors duration-100"
+                                        data-i18n="auth.identity.teacher">老师</button>
+                                <button type="button" id="settings-identity-parent"
+                                        class="h-12 rounded-md text-sm font-semibold tracking-wider uppercase bg-muted text-fg/60 transition-colors duration-100"
+                                        data-i18n="auth.identity.parent">家长</button>
+                            </div>
+                        </div>
+                        <label id="settings-surname-only-wrap" class="hidden items-center gap-2 cursor-pointer select-none pl-1">
+                            <input id="settings-surname-only" type="checkbox" checked class="w-4 h-4 accent-primary">
+                            <span class="text-xs font-semibold uppercase tracking-wider text-fg/80" data-i18n="auth.identity.teacher.surnameOnly">仅填姓（推荐）</span>
+                        </label>
+                        <p class="settings-error min-h-[1.25rem] text-sm font-medium text-primary"></p>
+                        <div class="mt-auto flex gap-3">
+                            <button type="button" data-settings-action="cancel"
+                                    class="h-12 px-6 bg-canvas border-2 border-border text-fg rounded-md font-semibold tracking-wider uppercase text-sm hover:bg-muted transition-all duration-200"
+                                    data-i18n="app.modal.cancel">取消</button>
+                            <button type="submit"
+                                    class="flex-1 h-12 bg-primary text-canvas rounded-md font-semibold tracking-wider uppercase text-sm flex items-center justify-center gap-2 hover:bg-primary-hover hover:scale-[1.02] transition-all duration-200">
+                                <i data-lucide="save" class="w-4 h-4"></i><span data-i18n="app.action.save">保存</span>
+                            </button>
+                        </div>
+                    </form>
+                </section>
+
+                <!-- 面板 B：用户名 -->
+                <section data-settings-panel="username" class="vx-settings-panel-hidden row-start-1 col-start-1 flex flex-col h-full">
+                    <form id="settings-username-form" class="flex flex-col gap-3 h-full">
+                        <input id="settings-username" type="text" minlength="3" maxlength="20" autocomplete="username"
+                               placeholder="输入新用户名"
+                               class="h-12 px-4 bg-muted text-fg text-base rounded-md border-0 outline-none font-medium focus:bg-canvas focus:border-2 focus:border-primary transition-all duration-200">
+                        <p class="text-xs text-fg/50" data-i18n="app.user.usernameHint">修改后下次登录需用新用户名</p>
+                        <p class="settings-username-error min-h-[1.25rem] text-sm font-medium text-primary"></p>
+                        <div class="mt-auto flex gap-3">
+                            <button type="button" data-settings-action="cancel"
+                                    class="h-12 px-6 bg-canvas border-2 border-border text-fg rounded-md font-semibold tracking-wider uppercase text-sm hover:bg-muted transition-all duration-200"
+                                    data-i18n="app.modal.cancel">取消</button>
+                            <button type="submit"
+                                    class="flex-1 h-12 bg-primary text-canvas rounded-md font-semibold tracking-wider uppercase text-sm flex items-center justify-center gap-2 hover:bg-primary-hover hover:scale-[1.02] transition-all duration-200">
+                                <i data-lucide="refresh-cw" class="w-4 h-4"></i><span data-i18n="app.action.update">更新</span>
+                            </button>
+                        </div>
+                    </form>
+                </section>
+
+                <!-- 面板 C：更改密码 -->
+                <section data-settings-panel="password" class="vx-settings-panel-hidden row-start-1 col-start-1 flex flex-col h-full">
+                    <form id="settings-password-form" class="flex flex-col gap-3 h-full">
+                        <input id="settings-old-password" type="password" minlength="6" autocomplete="current-password"
+                               placeholder="旧密码"
+                               data-i18n-placeholder="app.user.oldPassword"
+                               class="h-12 px-4 bg-muted text-fg text-base rounded-md border-0 outline-none font-medium focus:bg-canvas focus:border-2 focus:border-primary transition-all duration-200">
+                        <input id="settings-new-password" type="password" minlength="6" autocomplete="new-password"
+                               placeholder="新密码"
+                               data-i18n-placeholder="app.user.newPassword"
+                               class="h-12 px-4 bg-muted text-fg text-base rounded-md border-0 outline-none font-medium focus:bg-canvas focus:border-2 focus:border-primary transition-all duration-200">
+                        <input id="settings-confirm-password" type="password" minlength="6" autocomplete="new-password"
+                               placeholder="确认新密码"
+                               data-i18n-placeholder="app.user.confirmNewPassword"
+                               class="h-12 px-4 bg-muted text-fg text-base rounded-md border-0 outline-none font-medium focus:bg-canvas focus:border-2 focus:border-primary transition-all duration-200">
+                        <p class="settings-password-error min-h-[1.25rem] text-sm font-medium text-primary"></p>
+                        <div class="mt-auto flex gap-3">
+                            <button type="button" data-settings-action="cancel"
+                                    class="h-12 px-6 bg-canvas border-2 border-border text-fg rounded-md font-semibold tracking-wider uppercase text-sm hover:bg-muted transition-all duration-200"
+                                    data-i18n="app.modal.cancel">取消</button>
+                            <button type="submit"
+                                    class="flex-1 h-12 bg-primary text-canvas rounded-md font-semibold tracking-wider uppercase text-sm flex items-center justify-center gap-2 hover:bg-primary-hover hover:scale-[1.02] transition-all duration-200">
+                                <i data-lucide="key" class="w-4 h-4"></i><span data-i18n="app.user.changePassword">更改密码</span>
+                            </button>
+                        </div>
+                    </form>
+                </section>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         PROFILE COMPLETION "NUDGE" MODAL  「稍后」按钮的俏皮劝导弹窗
+         - 不是真的关闭，而是告诉用户这几项对他的赛队身份很重要
+         - 体验上比禁用"稍后"按钮更友好，也更有"有性格的网站"的感觉
+         ============================================================ -->
+    <div id="profile-nudge-modal" class="vx-modal-overlay">
+        <div class="vx-modal max-w-sm">
+            <div class="bg-primary text-canvas px-8 py-6 text-center">
+                <div class="text-5xl mb-3">🤔</div>
+                <h2 class="font-extrabold text-2xl tracking-[-0.02em] uppercase" data-i18n="auth.nudge.title">等一下！</h2>
+            </div>
+            <div class="p-8 text-center flex flex-col gap-4">
+                <p class="text-base text-fg font-medium leading-relaxed" data-i18n="auth.nudge.body">这几项对你在赛队里被认出很重要哦，真的不填一下吗？</p>
+                <button id="profile-nudge-ok" type="button"
+                        class="h-12 bg-primary text-canvas rounded-md font-semibold tracking-wider uppercase text-sm flex items-center justify-center gap-2 hover:bg-primary-hover hover:scale-[1.02] transition-all duration-200">
+                    <i data-lucide="check" class="w-5 h-5"></i><span data-i18n="auth.nudge.ok">好的，我去填</span>
+                </button>
             </div>
         </div>
     </div>
@@ -621,6 +880,10 @@
                         </button>
                         <div id="user-menu" class="vx-user-menu">
                             <div class="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-fg/60" id="user-menu-name" data-i18n="app.user.account">账号</div>
+                            <div class="h-px bg-border my-1"></div>
+                            <button type="button" data-user-action="settings">
+                                <i data-lucide="settings" class="w-4 h-4"></i><span data-i18n="app.user.settings">个人设置</span>
+                            </button>
                             <div class="h-px bg-border my-1"></div>
                             <button type="button" data-team-action="create">
                                 <i data-lucide="users" class="w-4 h-4"></i><span data-i18n="app.team.create">创建赛队</span>
@@ -836,15 +1099,16 @@
         </div>
     </div>
 
-    <!-- 邀请成员 -->
+    <!-- 管理赛队 / 成员管理（统一入口，按角色动态渲染） -->
     <div id="invite-modal" class="vx-modal-overlay">
-        <div class="vx-modal">
+        <div class="vx-modal max-w-lg">
             <div class="bg-accent text-canvas px-8 py-6 flex items-center justify-between">
-                <h2 class="font-extrabold text-2xl tracking-[-0.02em] uppercase" data-i18n="app.team.inviteTitle">邀请成员</h2>
-                <i data-lucide="user-plus" class="w-6 h-6"></i>
+                <h2 class="font-extrabold text-2xl tracking-[-0.02em] uppercase" data-i18n="app.team.manageTitle">管理赛队</h2>
+                <i data-lucide="user-cog" class="w-6 h-6"></i>
             </div>
             <div class="p-8 flex flex-col gap-6">
-                <div class="flex flex-col gap-3">
+                <!-- 邀请码区域（owner/captain/teacher/member 可见，visitor 不可见） -->
+                <div id="invite-code-section" class="flex flex-col gap-3">
                     <label class="text-xs font-semibold uppercase tracking-wider text-fg/60" data-i18n="app.team.inviteCode">邀请码</label>
                     <div class="bg-primary text-canvas rounded-lg p-6 flex items-center justify-between">
                         <span id="invite-code-display" class="vx-mono font-extrabold text-4xl flex-1 text-center">---</span>
@@ -853,11 +1117,24 @@
                             <i data-lucide="copy" class="w-5 h-5"></i>
                         </button>
                     </div>
+                    <!-- 重置邀请码（owner/captain/teacher 可见，member/visitor 不可见） -->
+                    <button id="regenerate-invite-btn" type="button"
+                            class="self-start h-10 px-4 bg-canvas border-2 border-border text-fg rounded-md font-semibold tracking-wider uppercase text-xs flex items-center gap-2 hover:bg-muted transition-all duration-200">
+                        <i data-lucide="refresh-cw" class="w-4 h-4"></i><span data-i18n="app.team.regenerateInvite">重置邀请码</span>
+                    </button>
                 </div>
+
+                <!-- 成员列表区域（所有角色都可见） -->
                 <div class="flex flex-col gap-3">
                     <label class="text-xs font-semibold uppercase tracking-wider text-fg/60" data-i18n="app.team.members">成员列表</label>
-                    <div id="members-list" class="border-2 border-border rounded-md max-h-60 overflow-y-auto"></div>
+                    <div id="members-list" class="border-2 border-border rounded-md max-h-72 overflow-y-auto"></div>
                 </div>
+
+                <!-- 删除赛队（仅 owner 可见） -->
+                <button id="delete-team-btn" type="button"
+                        class="self-start h-10 px-4 bg-canvas border-2 border-primary text-primary rounded-md font-semibold tracking-wider uppercase text-xs flex items-center gap-2 hover:bg-primary hover:text-canvas transition-all duration-200">
+                    <i data-lucide="trash-2" class="w-4 h-4"></i><span data-i18n="app.team.deleteTeam">删除赛队</span>
+                </button>
             </div>
             <div class="bg-muted px-8 py-6 flex justify-end">
                 <button id="close-invite-btn" type="button"
@@ -936,6 +1213,10 @@
         <div class="mb-6">
             <div class="text-xs font-semibold uppercase tracking-wider text-fg/60 mb-2" data-i18n="app.drawer.teams">赛队</div>
             <div class="flex flex-col gap-2">
+                <button data-user-action="settings" type="button"
+                        class="h-12 border-4 border-primary text-primary rounded-md font-semibold tracking-wider uppercase text-sm flex items-center justify-center gap-2 hover:bg-primary hover:text-canvas transition-all duration-200">
+                    <i data-lucide="settings" class="w-4 h-4"></i><span data-i18n="app.user.settings">个人设置</span>
+                </button>
                 <button data-team-action="create" type="button"
                         class="h-12 bg-secondary text-canvas rounded-md font-semibold tracking-wider uppercase text-sm flex items-center justify-center gap-2 hover:scale-105 transition-all duration-200">
                     <i data-lucide="users" class="w-4 h-4"></i><span data-i18n="app.team.create">创建赛队</span>
