@@ -2221,6 +2221,11 @@ class App {
           try {
             await cloudDBManager.updateMemberRole(this.currentTimelineId, userId, newRole);
             this.showToast(this._i18n('app.team.roleUpdated', '角色已更新'), 'success');
+            // 改了角色后立刻刷新"自己"在本赛队的角色缓存 + 重渲染
+            // （改的可能是自己；旧实现得手动点云朵才生效）
+            await this._loadCurrentTimelineRole();
+            this.updateManageButton();
+            this.renderView();
             // 刷新成员列表（保持排序与显示名一致）
             await this._refreshMembersList();
           } catch (err) {
@@ -2319,6 +2324,11 @@ class App {
           try {
             await cloudDBManager.updateMemberRole(this.currentTimelineId, userId, newRole);
             this.showToast(this._i18n('app.team.roleUpdated', '角色已更新'), 'success');
+            // 改了角色后立刻刷新"自己"在本赛队的角色缓存 + 重渲染
+            // （改的可能是自己；旧实现得手动点云朵才生效）
+            await this._loadCurrentTimelineRole();
+            this.updateManageButton();
+            this.renderView();
             await this._refreshMembersList();
           } catch (err) {
             this.showToast(this._i18n('app.team.roleUpdateFail', '更新角色失败：') + (err.message || err), 'error');
