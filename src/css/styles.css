@@ -869,6 +869,14 @@ body {
 @media (prefers-color-scheme: dark) {
   .vx-item-time { color: var(--color-fg); }
 }
+/* 记录创建者（赛队时间轴）：紧跟时间后显示「· nick（real_name）」，与 time 同色弱化 */
+.vx-item-creator {
+  color: var(--color-fg-muted);
+  font-weight: 500;
+}
+@media (prefers-color-scheme: dark) {
+  .vx-item-creator { color: var(--color-fg); }
+}
 .vx-item-title-row {
   display: flex;
   align-items: center;
@@ -978,6 +986,7 @@ body {
 .hover\:bg-muted:hover     { background-color: var(--color-muted); }
 .hover\:bg-fg:hover        { background-color: var(--color-fg); }
 .hover\:bg-canvas:hover    { background-color: var(--color-bg); }
+.hover\:bg-border:hover    { background-color: var(--color-border); }  /* Round 41：替代硬编码的 hover:bg-gray-200，浅色 = gray-200；暗色 = slate-700，不再泛白 */
 .hover\:bg-primary:hover   { background-color: var(--color-primary); }
 .hover\:bg-primary-hover:hover { background-color: var(--color-primary-hover); }
 .hover\:bg-danger:hover    { background-color: var(--color-danger); }

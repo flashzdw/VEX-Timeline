@@ -3,7 +3,11 @@
 // v40: 修复添加文件按钮的 i18n + 选了文件却仍显示「未选择任何文件」的问题
 //      - 用自定义按钮 + 文件名 span 替换原生 <input type="file"> 视觉
 //      - 新增 app.modal.noFile / app.modal.fileSelected
-const CACHE_NAME = 'vex-timeline-cache-v40';
+// v41: 赛队时间轴显示记录创建者 + 暗色模式头像 hover 修复
+//      - 赛队时间轴每条记录在时间后加「· nick（真实姓名）」，复用 getFullDisplayName
+//      - 修复顶栏 user-menu-btn / mobile-menu-btn 在暗色模式 hover:bg-gray-200 泛白
+//        改为 hover:bg-border（CSS 变量，浅色=gray-200，暗色=slate-700）
+const CACHE_NAME = 'vex-timeline-cache-v41';
 
 // Only cache the static shell — NEVER cache JS files (auth.js, app.js, config.js, etc.)
 // because they change with each deploy and JS bugs in cached files can break the app.

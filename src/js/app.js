@@ -20,6 +20,8 @@ class App {
     this.syncInProgress = false;
     this.cloudSyncStatus = 'unknown';
     this.cloudErrorMessage = '';
+    // 记录创建者缓存（team timeline 用）：user_id → users row
+    this._recordCreatorCache = { timelineId: null, map: new Map() };
 
     this.init();
   }
@@ -446,6 +448,8 @@ class App {
         this.updateTimelineSelector();
         this.updateTimelineLabel(this._findTimelineName(id));
         this.updateManageButton();
+        // 切换时间轴 → 失效创建者缓存（不同 timeline 的成员列表不同）
+        this._invalidateCreatorMap();
         // 切换时间轴 → 重新拉取赛队角色（决定权限）
         this._loadCurrentTimelineRole().catch(e => console.warn('load role', e));
         this.closeAllMenus();
@@ -579,6 +583,61 @@ class App {
     const role = await cloudDBManager.getMemberRole(this.currentTimelineId);
     this._currentTimelineRole = role;
     return role;
+  }
+
+  // ============================================================
+  // 记录创建者缓存（renderTimeline 用）
+  // - team timeline 预拉一次成员列表，构建 user_id → users row 映射
+  // - 切 timeline / sync 完成后调用 _invalidateCreatorMap() 强制重建
+  // - personal timeline / 未登录 / 无云端 → 跳过（保持现状）
+  // ============================================================
+  /**
+   * 为 team timeline 构建 user_id → users row 的缓存
+   * @returns {Promise<void>}
+   */
+  async _ensureCreatorMap() {
+    const current = this.timelines.find(t => t.id === this.currentTimelineId);
+    if (!current || current.type !== 'team') return;
+    if (!authManager.isLoggedIn() || !supabaseManager.isConfigured()) return;
+    if (this._recordCreatorCache && this._recordCreatorCache.timelineId === this.currentTimelineId) return; // 已有
+
+    try {
+      const members = await cloudDBManager.getTimelineMembers(this.currentTimelineId);
+      const map = new Map();
+      (members || []).forEach(m => {
+        if (m.user_id && m.users) map.set(m.user_id, m.users);
+      });
+      this._recordCreatorCache = { timelineId: this.currentTimelineId, map };
+    } catch (e) {
+      console.warn('[VEX-Timeline] _ensureCreatorMap failed:', e);
+      // 失败时不阻塞 renderTimeline（records 仍会显示，只是没创建者名）
+      this._recordCreatorCache = { timelineId: this.currentTimelineId, map: new Map() };
+    }
+  }
+
+  /**
+   * 切换 timeline / 同步完成后调用，强制下次 renderTimeline 重建
+   */
+  _invalidateCreatorMap() {
+    this._recordCreatorCache = { timelineId: null, map: new Map() };
+  }
+
+  /**
+   * 生成记录创建者的 HTML（team timeline + 有 user_id + 缓存命中 时返回 "· nick（real_name）"；否则返回 ''）
+   * @param {object} record
+   * @returns {string} HTML 片段
+   */
+  _creatorHtmlForRecord(record) {
+    if (!record || !record.user_id) return '';
+    const current = this.timelines.find(t => t.id === this.currentTimelineId);
+    if (!current || current.type !== 'team') return '';
+    const cache = this._recordCreatorCache;
+    if (!cache || !cache.map) return '';
+    const user = cache.map.get(record.user_id);
+    if (!user) return '';
+    const name = this.getFullDisplayName(user);
+    if (!name) return '';
+    return `<span class="vx-item-creator"> · ${this._escapeHtml(name)}</span>`;
   }
 
   /** 添加记录：owner/captain/teacher/member 可见，visitor 不可见 */
@@ -725,6 +784,8 @@ class App {
       // 在切换权限后能立即按新角色显示
       await this._loadCurrentTimelineRole();
       this.updateManageButton();
+      // 新成员加入 / 退出后，失效创建者缓存，下次 renderTimeline 重建
+      this._invalidateCreatorMap();
       await this.renderView();
       this.cloudSyncStatus = 'ok';
     } catch (e) {
@@ -2844,12 +2905,15 @@ class App {
     if (dayRecords.length === 0) {
       content.innerHTML = `<div class="vx-empty">${this._i18n('app.empty.records', '暂无记录')}</div>`;
     } else {
+      // 新功能：月历弹窗也要展示记录创建者（与时间轴卡片保持一致）
+      await this._ensureCreatorMap();
       dayRecords.sort((a, b) => (a.time || '00:00').localeCompare(b.time || '00:00'));
       let html = '';
       dayRecords.forEach(record => {
         const time = record.time || '';
         const importance = record.importance || 'medium';
         const imgSrc = record.image || record.image_url || '';
+        const creatorHtml = this._creatorHtmlForRecord(record);
         // 语义化颜色（红/黄/绿）
         const importanceColors = {
           high:   'bg-danger',       // 红
@@ -2865,7 +2929,7 @@ class App {
           <div class="vx-day-record vx-timeline-item p-6 ${importanceBg[importance]}" data-importance="${importance}">
             <div class="flex items-center gap-3 mb-3">
               <span class="h-3 w-3 rounded-full ${importanceColors[importance]}"></span>
-              <span class="text-xs font-semibold uppercase tracking-wider text-fg/60">${time}</span>
+              <span class="text-xs font-semibold uppercase tracking-wider text-fg/60">${this._escapeHtml(time)}${creatorHtml}</span>
             </div>
             <div class="font-semibold text-lg mb-2">${this._escapeHtml(record.title)}</div>
             ${record.content ? `<div class="text-fg/60 text-sm mb-3">${this._escapeHtml(record.content)}</div>` : ''}
@@ -2892,6 +2956,10 @@ class App {
     const timeline = document.getElementById('timeline');
     this.showLoadingState();
     await new Promise(resolve => setTimeout(resolve, 100));
+
+    // 新功能：team timeline 时预拉成员，构建 user_id → userObj 缓存
+    // - 失败 / personal / 未登录 → 缓存为空，记录仍正常显示（无创建者名）
+    await this._ensureCreatorMap();
 
     this.records = await this.getRecordsForCurrentTimeline();
     let filteredRecords = this.records;
@@ -2955,6 +3023,8 @@ class App {
         const canEdit = this.canEditRecord(record);
         // 用 String() 强制转换为字符串以兼容 UUID 和数字 id
         const recordIdStr = String(record.id);
+        // 新功能：赛队时间轴下显示创建者「· nick（real_name）」；个人时间轴 / 无 user_id → ''
+        const creatorHtml = this._creatorHtmlForRecord(record);
 
         // Round 6：卡片内部只显示时间；重要性 inline 在标题前
         // Round 10：内联 style 强制 padding/border 紧凑，绕过任何 CSS 优先级问题
@@ -2973,7 +3043,7 @@ class App {
                 </button>
               </div>
             ` : ''}
-            <div class="vx-item-time" style="display:block !important;font-size:10px !important;line-height:1 !important;margin:0 0 4px 0 !important;padding:0 !important;font-weight:600 !important;text-transform:uppercase !important;letter-spacing:0.05em !important;">${this._escapeHtml(time)}</div>
+            <div class="vx-item-time" style="display:block !important;font-size:10px !important;line-height:1 !important;margin:0 0 4px 0 !important;padding:0 !important;font-weight:600 !important;text-transform:uppercase !important;letter-spacing:0.05em !important;">${this._escapeHtml(time)}${creatorHtml}</div>
             <div class="vx-item-title-row">
               <span class="inline-flex items-center justify-center text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded ${importanceBadgeColors[importance]}">${importanceLabel[importance]}</span>
               <h4 class="vx-item-title">${this._escapeHtml(record.title)}</h4>
