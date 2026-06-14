@@ -1539,3 +1539,56 @@ body[data-scene="app"]  #site-header {
   letter-spacing: 0.1em;
   color: var(--color-fg);          /* 必须用 fg 不能用 fg-muted：muted 在深色下 0.78 不透字 + 小字号视觉上糊掉 */
 }
+
+/* ============================================================
+   Round 42: 多图 / 图库 / 详情 modal / lightbox
+   ============================================================ */
+
+/* 多图横向滚动：隐藏粗滚动条但保持可滚 */
+.vx-card-imgs .flex::-webkit-scrollbar { height: 4px; }
+.vx-card-imgs .flex::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 2px; }
+
+/* 图库项：square aspect，hover 边框变 primary */
+.vx-gallery-item {
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.vx-gallery-item img { transition: transform 0.2s ease-out; }
+.vx-gallery-item:hover img { transform: scale(1.02); }
+
+/* 移动端：图库 action bar 适配安全区 */
+@media (max-width: 640px) {
+  #gallery-action-bar { padding-bottom: max(0.75rem, env(safe-area-inset-bottom)); }
+}
+
+/* 详情 modal 内 carousel 缩略图条 */
+.vx-carousel-thumb { transition: border-color 0.15s ease-out; }
+
+/* 详情 modal body 自带滚动 */
+#record-detail-body { scrollbar-width: thin; }
+
+/* 全屏 lightbox */
+#vx-lightbox { padding: 1rem; }
+#vx-lightbox-img { transition: opacity 0.15s ease-out; }
+
+/* 多图预览网格的删除 X 按钮（modal 内预览） */
+.vx-image-remove {
+  position: absolute;
+  top: -8px; right: -8px;
+  height: 24px; width: 24px;
+  background-color: var(--color-bg);
+  border: 2px solid var(--color-border);
+  border-radius: 9999px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  z-index: 1;
+}
+.vx-image-remove:hover {
+  background-color: var(--color-danger);
+  color: var(--color-bg);
+  border-color: var(--color-danger);
+}
+
+/* 卡片 hover 高亮（点卡片开 detail 的视觉提示） */
+.vx-timeline-item { cursor: pointer; transition: border-color 0.15s ease-out, background-color 0.15s ease-out; }
+.vx-timeline-item:hover { border-color: var(--color-primary) !important; }

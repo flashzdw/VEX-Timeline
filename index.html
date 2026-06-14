@@ -846,6 +846,11 @@
                             class="h-10 px-2 sm:px-4 inline-flex items-center justify-center rounded-md text-sm font-semibold tracking-wider uppercase text-fg/60 hover:text-fg transition-all duration-200">
                         <i data-lucide="calendar" class="w-4 h-4 sm:mr-1"></i><span class="hidden sm:inline" data-i18n="app.view.month">月历</span>
                     </button>
+                    <!-- Round 42: 图库视图 — iOS 风格缩略图网格 -->
+                    <button data-view-toggle="gallery"
+                            class="h-10 px-2 sm:px-4 inline-flex items-center justify-center rounded-md text-sm font-semibold tracking-wider uppercase text-fg/60 hover:text-fg transition-all duration-200">
+                        <i data-lucide="images" class="w-4 h-4 sm:mr-1"></i><span class="hidden sm:inline" data-i18n="app.view.gallery">图库</span>
+                    </button>
                 </div>
 
                 <!-- 时间轴选择器（自定义下拉） -->
@@ -982,7 +987,65 @@
                 </div>
                 <div id="calendar" class="grid grid-cols-7 gap-0 border-2 border-border rounded-lg overflow-hidden max-w-4xl mx-auto"></div>
             </section>
+
+            <!-- ============= GALLERY VIEW (Round 42) ============= -->
+            <section id="gallery-container" class="relative z-10 hidden">
+                <div class="flex items-center justify-between mb-6 gap-4 flex-wrap">
+                    <div>
+                        <div class="text-xs font-semibold uppercase tracking-wider text-fg/60" data-i18n="app.gallery.title">图片</div>
+                        <h2 class="font-extrabold text-3xl tracking-[-0.02em] uppercase" data-i18n="app.view.gallery">图库</h2>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button id="gallery-select-btn" type="button"
+                                class="h-10 px-4 bg-canvas border-2 border-border rounded-md font-semibold text-xs uppercase tracking-wider hover:bg-muted transition-all duration-200"
+                                data-i18n="app.gallery.selectionMode">选择</button>
+                        <button id="gallery-download-all-btn" type="button"
+                                class="h-10 px-4 bg-primary text-canvas rounded-md font-semibold text-xs uppercase tracking-wider hover:bg-primary-hover transition-all duration-200">
+                            <i data-lucide="download" class="w-4 h-4 sm:mr-1"></i><span data-i18n="app.gallery.downloadAll">下载全部</span>
+                        </button>
+                    </div>
+                </div>
+                <div id="gallery-grid" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2"></div>
+                <div id="gallery-empty" class="hidden text-center py-16 text-fg/60">
+                    <i data-lucide="image-off" class="w-12 h-12 mx-auto mb-3 text-fg/40"></i>
+                    <p class="text-sm font-semibold uppercase tracking-wider" data-i18n="app.gallery.empty">时间轴中暂无图片</p>
+                </div>
+            </section>
         </main>
+
+        <!-- ============= GALLERY ACTION BAR (Round 42) ============= -->
+        <!-- 选择模式下显示在底部；非选择模式 hidden -->
+        <div id="gallery-action-bar" class="hidden fixed bottom-0 inset-x-0 z-50 bg-canvas border-t-2 border-border px-4 py-3 flex items-center justify-between gap-3 shadow-[0_-4px_0_0_var(--color-fg)]">
+            <span id="gallery-selected-count" class="text-xs font-semibold uppercase tracking-wider text-fg/60" data-i18n="app.gallery.selected0">已选 0 张</span>
+            <div class="flex items-center gap-2">
+                <button id="gallery-cancel-btn" type="button"
+                        class="h-10 px-4 bg-canvas border-2 border-border rounded-md font-semibold text-xs uppercase tracking-wider hover:bg-muted transition-all duration-200"
+                        data-i18n="app.gallery.cancelSelection">取消</button>
+                <button id="gallery-download-btn" type="button"
+                        class="h-10 px-4 bg-primary text-canvas rounded-md font-semibold text-xs uppercase tracking-wider hover:bg-primary-hover transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                        disabled>
+                    <i data-lucide="download" class="w-4 h-4 mr-1"></i><span data-i18n="app.gallery.download">下载</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- ============= RECORD DETAIL OVERLAY (Round 42) ============= -->
+        <!-- 点击时间轴卡片打开此 modal；内嵌多图轮播 + lightbox + prev/next -->
+        <div id="record-detail-overlay" class="vx-modal-overlay">
+            <div class="vx-modal max-w-3xl p-0 overflow-hidden">
+                <div class="bg-fg text-canvas px-6 sm:px-8 py-5 flex items-center justify-between">
+                    <h3 id="record-detail-title" class="font-extrabold text-xl sm:text-2xl tracking-[-0.02em] uppercase truncate">—</h3>
+                    <button id="close-record-detail" type="button"
+                            class="h-10 w-10 flex items-center justify-center bg-canvas/10 hover:bg-canvas/20 rounded-md transition-all duration-200"
+                            aria-label="Close">
+                        <i data-lucide="x" class="w-5 h-5"></i>
+                    </button>
+                </div>
+                <div id="record-detail-body" class="p-6 sm:p-8 flex flex-col gap-5 max-h-[80vh] overflow-y-auto">
+                    <!-- JS 动态填充：时间、重要性、标题、内容、图轮播、创建者、prev/next、按钮 -->
+                </div>
+            </div>
+        </div>
 
         <!-- ============= DAY RECORDS OVERLAY ============= -->
         <div id="day-records-overlay" class="vx-modal-overlay">
@@ -1041,22 +1104,18 @@
                     <textarea id="record-content" data-i18n-placeholder="app.modal.contentPh" placeholder="请输入内容" rows="4"
                               class="p-4 bg-muted text-fg rounded-md border-0 outline-none font-medium resize-none focus:bg-canvas focus:border-2 focus:border-primary transition-all duration-200"></textarea>
                 </div>
+                <!-- Round 42: 多图上传 — 原 #record-image 单图已替换为 #record-images multiple -->
                 <div class="flex flex-col gap-2">
-                    <label class="text-xs font-semibold uppercase tracking-wider text-fg/60" for="record-image" data-i18n="app.modal.image">图片</label>
+                    <label class="text-xs font-semibold uppercase tracking-wider text-fg/60" for="record-images" data-i18n="app.modal.images">图片</label>
                     <div class="flex items-center gap-3 flex-wrap">
-                        <input id="record-image" type="file" accept="image/*" class="vx-file-input-sr">
-                        <button type="button" id="record-image-trigger"
+                        <input id="record-images" type="file" accept="image/*" multiple class="vx-file-input-sr">
+                        <button type="button" id="record-images-trigger"
                                 class="h-10 px-4 bg-fg text-canvas rounded-md font-semibold tracking-wider uppercase text-xs hover:bg-primary transition-all duration-200 cursor-pointer"
-                                data-i18n="app.modal.chooseFile">选择文件</button>
-                        <span id="record-image-name" class="text-xs font-medium text-fg/60 truncate max-w-[14rem]" data-i18n="app.modal.noFile">未选择任何文件</span>
+                                data-i18n="app.modal.chooseFiles">选择图片</button>
+                        <span id="record-images-name" class="text-xs font-medium text-fg/60 truncate max-w-[14rem]" data-i18n="app.modal.noFiles">未选择任何文件</span>
                     </div>
-                    <div id="image-preview" class="hidden mt-2 relative inline-block">
-                        <img id="preview-img" src="" data-i18n-alt="app.modal.preview" alt="预览" class="max-w-[200px] max-h-[200px] object-cover rounded-md border-2 border-border">
-                        <button type="button" id="remove-image-btn"
-                                class="absolute -top-3 -right-3 h-8 w-8 bg-canvas border-2 border-border rounded-md flex items-center justify-center hover:bg-red-50 hover:border-primary transition-all duration-200">
-                            <i data-lucide="x" class="w-4 h-4"></i>
-                        </button>
-                    </div>
+                    <!-- 多图网格预览（每图右上角 X 删除） -->
+                    <div id="images-preview" class="hidden mt-2 grid grid-cols-3 sm:grid-cols-4 gap-2"></div>
                 </div>
             </form>
             <div class="bg-muted px-8 py-6 flex justify-end gap-3">
@@ -1247,6 +1306,8 @@
 
     <script src="https://unpkg.com/lucide@0.378.0"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Round 42: JSZip for 批量图片下载为 ZIP；defer 避免阻塞首屏 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" defer></script>
     <script src="./src/js/config.js"></script>
     <script src="./src/js/db.js"></script>
     <script src="./src/js/supabase.js"></script>

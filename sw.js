@@ -7,7 +7,12 @@
 //      - 赛队时间轴每条记录在时间后加「· nick（真实姓名）」，复用 getFullDisplayName
 //      - 修复顶栏 user-menu-btn / mobile-menu-btn 在暗色模式 hover:bg-gray-200 泛白
 //        改为 hover:bg-border（CSS 变量，浅色=gray-200，暗色=slate-700）
-const CACHE_NAME = 'vex-timeline-cache-v41';
+// v42 (2026-06-14) — Round 42: 多图导入 + 图库 + 详情 modal + lightbox + 图片下载
+//      - 记录 modal 文件输入改 multiple，新增 image_urls 数组 + 多图 carousel 预览
+//      - 新增图库视图（iOS Photos 风格方形网格 + 选择模式 + JSZip 批量下载）
+//      - 新增卡片详情 modal + 全屏 lightbox，点击卡片正文打开
+//      - 新增单图 / ZIP 批量图片下载
+const CACHE_NAME = 'vex-timeline-cache-v42';
 
 // Only cache the static shell — NEVER cache JS files (auth.js, app.js, config.js, etc.)
 // because they change with each deploy and JS bugs in cached files can break the app.

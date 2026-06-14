@@ -12,8 +12,8 @@ class App {
     this.records = [];
     this.editingRecord = null;
     this.currentFilter = 'all';
-    this.tempImageData = null;
-    this.tempImageFileName = null;  // 新建场景下用户当前选中的文件 name；编辑模式 / 未选时为 null
+    // Round 42: 多图 — 每项 { url, file, fileName }；旧 tempImageData/FileName 已合并到这里
+    this.tempImages = [];
     this.currentTimelineId = this._loadStoredTimelineId() || null;
     this.timelines = [];
     this.isOnline = navigator.onLine;
@@ -22,6 +22,16 @@ class App {
     this.cloudErrorMessage = '';
     // 记录创建者缓存（team timeline 用）：user_id → users row
     this._recordCreatorCache = { timelineId: null, map: new Map() };
+    // Round 42: 图库选择态
+    this._gallerySelectionMode = false;
+    this._gallerySelected = new Set(); // url 集合
+    // Round 42: 详情 modal 状态
+    this._currentDetailRecordId = null;
+    this._currentDetailImageIndex = 0;
+    // Round 42: lightbox 状态
+    this._lightboxOpen = false;
+    this._lightboxImages = null;
+    this._lightboxIndex = 0;
 
     this.init();
   }
@@ -205,8 +215,8 @@ class App {
       // 一次，导致 label 被覆盖成「未选择/Unselected」。这里再调一次 updateTimelineSelector()
       // 把它写回当前时间轴的（已翻译过的）名字。
       try { this.updateTimelineSelector(); } catch (e) { /* noop */ }
-      // 同步：record-image-name 也要按当前语言重渲（file.name 不动，没图时回退到「未选择」/「No file chosen」）
-      try { this._updateRecordImageName(); } catch (e) { /* noop */ }
+      // 同步：record-images-name 也要按当前语言重渲（fileName 不动，没图时回退到「未选择任何文件」）
+      try { this._updateRecordImagesName(); } catch (e) { /* noop */ }
     }
   }
 
@@ -941,14 +951,27 @@ class App {
       });
     });
 
-    document.getElementById('record-image').addEventListener('change', (e) => this.handleImageUpload(e));
-    document.getElementById('remove-image-btn').addEventListener('click', () => this.removeImage());
-
-    // 自定义「选择文件」按钮 → 触发隐藏的原生 <input type="file">
-    const imgTrigger = document.getElementById('record-image-trigger');
+    // Round 42: 多图 — 原 #record-image 替换为 #record-images (multiple)
+    const recordImages = document.getElementById('record-images');
+    if (recordImages) {
+      recordImages.addEventListener('change', (e) => this.handleImagesUpload(e));
+    }
+    // 自定义「选择图片」按钮 → 触发隐藏的原生 <input type="file" multiple>
+    const imgTrigger = document.getElementById('record-images-trigger');
     if (imgTrigger) {
       imgTrigger.addEventListener('click', () => {
-        document.getElementById('record-image').click();
+        const input = document.getElementById('record-images');
+        if (input) input.click();
+      });
+    }
+    // 多图预览上的 X 按钮（事件委托）
+    const imagesPreview = document.getElementById('images-preview');
+    if (imagesPreview) {
+      imagesPreview.addEventListener('click', (e) => {
+        const btn = e.target.closest('.vx-image-remove');
+        if (!btn) return;
+        const idx = parseInt(btn.dataset.index, 10);
+        if (!Number.isNaN(idx)) this._removeImageAt(idx);
       });
     }
 
@@ -1249,6 +1272,57 @@ class App {
           }
         });
       });
+    });
+
+    // ====== Round 42: 图库操作按钮 ======
+    const gallerySelectBtn = document.getElementById('gallery-select-btn');
+    if (gallerySelectBtn) gallerySelectBtn.addEventListener('click', () => {
+      this._gallerySelectionMode = true;
+      this._gallerySelected.clear();
+      this.renderGallery();
+    });
+    const galleryCancelBtn = document.getElementById('gallery-cancel-btn');
+    if (galleryCancelBtn) galleryCancelBtn.addEventListener('click', () => this._exitGallerySelection());
+    const galleryDownloadBtn = document.getElementById('gallery-download-btn');
+    if (galleryDownloadBtn) galleryDownloadBtn.addEventListener('click', () => this._downloadGalleryZip());
+    const galleryDownloadAllBtn = document.getElementById('gallery-download-all-btn');
+    if (galleryDownloadAllBtn) galleryDownloadAllBtn.addEventListener('click', () => {
+      this._gallerySelected = new Set(this._getGalleryItems().map(it => it.url));
+      this._downloadGalleryZip();
+    });
+
+    // ====== Round 42: 详情 modal 关闭 ======
+    const closeDetailBtn = document.getElementById('close-record-detail');
+    if (closeDetailBtn) closeDetailBtn.addEventListener('click', () => this.closeRecordDetail());
+    const detailOverlay = document.getElementById('record-detail-overlay');
+    if (detailOverlay) {
+      detailOverlay.addEventListener('click', (e) => {
+        if (e.target === detailOverlay) this.closeRecordDetail();
+      });
+    }
+
+    // ====== Round 42: 全局 ESC + 详情内 ← / → 翻图 ======
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        if (this._lightboxOpen) { this._closeLightbox(); return; }
+        const detail = document.getElementById('record-detail-overlay');
+        if (detail && detail.classList.contains('active')) { this.closeRecordDetail(); return; }
+      }
+      // 详情 modal 打开时 ← / → 翻图
+      const detail = document.getElementById('record-detail-overlay');
+      if (detail && detail.classList.contains('active') && this._currentDetailRecordId) {
+        const r = (this.records || []).find(x => String(x.id) === this._currentDetailRecordId);
+        if (!r) return;
+        const imgs = this._getRecordImages(r);
+        if (imgs.length < 2) return;
+        if (e.key === 'ArrowLeft') {
+          e.preventDefault();
+          this.showRecordDetail(r, (this._currentDetailImageIndex - 1 + imgs.length) % imgs.length);
+        } else if (e.key === 'ArrowRight') {
+          e.preventDefault();
+          this.showRecordDetail(r, (this._currentDetailImageIndex + 1) % imgs.length);
+        }
+      }
     });
   }
 
@@ -2485,52 +2559,87 @@ class App {
   }
 
   // ============================================================
-  // 图片上传
+  // 多图上传（Round 42）
+  // - 每次选择多个文件 → 追加到 this.tempImages
+  // - 每项: { url: dataURL|https, file: File|null, fileName: string|null }
+  // - 编辑时把现有 record 的图填入 tempImages（url 字段填原 URL；file=null）
   // ============================================================
-  handleImageUpload(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-    this.tempImageFileName = file.name;
-    this._updateRecordImageName();
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      this.tempImageData = event.target.result;
-      const preview = document.getElementById('image-preview');
-      const previewImg = document.getElementById('preview-img');
-      previewImg.src = this.tempImageData;
-      preview.classList.remove('hidden');
-    };
-    reader.readAsDataURL(file);
+  handleImagesUpload(e) {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+    let pending = files.length;
+    files.forEach(file => {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        this.tempImages.push({
+          url: ev.target.result,
+          file,
+          fileName: file.name
+        });
+        pending--;
+        if (pending === 0) this._renderImagesPreview();
+      };
+      reader.readAsDataURL(file);
+    });
+    // 让用户能再次选同一文件（清空 value 在 render 后做）
+    setTimeout(() => { try { e.target.value = ''; } catch (err) { /* ignore */ } }, 500);
   }
 
-  removeImage() {
-    this.tempImageData = null;
-    this.tempImageFileName = null;
-    const preview = document.getElementById('image-preview');
-    const previewImg = document.getElementById('preview-img');
-    const imageInput = document.getElementById('record-image');
-    preview.classList.add('hidden');
-    previewImg.src = '';
-    imageInput.value = '';
-    this._updateRecordImageName();
+  _renderImagesPreview() {
+    const wrap = document.getElementById('images-preview');
+    if (!wrap) return;
+    if (this.tempImages.length === 0) {
+      wrap.classList.add('hidden');
+      wrap.innerHTML = '';
+      this._updateRecordImagesName();
+      return;
+    }
+    wrap.classList.remove('hidden');
+    let html = '';
+    this.tempImages.forEach((it, idx) => {
+      html += `
+        <div class="relative group">
+          <img src="${this._escapeHtml(it.url)}" class="w-full h-24 object-cover rounded-md border-2 border-border" alt="${this._escapeHtml(it.fileName || '')}">
+          <button type="button" class="vx-image-remove" data-index="${idx}" title="Remove">
+            <i data-lucide="x" class="w-3 h-3"></i>
+          </button>
+        </div>
+      `;
+    });
+    wrap.innerHTML = html;
+    if (window.lucide && lucide.createIcons) lucide.createIcons();
+    this._updateRecordImagesName();
+  }
+
+  _removeImageAt(index) {
+    if (index < 0 || index >= this.tempImages.length) return;
+    this.tempImages.splice(index, 1);
+    this._renderImagesPreview();
+  }
+
+  clearAllImages() {
+    this.tempImages = [];
+    const input = document.getElementById('record-images');
+    if (input) input.value = '';
+    this._renderImagesPreview();
   }
 
   /**
-   * 维护「record-image-name」文本：
-   * - 选了本地文件：显示 file.name（用户最关心的）
-   * - 编辑模式（云端/IndexedDB 已有图，但拿不到原 file.name）：显示「已选择图片/Image selected」占位
-   * - 都没图：显示「未选择任何文件/No file chosen」占位
-   * - 切语言时由 _refreshAppOnLangChange 之后再次调用，按当前语言重渲
+   * 维护「record-images-name」文本：
+   * - 0 张：未选择任何文件
+   * - 1 张且是 FileReader 来的：显示 fileName
+   * - N 张：显示「已选 N 张」/ N selected
    */
-  _updateRecordImageName() {
-    const span = document.getElementById('record-image-name');
+  _updateRecordImagesName() {
+    const span = document.getElementById('record-images-name');
     if (!span) return;
-    if (this.tempImageFileName) {
-      span.textContent = this.tempImageFileName;
-    } else if (this.tempImageData) {
-      span.textContent = this._i18n('app.modal.fileSelected', '已选择图片');
+    const n = this.tempImages.length;
+    if (n === 0) {
+      span.textContent = this._i18n('app.modal.noFiles', '未选择任何文件');
+    } else if (n === 1 && this.tempImages[0].fileName) {
+      span.textContent = this.tempImages[0].fileName;
     } else {
-      span.textContent = this._i18n('app.modal.noFile', '未选择任何文件');
+      span.textContent = this._i18n('app.modal.filesSelected', '已选 N 张').replace('N', String(n));
     }
   }
 
@@ -2539,17 +2648,14 @@ class App {
   // ============================================================
   openModal(record = null) {
     this.editingRecord = record;
-    this.tempImageData = null;
-    this.tempImageFileName = null;  // 每次开 modal 都重置：旧文件选择不再有效
+    this.tempImages = [];  // 每次开 modal 都重置
     const modal = document.getElementById('record-modal');
     const modalTitle = document.getElementById('modal-title');
     const dateInput = document.getElementById('record-date');
     const timeInput = document.getElementById('record-time');
     const titleInput = document.getElementById('record-title');
     const contentInput = document.getElementById('record-content');
-    const imagePreview = document.getElementById('image-preview');
-    const previewImg = document.getElementById('preview-img');
-    const imageInput = document.getElementById('record-image');
+    const imagesInput = document.getElementById('record-images');
 
     if (record) {
       modalTitle.textContent = this._i18n('app.modal.editTitle', '编辑记录');
@@ -2559,14 +2665,9 @@ class App {
       contentInput.value = record.content || '';
       this.setImportance(record.importance || 'medium');
 
-      if (record.image || record.image_url) {
-        this.tempImageData = record.image || record.image_url;
-        previewImg.src = this.tempImageData;
-        imagePreview.classList.remove('hidden');
-      } else {
-        imagePreview.classList.add('hidden');
-        previewImg.src = '';
-      }
+      // 编辑时把现有图全填入 tempImages
+      const existing = this._getRecordImages(record);
+      this.tempImages = existing.map(url => ({ url, file: null, fileName: null }));
     } else {
       modalTitle.textContent = this._i18n('app.modal.addTitle', '添加记录');
       dateInput.value = this.formatDate(new Date());
@@ -2574,21 +2675,17 @@ class App {
       titleInput.value = '';
       contentInput.value = '';
       this.setImportance('medium');
-      imagePreview.classList.add('hidden');
-      previewImg.src = '';
-      this.tempImageData = null;
     }
 
-    imageInput.value = '';
-    this._updateRecordImageName();  // 把文件名校为「未选择」/「已选择图片」/file.name
+    if (imagesInput) imagesInput.value = '';
+    this._renderImagesPreview();
     modal.classList.add('active');
     setTimeout(() => titleInput.focus(), 50);
   }
 
   closeModal() {
     this.editingRecord = null;
-    this.tempImageData = null;
-    this.tempImageFileName = null;
+    this.tempImages = [];
     const modal = document.getElementById('record-modal');
     modal.classList.remove('active');
   }
@@ -2608,26 +2705,48 @@ class App {
     const title = titleInput.value.trim();
     const content = contentInput.value.trim();
     const importance = activeImportanceBtn ? activeImportanceBtn.dataset.importance : 'medium';
-    let imageUrl = this.tempImageData;
 
     if (!title) { alert(this._i18n('app.modal.titleReq', '请输入标题')); return; }
     if (!date)  { alert(this._i18n('app.modal.dateReq', '请选择日期')); return; }
 
-    // Round 5：图片上传到 Supabase Storage（避免 base64 超过列长度导致丢失）
-    if (imageUrl && imageUrl.startsWith('data:')) {
-      try {
-        const file = this._dataURLtoFile(imageUrl, 'image.png');
-        if (file) {
-          imageUrl = await cloudDBManager.uploadImage(file, this.currentTimelineId);
-          console.log('[VEX-Timeline] 图片已上传:', imageUrl);
+    // ============================================================
+    // Round 42: 多图上传（顺序 await，每张独立 try/catch）
+    // - data: URL → 转 File → upload → https URL
+    // - 已是 https URL → 沿用
+    // - 单张失败 → 保留原 data URL（IndexedDB 仍存，云端丢图）
+    // ============================================================
+    const imageUrls = [];
+    for (let i = 0; i < (this.tempImages || []).length; i++) {
+      const it = this.tempImages[i];
+      if (!it || !it.url) continue;
+      if (it.url.startsWith('data:')) {
+        try {
+          const fileName = it.fileName || `image-${Date.now()}-${i}.png`;
+          const file = this._dataURLtoFile(it.url, fileName);
+          if (file) {
+            const uploaded = await cloudDBManager.uploadImage(file, this.currentTimelineId);
+            imageUrls.push(uploaded);
+            continue;
+          }
+        } catch (e) {
+          console.warn('[VEX-Timeline] 第', i + 1, '张图片上传失败:', e);
         }
-      } catch (e) {
-        console.warn('[VEX-Timeline] 图片上传失败，保存原 base64（云端可能丢失）:', e);
-        // 降级：继续保存 base64，IndexedDB 还在，云端可能没图
+        // 上传失败 → 保留 data URL
+        imageUrls.push(it.url);
+      } else {
+        // 已是 https URL（编辑时原图）→ 沿用
+        imageUrls.push(it.url);
       }
     }
+    const mainImageUrl = imageUrls[0] || null;
 
-    const recordData = { date, time, title, content, importance, image: imageUrl, timeline_id: this.currentTimelineId };
+    const recordData = {
+      date, time, title, content, importance,
+      image: mainImageUrl,             // 兼容老 IndexedDB 读（取主图）
+      image_url: mainImageUrl,         // 兼容老 cloud 列（取主图）
+      image_urls: imageUrls,           // Round 42: 多图数组
+      timeline_id: this.currentTimelineId
+    };
 
     if (this.editingRecord) {
       await dbManager.updateRecord(this.editingRecord.id, recordData);
@@ -2636,7 +2755,11 @@ class App {
           try {
             const cloudId = this.editingRecord.cloud_id;
             if (cloudId) {
-              await cloudDBManager.updateRecord(cloudId, { date, time, title, content, importance, image_url: imageUrl });
+              await cloudDBManager.updateRecord(cloudId, {
+                date, time, title, content, importance,
+                image_url: mainImageUrl,
+                image_urls: imageUrls
+              });
             }
           } catch (e) {
             await dbManager.addToSyncQueue('update', { ...recordData, cloud_id: this.editingRecord.cloud_id });
@@ -2650,7 +2773,11 @@ class App {
       if (authManager.isLoggedIn() && supabaseManager.isConfigured() && this.currentTimelineId) {
         if (this.isOnline) {
           try {
-            const cloudRecord = await cloudDBManager.addRecord(this.currentTimelineId, { date, time, title, content, importance, image_url: imageUrl });
+            const cloudRecord = await cloudDBManager.addRecord(this.currentTimelineId, {
+              date, time, title, content, importance,
+              image_url: mainImageUrl,
+              image_urls: imageUrls
+            });
             await dbManager.updateRecord(localId, { cloud_id: cloudRecord.id });
           } catch (e) {
             await dbManager.addToSyncQueue('add', recordData);
@@ -2671,9 +2798,12 @@ class App {
     await dbManager.deleteRecord(id);
     if (authManager.isLoggedIn() && supabaseManager.isConfigured() && this.currentTimelineId && record) {
       // Round 5：删除记录时同步清理 Storage 图片（避免孤儿文件）
-      const imageSrc = record.image_url || record.image;
-      if (imageSrc && imageSrc.startsWith('http')) {
-        try { await cloudDBManager.deleteImage(imageSrc); } catch (e) { /* ignore */ }
+      // Round 42：每张图都尝试删（image_urls 数组 + 兼容老 image_url）
+      const imgs = this._getRecordImages(record);
+      for (const url of imgs) {
+        if (url && url.startsWith('http')) {
+          try { await cloudDBManager.deleteImage(url); } catch (e) { /* ignore */ }
+        }
       }
       if (this.isOnline) {
         try {
@@ -2746,7 +2876,8 @@ class App {
   async renderView() {
     const timelineContainer = document.getElementById('timeline-container');
     const calendarContainer = document.getElementById('calendar-container');
-    if (!timelineContainer || !calendarContainer) return;
+    const galleryContainer = document.getElementById('gallery-container');
+    if (!timelineContainer || !calendarContainer || !galleryContainer) return;
 
     this.syncViewToggleState();
     this._refreshAddButtonByRole();
@@ -2755,16 +2886,27 @@ class App {
     if (!authManager.isLoggedIn() || !this.currentTimelineId) {
       timelineContainer.classList.add('hidden');
       calendarContainer.classList.add('hidden');
+      galleryContainer.classList.add('hidden');
       return;
     }
+
+    // Round 42: 切 view 之前先退出选择态（避免残留）
+    if (this._gallerySelectionMode) this._exitGallerySelection();
 
     if (this.currentView === 'month') {
       timelineContainer.classList.add('hidden');
       calendarContainer.classList.remove('hidden');
+      galleryContainer.classList.add('hidden');
       await this.renderCalendar();
+    } else if (this.currentView === 'gallery') {
+      timelineContainer.classList.add('hidden');
+      calendarContainer.classList.add('hidden');
+      galleryContainer.classList.remove('hidden');
+      await this.renderGallery();
     } else {
       timelineContainer.classList.remove('hidden');
       calendarContainer.classList.add('hidden');
+      galleryContainer.classList.add('hidden');
       await this.renderTimeline();
     }
   }
@@ -2912,7 +3054,9 @@ class App {
       dayRecords.forEach(record => {
         const time = record.time || '';
         const importance = record.importance || 'medium';
-        const imgSrc = record.image || record.image_url || '';
+        // Round 42: 多图
+        const imgs = this._getRecordImages(record);
+        const recordIdStr = String(record.id);
         const creatorHtml = this._creatorHtmlForRecord(record);
         // 语义化颜色（红/黄/绿）
         const importanceColors = {
@@ -2925,6 +3069,21 @@ class App {
           medium: 'bg-canvas',
           low:    'bg-[var(--color-tl-low-bg)]'
         };
+        // Round 42: 多图 carousel
+        let dayImgsHtml = '';
+        if (imgs.length > 0) {
+          dayImgsHtml = `
+            <div class="vx-card-imgs relative">
+              <div class="flex gap-2 overflow-x-auto snap-x snap-mandatory pb-1">
+                ${imgs.map(u => `
+                  <img src="${this._escapeHtml(u)}" loading="lazy"
+                       class="snap-start shrink-0 max-h-64 w-auto object-cover rounded-md border-2 border-border cursor-zoom-in vx-day-img"
+                       data-record-id="${recordIdStr}" alt="${this._escapeHtml(record.title || '')}">
+                `).join('')}
+              </div>
+            </div>
+          `;
+        }
         html += `
           <div class="vx-day-record vx-timeline-item p-6 ${importanceBg[importance]}" data-importance="${importance}">
             <div class="flex items-center gap-3 mb-3">
@@ -2933,11 +3092,34 @@ class App {
             </div>
             <div class="font-semibold text-lg mb-2">${this._escapeHtml(record.title)}</div>
             ${record.content ? `<div class="text-fg/60 text-sm mb-3">${this._escapeHtml(record.content)}</div>` : ''}
-            ${imgSrc ? `<img src="${this._escapeHtml(imgSrc)}" class="max-w-full max-h-64 object-cover rounded-md border-2 border-border" alt="记录图片">` : ''}
+            ${dayImgsHtml}
           </div>
         `;
       });
       content.innerHTML = html;
+
+      // Round 42: 月历弹窗内图片点击 → 打开 lightbox
+      content.querySelectorAll('.vx-day-img').forEach(img => {
+        img.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const id = img.dataset.recordId;
+          const record = this.records.find(r => String(r.id) === id);
+          if (record) this._openLightbox(this._getRecordImages(record), 0);
+        });
+      });
+      // Round 42: 月历弹窗内卡片点击 → 关闭弹窗 + 打开 detail
+      content.querySelectorAll('.vx-day-record').forEach(card => {
+        card.addEventListener('click', (e) => {
+          if (e.target.closest('.vx-day-img')) return;
+          const id = card.querySelector('.vx-day-img')?.dataset.recordId;
+          if (!id) return;
+          const record = this.records.find(r => String(r.id) === id);
+          if (record) {
+            this.closeDayRecords();
+            this.showRecordDetail(record, 0);
+          }
+        });
+      });
     }
     overlay.classList.add('active');
   }
@@ -2947,9 +3129,401 @@ class App {
     overlay.classList.remove('active');
   }
 
+  // ============================================================
+  // Round 42: 卡片详情 modal
+  // - 大图 carousel + 缩略图条 + 上一条/下一条
+  // - 点大图打开 lightbox
+  // - 编辑/删除/下载按钮
+  // ============================================================
+  async showRecordDetail(record, imageIndex = 0) {
+    if (!record) return;
+    await this._ensureCreatorMap();
+    this._currentDetailRecordId = String(record.id);
+    this._currentDetailImageIndex = imageIndex;
+
+    const overlay = document.getElementById('record-detail-overlay');
+    const titleEl = document.getElementById('record-detail-title');
+    const body = document.getElementById('record-detail-body');
+    if (!overlay || !titleEl || !body) return;
+
+    titleEl.textContent = record.title || '—';
+
+    const imgs = this._getRecordImages(record);
+    const importanceBadgeColors = {
+      high:   'bg-danger text-canvas',
+      medium: 'bg-accent text-canvas',
+      low:    'bg-secondary text-canvas'
+    };
+    const imp = record.importance || 'medium';
+    const importanceLabel = {
+      high:   this._i18n('app.importance.high',   '高'),
+      medium: this._i18n('app.importance.medium', '中'),
+      low:    this._i18n('app.importance.low',    '低')
+    };
+    const creatorHtml = this._creatorHtmlForRecord(record);
+    const canEdit = this.canEditRecord(record);
+
+    // 轮播
+    let carouselHtml = '';
+    if (imgs.length > 0) {
+      carouselHtml += `
+        <div class="vx-image-carousel relative bg-canvas rounded-md border-2 border-border overflow-hidden">
+          <img id="detail-current-img" src="${this._escapeHtml(imgs[imageIndex] || imgs[0])}" alt=""
+               class="block w-full max-h-[60vh] object-contain mx-auto bg-fg/5 cursor-zoom-in"
+               data-index="${imageIndex}">
+          ${imgs.length > 1 ? `
+            <button class="vx-carousel-prev absolute left-2 top-1/2 -translate-y-1/2 h-10 w-10 bg-canvas/80 border-2 border-border rounded-md flex items-center justify-center hover:bg-canvas transition-all duration-200" type="button" aria-label="Previous image">
+              <i data-lucide="chevron-left" class="w-5 h-5"></i>
+            </button>
+            <button class="vx-carousel-next absolute right-2 top-1/2 -translate-y-1/2 h-10 w-10 bg-canvas/80 border-2 border-border rounded-md flex items-center justify-center hover:bg-canvas transition-all duration-200" type="button" aria-label="Next image">
+              <i data-lucide="chevron-right" class="w-5 h-5"></i>
+            </button>
+            <div class="absolute bottom-2 left-1/2 -translate-x-1/2 px-2 py-1 bg-canvas/80 rounded-md text-[10px] font-semibold uppercase tracking-wider">
+              <span data-i18n="app.detail.imageIndex">第 ${imageIndex + 1} / ${imgs.length} 张</span>
+            </div>
+          ` : ''}
+        </div>
+      `;
+      if (imgs.length > 1) {
+        carouselHtml += `
+          <div class="flex gap-2 overflow-x-auto pb-1">
+            ${imgs.map((u, i) => `
+              <button type="button" class="vx-carousel-thumb shrink-0 w-16 h-16 rounded-md border-2 ${i === imageIndex ? 'border-primary' : 'border-border'} overflow-hidden hover:border-primary transition-all duration-200" data-index="${i}" aria-label="Image ${i + 1}">
+                <img src="${this._escapeHtml(u)}" class="w-full h-full object-cover" alt="">
+              </button>
+            `).join('')}
+          </div>
+        `;
+      }
+    }
+
+    // 上一条 / 下一条
+    const allSorted = (this.records || []).slice().sort((a, b) => {
+      const ad = `${a.date || ''}T${a.time || '00:00'}`;
+      const bd = `${b.date || ''}T${b.time || '00:00'}`;
+      return ad.localeCompare(bd);
+    });
+    const idx = allSorted.findIndex(r => String(r.id) === this._currentDetailRecordId);
+    const prev = idx > 0 ? allSorted[idx - 1] : null;
+    const next = idx < allSorted.length - 1 ? allSorted[idx + 1] : null;
+
+    body.innerHTML = `
+      <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-fg/60 flex-wrap">
+        <span>${this._escapeHtml(record.date || '')}</span>
+        <span>·</span>
+        <span>${this._escapeHtml(record.time || '')}</span>
+        <span>·</span>
+        <span class="inline-flex items-center justify-center text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded ${importanceBadgeColors[imp] || importanceBadgeColors.medium}">${importanceLabel[imp]}</span>
+      </div>
+      ${creatorHtml ? `<div>${creatorHtml}</div>` : ''}
+      ${carouselHtml}
+      ${record.content ? `<p class="text-base text-fg/80 whitespace-pre-wrap leading-relaxed">${this._escapeHtml(record.content)}</p>` : ''}
+      <div class="flex items-center justify-between flex-wrap gap-2 pt-2 border-t-2 border-border">
+        <div class="flex items-center gap-2">
+          <button id="detail-prev-btn" type="button" ${prev ? '' : 'disabled'}
+                  class="h-10 px-3 bg-canvas border-2 border-border rounded-md font-semibold text-xs uppercase tracking-wider hover:bg-muted transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed">
+            <i data-lucide="chevron-left" class="w-4 h-4 sm:mr-1"></i><span class="hidden sm:inline" data-i18n="app.detail.previous">上一条</span>
+          </button>
+          <button id="detail-next-btn" type="button" ${next ? '' : 'disabled'}
+                  class="h-10 px-3 bg-canvas border-2 border-border rounded-md font-semibold text-xs uppercase tracking-wider hover:bg-muted transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed">
+            <span class="hidden sm:inline" data-i18n="app.detail.next">下一条</span><i data-lucide="chevron-right" class="w-4 h-4 sm:ml-1"></i>
+          </button>
+        </div>
+        <div class="flex items-center gap-2">
+          ${imgs.length > 0 ? `
+            <button id="detail-download-btn" type="button"
+                    class="h-10 px-3 bg-canvas border-2 border-border rounded-md font-semibold text-xs uppercase tracking-wider hover:bg-primary hover:text-canvas hover:border-primary transition-all duration-200">
+              <i data-lucide="download" class="w-4 h-4 sm:mr-1"></i><span class="hidden sm:inline" data-i18n="app.detail.download">下载图片</span>
+            </button>
+          ` : ''}
+          ${canEdit ? `
+            <button id="detail-edit-btn" type="button"
+                    class="h-10 px-3 bg-canvas border-2 border-border rounded-md font-semibold text-xs uppercase tracking-wider hover:bg-primary hover:text-canvas hover:border-primary transition-all duration-200">
+              <i data-lucide="pencil" class="w-4 h-4 sm:mr-1"></i><span class="hidden sm:inline" data-i18n="app.detail.edit">编辑</span>
+            </button>
+            <button id="detail-delete-btn" type="button"
+                    class="h-10 px-3 bg-canvas border-2 border-border rounded-md font-semibold text-xs uppercase tracking-wider hover:bg-danger hover:text-canvas hover:border-danger transition-all duration-200">
+              <i data-lucide="trash-2" class="w-4 h-4 sm:mr-1"></i><span class="hidden sm:inline" data-i18n="app.detail.delete">删除</span>
+            </button>
+          ` : ''}
+        </div>
+      </div>
+    `;
+    if (window.lucide && lucide.createIcons) lucide.createIcons();
+
+    // 事件
+    const curImg = body.querySelector('#detail-current-img');
+    if (curImg) curImg.addEventListener('click', () => this._openLightbox(imgs, imageIndex));
+    const prevBtn = body.querySelector('#detail-prev-btn');
+    if (prev && prevBtn) prevBtn.addEventListener('click', () => this.showRecordDetail(prev));
+    const nextBtn = body.querySelector('#detail-next-btn');
+    if (next && nextBtn) nextBtn.addEventListener('click', () => this.showRecordDetail(next));
+
+    const carPrev = body.querySelector('.vx-carousel-prev');
+    const carNext = body.querySelector('.vx-carousel-next');
+    if (carPrev && imgs.length > 1) carPrev.addEventListener('click', () => {
+      const ni = (imageIndex - 1 + imgs.length) % imgs.length;
+      this._currentDetailImageIndex = ni;
+      this.showRecordDetail(record, ni);
+    });
+    if (carNext && imgs.length > 1) carNext.addEventListener('click', () => {
+      const ni = (imageIndex + 1) % imgs.length;
+      this._currentDetailImageIndex = ni;
+      this.showRecordDetail(record, ni);
+    });
+    body.querySelectorAll('.vx-carousel-thumb').forEach(b => {
+      b.addEventListener('click', () => {
+        this.showRecordDetail(record, parseInt(b.dataset.index, 10));
+      });
+    });
+
+    const dl = body.querySelector('#detail-download-btn');
+    if (dl) dl.addEventListener('click', () => {
+      const url = imgs[imageIndex] || imgs[0];
+      const fname = `${record.date || 'img'}_${(record.time || '00-00').replace(':','-')}_${String(record.id).slice(0,6)}`;
+      this._downloadImage(url, fname);
+    });
+    const editBtn = body.querySelector('#detail-edit-btn');
+    if (editBtn) editBtn.addEventListener('click', () => {
+      this.closeRecordDetail();
+      this.openModal(record);
+    });
+    const delBtn = body.querySelector('#detail-delete-btn');
+    if (delBtn) delBtn.addEventListener('click', async () => {
+      if (!confirm(this._i18n('app.modal.confirmDelete', '确定要删除这条记录吗？'))) return;
+      this.closeRecordDetail();
+      await this.deleteRecord(String(record.id));
+    });
+
+    overlay.classList.add('active');
+  }
+
+  closeRecordDetail() {
+    const overlay = document.getElementById('record-detail-overlay');
+    if (overlay) overlay.classList.remove('active');
+    this._currentDetailRecordId = null;
+    this._currentDetailImageIndex = 0;
+  }
+
+  // ============================================================
+  // Round 42: 全屏 lightbox（点击详情 modal 大图打开）
+  // ============================================================
+  _openLightbox(images, startIndex = 0) {
+    if (!images || images.length === 0) return;
+    this._lightboxOpen = true;
+    this._lightboxImages = images;
+    this._lightboxIndex = startIndex;
+    let lb = document.getElementById('vx-lightbox');
+    if (!lb) {
+      lb = document.createElement('div');
+      lb.id = 'vx-lightbox';
+      lb.className = 'vx-modal-overlay';
+      lb.style.backgroundColor = 'rgba(0,0,0,0.92)';
+      lb.innerHTML = `
+        <button id="vx-lightbox-close" type="button"
+                class="absolute top-4 right-4 h-10 w-10 bg-canvas/10 hover:bg-canvas/20 text-canvas rounded-md flex items-center justify-center z-10" aria-label="Close">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+        <button id="vx-lightbox-prev" type="button"
+                class="absolute left-4 top-1/2 -translate-y-1/2 h-12 w-12 bg-canvas/10 hover:bg-canvas/20 text-canvas rounded-md flex items-center justify-center" aria-label="Previous">
+          <i data-lucide="chevron-left" class="w-6 h-6"></i>
+        </button>
+        <button id="vx-lightbox-next" type="button"
+                class="absolute right-4 top-1/2 -translate-y-1/2 h-12 w-12 bg-canvas/10 hover:bg-canvas/20 text-canvas rounded-md flex items-center justify-center" aria-label="Next">
+          <i data-lucide="chevron-right" class="w-6 h-6"></i>
+        </button>
+        <img id="vx-lightbox-img" alt="" class="max-w-[95vw] max-h-[90vh] object-contain">
+        <div class="absolute bottom-4 left-1/2 -translate-x-1/2 px-3 py-1 bg-canvas/10 text-canvas rounded-md text-xs font-semibold uppercase tracking-wider" id="vx-lightbox-counter"></div>
+      `;
+      document.body.appendChild(lb);
+    }
+    this._refreshLightbox();
+    lb.classList.add('active');
+    if (window.lucide && lucide.createIcons) lucide.createIcons();
+
+    lb.onclick = (e) => {
+      if (e.target.id === 'vx-lightbox-close' || e.target.closest('#vx-lightbox-close')) this._closeLightbox();
+      else if (e.target.id === 'vx-lightbox-prev' || e.target.closest('#vx-lightbox-prev')) this._lightboxStep(-1);
+      else if (e.target.id === 'vx-lightbox-next' || e.target.closest('#vx-lightbox-next')) this._lightboxStep(1);
+    };
+  }
+
+  _refreshLightbox() {
+    const img = document.getElementById('vx-lightbox-img');
+    const counter = document.getElementById('vx-lightbox-counter');
+    if (!img || !this._lightboxImages) return;
+    img.src = this._lightboxImages[this._lightboxIndex];
+    if (this._lightboxImages.length > 1) {
+      counter.textContent = `${this._lightboxIndex + 1} / ${this._lightboxImages.length}`;
+    } else {
+      counter.textContent = '';
+    }
+  }
+
+  _lightboxStep(delta) {
+    if (!this._lightboxImages || this._lightboxImages.length < 2) return;
+    this._lightboxIndex = (this._lightboxIndex + delta + this._lightboxImages.length) % this._lightboxImages.length;
+    this._refreshLightbox();
+  }
+
+  _closeLightbox() {
+    this._lightboxOpen = false;
+    this._lightboxImages = null;
+    this._lightboxIndex = 0;
+    const lb = document.getElementById('vx-lightbox');
+    if (lb) lb.classList.remove('active');
+  }
+
   showLoadingState() {
     const timeline = document.getElementById('timeline');
     timeline.innerHTML = `<div class="vx-empty">${this._i18n('app.empty.loading', '加载中…')}</div>`;
+  }
+
+  // ============================================================
+  // Round 42: 图库视图
+  // - 当前 timeline 内所有有图的记录展平为缩略图列表
+  // - iOS Photos 风格：方形网格，hover 边框变 primary
+  // - 选择模式 → 批量下载 ZIP
+  // ============================================================
+  async renderGallery() {
+    await this._ensureCreatorMap();
+    this._refreshAddButtonByRole();
+
+    const grid = document.getElementById('gallery-grid');
+    const emptyEl = document.getElementById('gallery-empty');
+    const actionBar = document.getElementById('gallery-action-bar');
+    if (!grid) return;
+
+    const items = this._getGalleryItems();
+    if (items.length === 0) {
+      grid.innerHTML = '';
+      emptyEl.classList.remove('hidden');
+      if (actionBar) actionBar.classList.add('hidden');
+      if (window.lucide && lucide.createIcons) lucide.createIcons();
+      return;
+    }
+    emptyEl.classList.add('hidden');
+
+    let html = '';
+    items.forEach((it) => {
+      const selected = this._gallerySelected.has(it.url);
+      const mainTitle = this._escapeHtml(it.record.title || '');
+      const date = it.record.date || '';
+      const time = it.record.time || '';
+      const borderCls = selected ? 'border-primary' : 'border-border';
+      const dotCls = selected ? 'bg-primary border-primary' : 'bg-canvas/30 border-canvas';
+      const dotHtml = this._gallerySelectionMode
+        ? `<div class="absolute top-2 right-2 h-6 w-6 rounded-full border-2 ${dotCls} flex items-center justify-center">${selected ? '<i data-lucide="check" class="w-3.5 h-3.5 text-canvas"></i>' : ''}</div>`
+        : '';
+      html += `
+        <div class="vx-gallery-item relative aspect-square overflow-hidden rounded-md border-2 ${borderCls} bg-muted cursor-pointer hover:border-primary transition-all duration-200"
+             data-url="${this._escapeHtml(it.url)}" data-record-id="${String(it.record.id)}" data-image-index="${it.imageIndex}">
+          <img src="${this._escapeHtml(it.url)}" alt="${mainTitle}" loading="lazy"
+               class="absolute inset-0 w-full h-full object-cover">
+          <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-black/0 to-black/0 pointer-events-none"></div>
+          <div class="absolute bottom-0 left-0 right-0 p-2 text-canvas pointer-events-none">
+            <div class="text-[10px] font-semibold uppercase tracking-wider opacity-90">${this._escapeHtml(date)} · ${this._escapeHtml(time)}</div>
+            ${mainTitle ? `<div class="text-xs font-semibold truncate">${mainTitle}</div>` : ''}
+          </div>
+          ${dotHtml}
+        </div>
+      `;
+    });
+    grid.innerHTML = html;
+    if (window.lucide && lucide.createIcons) lucide.createIcons();
+
+    // 事件委托
+    grid.onclick = (e) => {
+      const item = e.target.closest('.vx-gallery-item');
+      if (!item) return;
+      const url = item.dataset.url;
+      const recordId = item.dataset.recordId;
+      const imageIndex = parseInt(item.dataset.imageIndex, 10);
+      if (this._gallerySelectionMode) {
+        if (this._gallerySelected.has(url)) this._gallerySelected.delete(url);
+        else this._gallerySelected.add(url);
+        this._refreshGallerySelectionUI();
+        return;
+      }
+      const record = this.records.find(r => String(r.id) === recordId);
+      if (record) this.showRecordDetail(record, imageIndex);
+    };
+
+    this._refreshGallerySelectionUI();
+  }
+
+  /** 选择态 UI 重渲染（不重画整个 grid） */
+  _refreshGallerySelectionUI() {
+    const items = document.querySelectorAll('.vx-gallery-item');
+    items.forEach(el => {
+      const url = el.dataset.url;
+      const selected = this._gallerySelected.has(url);
+      el.classList.toggle('border-primary', selected);
+      el.classList.toggle('border-border', !selected);
+    });
+
+    const actionBar = document.getElementById('gallery-action-bar');
+    const downloadBtn = document.getElementById('gallery-download-btn');
+    const countSpan = document.getElementById('gallery-selected-count');
+    if (this._gallerySelectionMode) {
+      if (actionBar) actionBar.classList.remove('hidden');
+      const n = this._gallerySelected.size;
+      if (downloadBtn) downloadBtn.disabled = n === 0;
+      if (countSpan) {
+        const tpl = this._i18n('app.gallery.selectedN', '已选 ${n} 张');
+        countSpan.textContent = tpl.replace('${n}', String(n));
+      }
+    } else {
+      if (actionBar) actionBar.classList.add('hidden');
+    }
+  }
+
+  /** 退出选择模式 */
+  _exitGallerySelection() {
+    this._gallerySelectionMode = false;
+    this._gallerySelected.clear();
+    // 触发一次重绘：如果是 gallery view 重画 grid；否则不操作
+    if (this.currentView === 'gallery') {
+      this.renderGallery();
+    } else {
+      this._refreshGallerySelectionUI();
+    }
+  }
+
+  /** 批量下载 ZIP */
+  async _downloadGalleryZip() {
+    const urls = Array.from(this._gallerySelected);
+    if (urls.length === 0) return;
+    if (typeof JSZip === 'undefined') {
+      alert(this._i18n('app.image.zipLibMissing', '正在加载打包库，请稍后再试'));
+      return;
+    }
+    const zip = new JSZip();
+    const used = new Set();
+    const items = this._getGalleryItems().filter(it => this._gallerySelected.has(it.url));
+    for (let i = 0; i < items.length; i++) {
+      const it = items[i];
+      const r = it.record;
+      const base = `${r.date || 'unknown'}_${(r.time || '00-00').replace(':','-')}`;
+      let ext = 'png';
+      const m = /\.([a-z0-9]{2,5})(\?.*)?$/i.exec(it.url);
+      if (m) ext = m[1].toLowerCase();
+      let name = `${base}_${i + 1}.${ext}`;
+      let n = 1;
+      while (used.has(name)) name = `${base}_${i + 1}_${n++}.${ext}`;
+      used.add(name);
+
+      try {
+        const blob = await (await fetch(it.url)).blob();
+        zip.file(name, blob);
+      } catch (e) {
+        console.warn('[VEX-Timeline] zip fetch failed for', it.url, e);
+      }
+    }
+    const zipBlob = await zip.generateAsync({ type: 'blob' });
+    const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    this._downloadBlob(zipBlob, `vex-timeline-gallery-${ts}.zip`);
+    this._exitGallerySelection();
   }
 
   async renderTimeline() {
@@ -3019,12 +3593,31 @@ class App {
       dayRecords.forEach(record => {
         const time = record.time || '—';
         const importance = record.importance || 'medium';
-        const imgSrc = record.image || record.image_url || '';
+        // Round 42: 多图 — 使用 _getRecordImages 拿全部图
+        const imgs = this._getRecordImages(record);
         const canEdit = this.canEditRecord(record);
         // 用 String() 强制转换为字符串以兼容 UUID 和数字 id
         const recordIdStr = String(record.id);
         // 新功能：赛队时间轴下显示创建者「· nick（real_name）」；个人时间轴 / 无 user_id → ''
         const creatorHtml = this._creatorHtmlForRecord(record);
+
+        // Round 42: 多图 carousel 块
+        let cardImgsHtml = '';
+        if (imgs.length > 0) {
+          const extra = Math.max(imgs.length - 1, 0);
+          cardImgsHtml = `
+            <div class="vx-card-imgs relative mt-2">
+              <div class="flex gap-2 overflow-x-auto snap-x snap-mandatory pb-1">
+                ${imgs.map(u => `
+                  <img src="${this._escapeHtml(u)}" loading="lazy"
+                       class="snap-start shrink-0 max-h-48 w-auto object-cover rounded-md border-2 border-border cursor-zoom-in vx-card-img"
+                       data-record-id="${recordIdStr}" alt="${this._escapeHtml(record.title || '')}">
+                `).join('')}
+              </div>
+              ${extra > 0 ? `<div class="absolute top-1 right-1 px-1.5 py-0.5 bg-fg text-canvas text-[10px] font-semibold rounded">+${extra}</div>` : ''}
+            </div>
+          `;
+        }
 
         // Round 6：卡片内部只显示时间；重要性 inline 在标题前
         // Round 10：内联 style 强制 padding/border 紧凑，绕过任何 CSS 优先级问题
@@ -3049,7 +3642,7 @@ class App {
               <h4 class="vx-item-title">${this._escapeHtml(record.title)}</h4>
             </div>
             ${record.content ? `<div class="vx-item-content">${this._escapeHtml(record.content)}</div>` : ''}
-            ${imgSrc ? `<img src="${this._escapeHtml(imgSrc)}" class="max-w-full max-h-72 object-cover rounded-md border-2 border-border" alt="记录图片">` : ''}
+            ${cardImgsHtml}
           </div>
         `;
       });
@@ -3077,11 +3670,118 @@ class App {
         this.deleteRecord(id);
       });
     });
+
+    // Round 42: 卡片正文点击 → 打开详情 modal（避开编辑/删除/图片按钮）
+    const timelineEl = document.getElementById('timeline');
+    if (timelineEl) {
+      timelineEl.onclick = (e) => {
+        // 点中编辑/删除/图片按钮 → 不开 detail
+        if (e.target.closest('.vx-edit-btn, .vx-delete-btn, .vx-card-img')) return;
+        const item = e.target.closest('.vx-timeline-item');
+        if (!item) return;
+        // 从 item 内找带 data-id 的编辑/删除按钮来取 id
+        const idHolder = item.querySelector('.vx-edit-btn, .vx-delete-btn');
+        if (!idHolder) return;
+        const id = idHolder.dataset.id;
+        const record = this.records.find(r => String(r.id) === id);
+        if (record) this.showRecordDetail(record, 0);
+      };
+    }
+
+    // Round 42: 卡片内图片点击 → 打开 lightbox（不开 detail）
+    document.querySelectorAll('.vx-card-img').forEach(img => {
+      img.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const id = img.dataset.recordId;
+        const record = this.records.find(r => String(r.id) === id);
+        if (record) this._openLightbox(this._getRecordImages(record), 0);
+      });
+    });
   }
 
   // ============================================================
   // 工具
   // ============================================================
+  /**
+   * 从 record 提取所有图片 URL（统一入口；Round 42 多图）
+   * - 优先 image_urls 数组
+   * - 回退到 image_url / image 单图（兼容老数据）
+   * - 自动过滤空 / 非 http+data 协议
+   */
+  _getRecordImages(record) {
+    if (!record) return [];
+    const out = [];
+    if (Array.isArray(record.image_urls)) out.push(...record.image_urls.filter(Boolean));
+    if (out.length === 0) {
+      const single = record.image || record.image_url;
+      if (single) out.push(single);
+    }
+    return out.filter(u => typeof u === 'string' && (u.startsWith('http') || u.startsWith('data:')));
+  }
+
+  /** 主图（第一张） */
+  _getRecordMainImage(record) {
+    const imgs = this._getRecordImages(record);
+    return imgs.length > 0 ? imgs[0] : '';
+  }
+
+  /**
+   * 触发单图下载（浏览器原生）；含文件名清理
+   * @param {string} url
+   * @param {string} filename 不带扩展名也可，函数会补 .png
+   */
+  _downloadImage(url, filename) {
+    try {
+      let safeName = String(filename || 'image')
+        .replace(/[\\/:*?"<>|]/g, '_')
+        .replace(/\s+/g, '_')
+        .slice(0, 80) || 'image';
+      if (!/\.[a-z0-9]+$/i.test(safeName)) safeName += '.png';
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = safeName;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    } catch (e) {
+      console.warn('[VEX-Timeline] downloadImage failed:', e);
+      alert(this._i18n('app.image.downloadFail', '下载失败，请重试'));
+    }
+  }
+
+  /** Blob → 下载（用于 ZIP） */
+  _downloadBlob(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    this._downloadImage(url, filename);
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+  }
+
+  /** 时间轴内所有有图的 record 展平为缩略图列表（去重 by imageUrl）—— 图库用 */
+  _getGalleryItems() {
+    const seen = new Set();
+    const items = [];
+    (this.records || []).forEach(r => {
+      const imgs = this._getRecordImages(r);
+      imgs.forEach((url, idx) => {
+        if (seen.has(url)) return; // 同一图只展示一次
+        seen.add(url);
+        items.push({
+          url,
+          record: r,
+          imageIndex: idx,
+          isPrimary: idx === 0
+        });
+      });
+    });
+    items.sort((a, b) => {
+      const ad = a.record.date || '';
+      const bd = b.record.date || '';
+      if (ad !== bd) return bd.localeCompare(ad);
+      return (b.record.time || '').localeCompare(a.record.time || '');
+    });
+    return items;
+  }
+
   _escapeHtml(s) {
     if (s == null) return '';
     return String(s)

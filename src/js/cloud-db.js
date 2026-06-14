@@ -23,7 +23,12 @@ class CloudDBManager {
         title: record.title,
         content: record.content,
         importance: record.importance,
-        image_url: record.image_url
+        // Round 42: 多图支持。image_url 保留作为主图（第一张）兼容老客户端；
+        // image_urls 为 1..N 张图数组。两者必须同步写，避免单写一个导致老客户端看不到图。
+        image_url: record.image_url || null,
+        image_urls: Array.isArray(record.image_urls) && record.image_urls.length > 0
+          ? record.image_urls
+          : (record.image_url ? [record.image_url] : null)
       })
       .select()
       .single();
